@@ -34,9 +34,10 @@ export function bytesToHex(bytes: Uint8Array): string {
 
 /** Accepts upper or lower case, with any whitespace or `:` between bytes. */
 export function hexToBytes(hex: string): Uint8Array {
+  // Found in the input as given, so the offset points at it there.
+  const bad = hex.search(/[^0-9a-fA-F\s:]/);
+  if (bad >= 0) throw new CodecError(`Not a hex digit: "${hex[bad]}"`, bad);
   const clean = hex.replace(/[\s:]/g, "");
-  const bad = clean.search(/[^0-9a-fA-F]/);
-  if (bad >= 0) throw new CodecError(`Not a hex digit: "${clean[bad]}"`, bad);
   if (clean.length % 2) throw new CodecError("Hex needs an even number of digits");
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
@@ -67,7 +68,14 @@ function encode64(bytes: Uint8Array, alphabet: string, pad: boolean): string {
 }
 
 function decode64(text: string, alphabet: string, name: string): Uint8Array {
-  const clean = text.replace(/\s/g, "");
+  // Where each character left after dropping whitespace stands in the input, for error offsets.
+  const at: number[] = [];
+  let clean = "";
+  for (let i = 0; i < text.length; i++) {
+    if (/\s/.test(text[i])) continue;
+    at.push(i);
+    clean += text[i];
+  }
   // Trailing padding stripped by hand: /=+$/ backtracks quadratically on a long run of "="
   // that is not at the end, and this runs on whatever gets pasted.
   let end = clean.length;
@@ -75,7 +83,9 @@ function decode64(text: string, alphabet: string, name: string): Uint8Array {
   const body = clean.slice(0, end);
   const lookup = new Map([...alphabet].map((c, i) => [c, i]));
   for (let i = 0; i < body.length; i++) {
-    if (!lookup.has(body[i])) throw new CodecError(`Not a ${name} character: "${body[i]}"`, i);
+    if (!lookup.has(body[i])) {
+      throw new CodecError(`Not a ${name} character: "${body[i]}"`, at[i]);
+    }
   }
   if (body.length % 4 === 1) throw new CodecError(`${name} input is one character too long`);
   if (clean.length > body.length && clean.length % 4) {

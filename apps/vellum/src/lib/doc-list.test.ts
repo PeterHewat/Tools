@@ -73,12 +73,19 @@ describe("search", () => {
     expect(matchesSearch(doc, "arrow logo")).toBe(false);
   });
 
-  test("commas separate alternatives", () => {
-    expect(matchesSearch(doc, "logo, nav")).toBe(true);
-    expect(matchesSearch(doc, "logo, brand")).toBe(false);
-    expect(matchesSearch(doc, "logo,")).toBe(false);
-    expect(matchesSearch(doc, " , ")).toBe(true);
-    expect(searchWords("Arrow icons, arrow")).toEqual(["arrow", "icons"]);
+  test("OR, in capitals, separates alternatives", () => {
+    expect(matchesSearch(doc, "logo OR nav")).toBe(true);
+    expect(matchesSearch(doc, "logo OR brand")).toBe(false);
+    expect(matchesSearch(doc, "arrow logo OR icons")).toBe(true);
+    expect(matchesSearch(doc, "logo OR")).toBe(false);
+    expect(matchesSearch(doc, " OR ")).toBe(true);
+    expect(searchWords("Arrow icons OR arrow")).toEqual(["arrow", "icons"]);
+  });
+
+  test("a lower-case or is a word, and a comma a space", () => {
+    expect(matchesSearch(doc, "logo or nav")).toBe(false);
+    expect(matchesSearch(doc, "arrow, icons")).toBe(true);
+    expect(matchesSearch(doc, "arrow, logo")).toBe(false);
   });
 
   test("found stretches are merged and marked, the rest escaped", () => {

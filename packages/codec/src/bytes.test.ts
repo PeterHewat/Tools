@@ -91,6 +91,18 @@ describe("hex", () => {
     expect(() => hexToBytes("abc")).toThrow(/even/);
     expect(() => hexToBytes("zz")).toThrow(/hex digit/);
   });
+
+  test("an error's offset points into the input as given, separators counted", () => {
+    const offset = (f: () => unknown) => {
+      try {
+        f();
+      } catch (e) {
+        return (e as CodecError).offset;
+      }
+    };
+    expect(offset(() => hexToBytes("de:ad zz"))).toBe(6);
+    expect(offset(() => base64ToBytes("Zm9v\n  Yg!"))).toBe(9);
+  });
 });
 
 describe("utf8", () => {

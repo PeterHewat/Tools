@@ -20,7 +20,9 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll([...OWNED]))
+      // Past the HTTP cache: Pages lets a browser keep a file ten minutes, and a new build must
+      // not precache the previous one's index.html (naming scripts that are gone) or demos.
+      .then((cache) => cache.addAll([...OWNED].map((url) => new Request(url, { cache: "reload" }))))
       .then(() => self.skipWaiting())
   );
 });

@@ -97,15 +97,18 @@ export function sizeText(bytes: number): string {
 }
 
 /**
- * A search as typed: commas separate alternatives, spaces the words of one - "arrow icons, logo"
- * is (arrow and icons) or logo. Lower case, empties dropped; nothing typed is no alternative.
+ * A search as typed, as search engines read one: words separated by spaces must all be found, and
+ * OR - in capitals, as a word of its own - separates alternatives: "arrow icons OR logo" is (arrow
+ * and icons) or logo. A comma counts as a space; a lower-case "or" is just a word. Lower case,
+ * empties dropped; nothing typed is no alternative.
  */
 export function parseSearch(query: string): string[][] {
-  return query
-    .toLowerCase()
-    .split(",")
-    .map((alt) => alt.split(/\s+/).filter(Boolean))
-    .filter((alt) => alt.length);
+  const alts: string[][] = [[]];
+  for (const word of query.split(/[\s,]+/).filter(Boolean)) {
+    if (word === "OR") alts.push([]);
+    else alts[alts.length - 1]!.push(word.toLowerCase());
+  }
+  return alts.filter((alt) => alt.length);
 }
 
 /**

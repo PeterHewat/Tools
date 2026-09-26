@@ -11,7 +11,9 @@
 import { importSvgFile } from "./io.js";
 import { setState } from "./state.js";
 
-export const WELCOME_NAME = "Vellum Workbench";
+export const WELCOME_NAME = "Workbench";
+/** Given to it as the demos are given theirs, so a search finds it the same way. */
+export const WELCOME_TAGS = ["isometric", "desk", "gradient"];
 
 /**
  * In the app's own folder, addressed from its base rather than from the page, which may have been
