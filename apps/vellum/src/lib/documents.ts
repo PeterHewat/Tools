@@ -30,7 +30,7 @@ import { setSectionOpen } from "./layout.js";
 import { fitToView } from "./zoom.js";
 import { invalidateLists, rowDotHtml } from "./accordion.js";
 import { hydrateImageDimensions } from "./images-panel.js";
-import { WELCOME_NAME, loadWelcome } from "./welcome.js";
+import { WELCOME_NAME, WELCOME_TAGS, loadWelcome } from "./welcome.js";
 import { demoDocument, demoUrl, demosToAdd } from "./demos.js";
 import {
   cleanTags,
@@ -352,17 +352,21 @@ async function createWelcomeDocument(): Promise<boolean> {
   markWelcomed();
   setState({ viewport: fitToView() });
   currentDoc = { id: uid("doc"), name: uniqueName(WELCOME_NAME) };
-  await storeNew();
+  await storeNew(WELCOME_TAGS);
   return true;
 }
 
-/** Stores the document just put on the canvas, at the top of the list, and makes it the open one. */
-async function storeNew(): Promise<void> {
+/**
+ * Stores the document just put on the canvas, at the top of the list, and makes it the open one,
+ * with `tags` when it comes with some.
+ */
+async function storeNew(tags?: string[]): Promise<void> {
   afterDocumentReplaced();
   try {
     await saveDocument({
       id: currentDoc.id!,
       name: currentDoc.name,
+      tags,
       data: deepClone(serializeProject(getState())),
     });
   } catch (err) {
