@@ -59,6 +59,7 @@ const files: Record<string, string> = {
     "test": "bun test"
   },
   "devDependencies": {
+    "@workbench/catalog": "workspace:*",
     "@workbench/ui": "workspace:*",
     "typescript": "~6.0.3",
     "vite": "^8.3.0"
@@ -104,6 +105,15 @@ bindThemeToggle(byId("theme-toggle"));
 byId("app").textContent = "Nothing here yet.";
 
 registerServiceWorker();
+`,
+  // `bun test` fails when it finds no tests, and `bun run verify` runs it in every app: a first
+  // test keeps a new app passing until it has tests of its own.
+  "src/catalog.test.ts": `import { expect, test } from "bun:test";
+import { findApp } from "@workbench/catalog";
+
+test("is in the catalog", () => {
+  expect(findApp("${slug}")).toBeDefined();
+});
 `,
   "src/styles.css": `/* ${title}'s own layout. Tokens and controls come from @workbench/ui/base.css. */
 `,
