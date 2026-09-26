@@ -324,7 +324,8 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   stats of a closed document load it once and are kept until it changes. Which rows are open
   belongs to the session.
 - **Search**: a field above the list, with a magnifying glass at its end that becomes a ✕ to clear
-  it once there is text. Commas separate alternatives and spaces the words of one: a document
+  it once there is text. Spaces separate words and OR - in capitals, a word of its
+  own - separates alternatives, as search engines read them (a comma counts as a space): a document
   stays when, for one alternative, every word is found, ignoring case, in its name or one of its
   tags. What matched is marked - in the name, from a copy laid over the field, and in the tags that
   matched, shown under a folded row, in solid yellow. ▲ ▼ are off while the list is filtered. Esc clears the field, and so do a new document and an import, which a filter would otherwise hide.
