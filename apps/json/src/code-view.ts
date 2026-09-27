@@ -1,5 +1,6 @@
 /**
- * Line numbers and syntax colours for a plain `<textarea>`.
+ * Line numbers and syntax colours for a plain `<textarea>`: the JSON editor, and the read-only
+ * views of it converted to other formats.
  *
  * The textarea stays the editor — typing, selection, undo, IME and spellcheck-off all native —
  * with its text made transparent. Underneath it, a `<pre>` shows the same lines coloured, and a
@@ -18,7 +19,11 @@ export interface CodeView {
   setFirstLine(line: number): void;
   /** Marks stretches of the textarea's text (sorted offsets), e.g. find results. */
   setMarks(marks: readonly Mark[]): void;
+  /** How lines are coloured: JSON by default; another language, or none (all plain). */
+  setLexer(lexer: Lexer): void;
 }
+
+export type Lexer = (line: string) => Token[];
 
 /** Past this, colouring is skipped: the text shows plain, and stays fast. */
 const MAX_COLOURED = 20_000_000;
@@ -46,6 +51,7 @@ export function createCodeView(
   let charWidth = 0;
   /** Tokens of the long lines on screen, by content, so scrolling along one does not re-lex it. */
   let longTokens = new Map<string, Token[]>();
+  let lexer: Lexer = highlightLine;
 
   const measure = () => {
     const style = getComputedStyle(textarea);
@@ -61,7 +67,7 @@ export function createCodeView(
     let tokens = longTokens.get(line);
     if (!tokens) {
       if (longTokens.size > 16) longTokens = new Map();
-      tokens = highlightLine(line);
+      tokens = lexer(line);
       longTokens.set(line, tokens);
     }
     return tokens;
@@ -124,7 +130,7 @@ export function createCodeView(
             const lineMarks = marksOn(first + k);
             return line.length > LONG_LINE
               ? highlightHtml(line, from, to, tokensOf(line), lineMarks)
-              : highlightHtml(line, 0, Infinity, undefined, lineMarks);
+              : highlightHtml(line, 0, Infinity, lexer(line), lineMarks);
           })
           .join("\n");
 
@@ -150,6 +156,12 @@ export function createCodeView(
     setErrorLine(line) {
       if (line === errorLine) return;
       errorLine = line;
+      render();
+    },
+    setLexer(next) {
+      if (next === lexer) return;
+      lexer = next;
+      longTokens = new Map();
       render();
     },
     setMarks(next) {

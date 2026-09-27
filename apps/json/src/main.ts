@@ -17,7 +17,9 @@ import {
   type ParseResult,
   type RepairKind,
 } from "./lib/ast.js";
-import { createCodeView } from "./code-view.js";
+import { createCodeView, type Lexer } from "./code-view.js";
+import { highlightLine } from "./lib/highlight.js";
+import { lexCsv, lexPlain, lexTypeScript, lexYaml } from "./lib/lexers.js";
 import { toCsv, toJsonSchema, toTypeScript, toYaml, type Converted } from "./lib/convert.js";
 import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { unwrapString, wrapAsString } from "./lib/nested.js";
@@ -46,6 +48,9 @@ const fixNote = byId("fix-note");
 const codeEl = byId("code");
 const treeEl = byId("tree");
 const exportEl = byId("export");
+const exportText = byId<HTMLTextAreaElement>("export-text");
+const exportMessage = byId("export-message");
+const coloursBtn = byId<HTMLButtonElement>("colours");
 const expandAllBtn = byId<HTMLButtonElement>("expand-all");
 const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
 const pathBtn = byId<HTMLButtonElement>("path");
@@ -67,6 +72,12 @@ const pathStyleButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-
 const unwrapBtn = options.querySelector<HTMLButtonElement>('[data-action="unwrap"]')!;
 const wrapBtn = options.querySelector<HTMLButtonElement>('[data-action="wrap"]')!;
 const view = createCodeView(codeEl, editor, byId("highlight"), byId("gutter"));
+const exportView = createCodeView(
+  exportEl,
+  exportText,
+  byId("export-highlight"),
+  byId("export-gutter")
+);
 const tree = createTree(treeEl, {
   select: (path, _node, indices) => {
     treeSelection = indices;
@@ -104,6 +115,8 @@ let mode: ViewMode = "text";
 let place: "text" | "tree" = "text";
 let indentChoice: Indent = "2";
 let pathStyle: PathStyle = "js";
+/** Syntax colours in every view: a setting, on until someone turns it off. */
+let colours = true;
 /** The tree shows an older document until it is next opened. */
 let treeStale = true;
 /** Why the text is not JSON, and the edits that would make it JSON when there are some. */
@@ -125,6 +138,7 @@ interface Prefs {
   sortKeys: boolean;
   view: ViewMode;
   pathStyle: PathStyle;
+  colours: boolean;
 }
 
 const VIEWS: readonly ViewMode[] = ["text", "tree", "yaml", "csv", "ts", "schema"];
@@ -139,6 +153,7 @@ function restore(): void {
       setPressed(sortKeys, prefs.sortKeys === true);
       if (prefs.view && VIEWS.includes(prefs.view)) mode = prefs.view;
       if (prefs.pathStyle === "pointer") pathStyle = "pointer";
+      if (prefs.colours === false) colours = false;
     }
   } catch {
     /* storage refused or holds something else: defaults */
@@ -158,6 +173,7 @@ function save(): void {
     sortKeys: isPressed(sortKeys),
     view: mode,
     pathStyle,
+    colours,
   };
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
@@ -296,6 +312,7 @@ function contextChain(): JsonNode[] {
 
 interface ExportSpec {
   label: string;
+  lexer: Lexer;
   extension: string;
   make: (root: JsonNode) => Converted;
 }
@@ -312,22 +329,30 @@ function firstArray(root: JsonNode): JsonNode | undefined {
 }
 
 const EXPORTS: Record<ExportKind, ExportSpec> = {
-  yaml: { label: "YAML", extension: ".yaml", make: (root) => ({ ok: true, text: toYaml(root) }) },
+  yaml: {
+    label: "YAML",
+    lexer: lexYaml,
+    extension: ".yaml",
+    make: (root) => ({ ok: true, text: toYaml(root) }),
+  },
   // The innermost array around the caret (or tree selection), so any table in a document can
   // be exported; failing that, the document's first array.
   csv: {
     label: "CSV",
+    lexer: lexCsv,
     extension: ".csv",
     make: (root) =>
       toCsv(contextChain().findLast((n) => n.kind === "array") ?? firstArray(root) ?? root),
   },
   ts: {
     label: "TypeScript types",
+    lexer: lexTypeScript,
     extension: ".d.ts",
     make: (root) => ({ ok: true, text: toTypeScript(root) }),
   },
   schema: {
     label: "JSON Schema",
+    lexer: highlightLine,
     extension: ".schema.json",
     make: (root) => ({ ok: true, text: toJsonSchema(root) }),
   },
@@ -339,7 +364,11 @@ const isExport = (m: ViewMode): m is ExportKind => m in EXPORTS;
 let exported: string | null = null;
 
 function showExport(): void {
-  if (!isExport(mode)) return;
+  if (!isExport(mode)) {
+    exportEl.classList.add("hidden");
+    exportMessage.classList.add("hidden");
+    return;
+  }
   let result: Converted;
   if (!doc) {
     result = {
@@ -358,9 +387,24 @@ function showExport(): void {
     }
   }
   exported = result.ok ? result.text : null;
-  exportEl.textContent = result.ok ? result.text : result.message;
-  exportEl.classList.toggle("message", !result.ok);
+  exportEl.classList.toggle("hidden", !result.ok);
+  exportMessage.classList.toggle("hidden", result.ok);
+  if (result.ok) {
+    exportView.setLexer(colours ? EXPORTS[mode].lexer : lexPlain);
+    // Only when it changed: an edit elsewhere must not throw the reader back to the top.
+    if (exportText.value !== result.text) exportText.value = result.text;
+    exportView.refresh();
+  } else {
+    exportMessage.textContent = result.message;
+  }
   showFileControls();
+}
+
+/** Turns syntax colours on or off everywhere: the text, the converted views and the tree. */
+function showColours(): void {
+  view.setLexer(colours ? highlightLine : lexPlain);
+  if (isExport(mode)) exportView.setLexer(colours ? EXPORTS[mode].lexer : lexPlain);
+  document.body.classList.toggle("no-colour", !colours);
 }
 
 // ---------- Options: indent, sort keys, path style, nested JSON ----------
@@ -372,6 +416,8 @@ function showExport(): void {
 function showOptions(): void {
   for (const b of indentButtons) setPressed(b, b.dataset.indent === indentChoice);
   sortKeys.textContent = isPressed(sortKeys) ? "On" : "Off";
+  setPressed(coloursBtn, colours);
+  coloursBtn.textContent = colours ? "On" : "Off";
   for (const b of pathStyleButtons) setPressed(b, b.dataset.pathStyle === pathStyle);
 
   const chain = contextChain();
@@ -698,7 +744,6 @@ function setMode(next: ViewMode): void {
   if (mode === "text" || mode === "tree") place = mode;
   codeEl.classList.toggle("hidden", mode !== "text");
   treeEl.classList.toggle("hidden", mode !== "tree");
-  exportEl.classList.toggle("hidden", !isExport(mode));
   for (const b of viewButtons) setPressed(b, b.dataset.view === mode);
   cursor.classList.toggle("hidden", mode !== "text");
   showPager();
@@ -709,6 +754,7 @@ function setMode(next: ViewMode): void {
       refreshFind();
     }
   }
+  showExport();
   if (mode === "tree") {
     showTree();
     const at = atCursor();
@@ -720,7 +766,8 @@ function setMode(next: ViewMode): void {
     editor.focus();
     showCursor();
   } else {
-    showExport();
+    exportText.scrollTop = exportText.scrollLeft = 0;
+    exportView.refresh();
     showPath(shownPath);
   }
   showViewControls();
@@ -836,6 +883,12 @@ sortKeys.addEventListener("click", () => {
   showOptions();
   save();
 });
+coloursBtn.addEventListener("click", () => {
+  colours = !colours;
+  showColours();
+  showOptions();
+  save();
+});
 for (const b of pathStyleButtons) {
   b.addEventListener("click", () => {
     pathStyle = b.dataset.pathStyle as PathStyle;
@@ -939,6 +992,7 @@ onFileDrop(editor, ([file]) => {
 
 bindThemeToggle(byId("theme-toggle"));
 restore();
+showColours();
 validate();
 setMode(mode);
 

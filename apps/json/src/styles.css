@@ -55,6 +55,12 @@ body {
   padding-inline: 9px;
 }
 
+/* Two buttons that always sit together (Expand all, Collapse all). */
+.pair {
+  display: inline-flex;
+  gap: 6px;
+}
+
 .group + .group {
   padding-left: 8px;
   border-left: 1px solid var(--border);
@@ -241,29 +247,15 @@ kbd {
   font-size: 0.8em;
 }
 
-/* YAML, CSV, Types, Schema: the document converted, read-only, as the text view shows JSON. */
-.export {
+/* YAML, CSV, Types, Schema show in a code view like the text; this is what shows instead when
+   there is nothing to convert. */
+.export-message {
   flex: 1;
-  min-height: 0;
   margin: 0;
-  padding: 6px 12px;
-  overflow: auto;
-  background: var(--bg);
-  font: 13px / 1.5 var(--mono);
-  tab-size: 2;
-  white-space: pre;
-}
-
-.export:focus-visible {
-  outline: none;
-}
-
-.export.message {
   padding: 24px;
+  background: var(--bg);
   color: var(--muted);
-  font-family: system-ui, sans-serif;
   text-align: center;
-  white-space: normal;
 }
 
 /* Find: a bar under the header, and marks drawn in the coloured layer. */
@@ -605,6 +597,17 @@ kbd {
   color: var(--violet);
 }
 
+/* TypeScript's type names. */
+.t-type {
+  color: var(--ok);
+}
+
+/* Colours off (a setting): the tree shows its values in the text colour too. The code views
+   switch to plain text themselves. */
+.no-colour .tree :is(.t-key, .t-string, .t-number, .t-literal, .t-index) {
+  color: inherit;
+}
+
 .t-comment,
 .t-punct {
   color: var(--muted);
@@ -672,6 +675,18 @@ kbd {
 }
 
 @media (max-width: 640px) {
+  /* The groups' buttons flow straight into the header's rows, so "‹" shares its row with the
+     view switch instead of wrapping as whole groups and leaving gaps. */
+  .json-header .group {
+    display: contents;
+  }
+
+  /* Compact enough for "‹" and all six views on one row of a phone. */
+  .json-header .seg .wb-btn {
+    padding-inline: 6px;
+    font-size: 0.85rem;
+  }
+
   /* "Valid JSON · … deep" on one line, the sizes on the next. */
   .sizes {
     display: block;

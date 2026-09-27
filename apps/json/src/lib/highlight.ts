@@ -7,7 +7,8 @@
  * uncoloured until it is fixed.
  */
 
-export type TokenKind = "key" | "string" | "number" | "literal" | "comment" | "punct" | "plain";
+export type TokenKind =
+  "key" | "string" | "number" | "literal" | "type" | "comment" | "punct" | "plain";
 
 export interface Token {
   kind: TokenKind;

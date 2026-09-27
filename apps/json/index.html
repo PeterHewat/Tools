@@ -8,7 +8,9 @@
     <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.
          Controls that cannot apply are disabled, never hidden, so nothing moves. -->
     <header class="wb-header json-header">
-      <a class="wb-home" href="../" title="All tools">Workbench</a>
+      <a class="wb-home" href="../" title="All tools"
+        ><span class="wb-home-label">Workbench</span></a
+      >
       <h1>JSON</h1>
 
       <div class="group" role="group" aria-label="View">
@@ -30,24 +32,30 @@
             Schema
           </button>
         </div>
-        <button
-          type="button"
-          class="wb-btn icon-btn"
-          id="expand-all"
-          title="Expand all"
-          aria-label="Expand all"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 16l-5 5-5-5M7 8l5-5 5 5" /></svg>
-        </button>
-        <button
-          type="button"
-          class="wb-btn icon-btn"
-          id="collapse-all"
-          title="Collapse all"
-          aria-label="Collapse all"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20l5-5 5 5M17 4l-5 5-5-5" /></svg>
-        </button>
+        <span class="pair">
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="expand-all"
+            title="Expand all"
+            aria-label="Expand all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17 16l-5 5-5-5M7 8l5-5 5 5" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="collapse-all"
+            title="Collapse all"
+            aria-label="Collapse all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 20l5-5 5 5M17 4l-5 5-5-5" />
+            </svg>
+          </button>
+        </span>
       </div>
 
       <div class="group" role="group" aria-label="Layout">
@@ -97,6 +105,19 @@
               aria-label="Sort keys"
             >
               Off
+            </button>
+          </div>
+          <div class="menu-label">Display</div>
+          <div class="menu-row">
+            <span>Colours</span>
+            <button
+              type="button"
+              class="wb-btn toggle small"
+              id="colours"
+              aria-pressed="true"
+              aria-label="Syntax colours"
+            >
+              On
             </button>
           </div>
           <div class="menu-label">Paths</div>
@@ -216,8 +237,9 @@
               quotes, unquoted keys, NaN, Python's True / None — and corrects just those places.
             </li>
             <li>
-              <b>Settings</b> (the cog) — indent and key sorting for Format, the style of the path
-              in the status bar, and turning a string that holds JSON into real JSON, or back.
+              <b>Settings</b> (the cog) — indent and key sorting for Format, syntax colours in every
+              view, the style of the path in the status bar, and turning a string that holds JSON
+              into real JSON, or back.
             </li>
             <li>
               A long document is edited a page of 5,000 lines at a time; everything else works on
@@ -310,7 +332,23 @@
         </div>
       </div>
       <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
-      <pre class="export hidden" id="export" tabindex="0"></pre>
+      <!-- YAML, CSV, Types, Schema: the same view as the text, read-only. -->
+      <div class="code hidden" id="export">
+        <div class="gutter" aria-hidden="true">
+          <div class="gutter-lines" id="export-gutter"></div>
+        </div>
+        <div class="code-body">
+          <pre class="highlight" aria-hidden="true"><code id="export-highlight"></code></pre>
+          <textarea
+            class="wb-code editor"
+            id="export-text"
+            aria-label="Converted document"
+            readonly
+            spellcheck="false"
+          ></textarea>
+        </div>
+      </div>
+      <p class="export-message hidden" id="export-message"></p>
 
       <div class="bar pager hidden" id="pager">
         <button
