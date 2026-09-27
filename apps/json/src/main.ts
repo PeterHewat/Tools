@@ -27,6 +27,8 @@ import { lineCount, lineOf, lineStarts, pageAt, pageOf } from "./lib/pages.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson, printedSize } from "./lib/print.js";
 import { SAMPLE } from "./lib/sample.js";
+import { csvToJson, looksLikeCsv } from "./lib/csv-read.js";
+import { defaultTable, tablesIn, type Table } from "./lib/tables.js";
 import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
@@ -46,11 +48,15 @@ const problem = byId("problem");
 const excerpt = byId("excerpt");
 const fixBtn = byId<HTMLButtonElement>("fix");
 const fixNote = byId("fix-note");
+const fromCsvBtn = byId<HTMLButtonElement>("from-csv");
 const codeEl = byId("code");
 const treeEl = byId("tree");
 const exportEl = byId("export");
 const exportText = byId<HTMLTextAreaElement>("export-text");
 const exportMessage = byId("export-message");
+const csvBar = byId("csvbar");
+const csvTable = byId<HTMLSelectElement>("csv-table");
+const csvWhy = byId("csv-why");
 const coloursBtn = byId<HTMLButtonElement>("colours");
 const expandAllBtn = byId<HTMLButtonElement>("expand-all");
 const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
@@ -323,15 +329,78 @@ interface ExportSpec {
   make: (root: JsonNode) => Converted;
 }
 
-/** The first array in the document, nearest the root first: a document's main table. */
-function firstArray(root: JsonNode): JsonNode | undefined {
-  const queue = [root];
-  for (let k = 0; k < queue.length; k++) {
-    const node = queue[k];
-    if (node.kind === "array") return node;
-    if (node.kind === "object") for (const m of node.members) queue.push(m.value);
+// ---------- CSV: which array is the table ----------
+
+/** The array picked in the CSV bar, by path, until another is picked. */
+let csvPick: string | null = null;
+const pathKey = (path: readonly PathSegment[]) => JSON.stringify(path);
+
+/**
+ * The array the CSV view shows, and fills its picker with every array it could show instead.
+ * A pick sticks while that array exists; otherwise the view follows the caret into any array,
+ * and falls back to the document's first array of objects.
+ */
+function csvTarget(root: JsonNode): Table | undefined {
+  const tables = tablesIn(root);
+  const picked = csvPick === null ? undefined : tables.find((t) => pathKey(t.path) === csvPick);
+  const chain = contextChain();
+  let around: Table | undefined;
+  for (let k = chain.length - 1; k >= 0 && !around; k--) {
+    const node = chain[k];
+    if (node.kind !== "array") continue;
+    const path = csvPathOf(k);
+    around = tables.find((t) => t.node === node) ?? {
+      node,
+      path,
+      objects: node.items.some((i) => i.kind === "object"),
+    };
+    if (!tables.includes(around)) tables.push(around);
   }
-  return undefined;
+  const fallback = defaultTable(tables);
+  const target = picked ?? around ?? fallback;
+  csvTable.replaceChildren(
+    ...tables.map((t) => {
+      const count = t.node.items.length;
+      const option = new Option(
+        `${formatPath(t.path)} · ${count.toLocaleString()} ${count === 1 ? "row" : "rows"}`,
+        pathKey(t.path)
+      );
+      option.selected = t === target;
+      return option;
+    })
+  );
+  csvTable.disabled = !tables.length;
+  csvWhy.textContent = !target
+    ? "No arrays in this document"
+    : target === picked
+      ? ""
+      : target === around
+        ? "the array at the cursor"
+        : "the first list of objects";
+  return target;
+}
+
+/** The path to the `depth`-th value of the context chain, for an array the picker lacks. */
+function csvPathOf(depth: number): PathSegment[] {
+  const indices = (place === "tree" ? treeSelection : (atCursor()?.indices ?? [])).slice(0, depth);
+  const path: PathSegment[] = [];
+  let node = doc!.root;
+  for (const k of indices) {
+    if (node.kind === "object") {
+      path.push(node.members[k].key);
+      node = node.members[k].value;
+    } else if (node.kind === "array") {
+      path.push(k);
+      node = node.items[k];
+    }
+  }
+  return path;
+}
+
+/** A path as the status bar writes it, in the chosen style; the root has a name of its own. */
+function formatPath(path: readonly PathSegment[]): string {
+  if (!path.length) return "(root)";
+  return pathStyle === "pointer" ? jsonPointer(path) : jsPath(path);
 }
 
 const EXPORTS: Record<ExportKind, ExportSpec> = {
@@ -341,14 +410,16 @@ const EXPORTS: Record<ExportKind, ExportSpec> = {
     extension: ".yaml",
     make: (root) => ({ ok: true, text: toYaml(root) }),
   },
-  // The innermost array around the caret (or tree selection), so any table in a document can
-  // be exported; failing that, the document's first array.
+  // The array picked above the view; else the innermost one around the caret (or tree
+  // selection); else the first array of objects. The picker shows which, and why.
   csv: {
     label: "CSV",
     lexer: lexCsv,
     extension: ".csv",
-    make: (root) =>
-      toCsv(contextChain().findLast((n) => n.kind === "array") ?? firstArray(root) ?? root),
+    make: (root) => {
+      const table = csvTarget(root);
+      return toCsv(table?.node ?? root);
+    },
   },
   ts: {
     label: "TypeScript types",
@@ -373,6 +444,7 @@ function showExport(): void {
   if (!isExport(mode)) {
     exportEl.classList.add("hidden");
     exportMessage.classList.add("hidden");
+    csvBar.classList.add("hidden");
     return;
   }
   let result: Converted;
@@ -393,6 +465,7 @@ function showExport(): void {
     }
   }
   exported = result.ok ? result.text : null;
+  csvBar.classList.toggle("hidden", mode !== "csv" || !doc);
   exportEl.classList.toggle("hidden", !result.ok);
   exportMessage.classList.toggle("hidden", result.ok);
   if (result.ok) {
@@ -656,9 +729,16 @@ function validate(): void {
     caretEl.className = "caret";
     caretEl.textContent = caret;
     excerpt.replaceChildren(`${code}\n`, caretEl);
+    // Not JSON at all but a CSV table: offered as a conversion rather than a fix.
+    const csv = !fault.edits && looksLikeCsv(text);
     fixBtn.classList.toggle("hidden", !fault.edits);
-    fixNote.classList.toggle("hidden", !fault.edits);
-    fixNote.textContent = fault.edits ? `Almost JSON: ${describeEdits(fault.edits)}.` : "";
+    fromCsvBtn.classList.toggle("hidden", !csv);
+    fixNote.classList.toggle("hidden", !fault.edits && !csv);
+    fixNote.textContent = fault.edits
+      ? `Almost JSON: ${describeEdits(fault.edits)}.`
+      : csv
+        ? "This looks like CSV: each row can become an object."
+        : "";
   }
   view.setErrorLine(fault?.position.line ?? null);
   view.refresh();
@@ -738,6 +818,17 @@ function rewrite(minify: boolean): void {
 function fix(): void {
   if (fault?.edits) replaceText(applyEdits(documentText(), fault.edits));
 }
+
+/** The text, read as CSV, replaced by the JSON array of its rows (Ctrl+Z takes it back). */
+function fromCsv(): void {
+  const json = csvToJson(documentText(), indent());
+  if (!json) return;
+  replaceText(json.text);
+  fileName = fileName.replace(/\.(csv|tsv|txt)$/i, "") + (/\.json$/i.test(fileName) ? "" : ".json");
+}
+
+/** A file of CSV (by its name or type) opens as JSON: a table is what it was opened to be. */
+const isCsvFile = (file: File) => /\.(csv|tsv)$/i.test(file.name) || file.type === "text/csv";
 
 // ---------- Where you are: caret, path ----------
 
@@ -849,7 +940,11 @@ function goToError(): void {
 
 async function load(file: File): Promise<void> {
   fileName = file.name;
-  showDocument(await file.text());
+  csvPick = null;
+  const text = await file.text();
+  const json = isCsvFile(file) ? csvToJson(text, indent()) : null;
+  if (json) fileName = file.name.replace(/\.(csv|tsv)$/i, ".json");
+  showDocument(json ? json.text : text);
   editor.setSelectionRange(0, 0);
   editor.scrollTop = 0;
   validate();
@@ -904,10 +999,15 @@ formatBtn.addEventListener("click", () => rewrite(false));
 minifyBtn.addEventListener("click", () => rewrite(true));
 byId("goto").addEventListener("click", goToError);
 fixBtn.addEventListener("click", fix);
+fromCsvBtn.addEventListener("click", fromCsv);
 for (const b of viewButtons) {
   b.addEventListener("click", () => setMode(b.dataset.view as ViewMode));
 }
 viewSelect.addEventListener("change", () => setMode(viewSelect.value as ViewMode));
+csvTable.addEventListener("change", () => {
+  csvPick = csvTable.value;
+  showExport();
+});
 expandAllBtn.addEventListener("click", () => tree.expandAll());
 collapseAllBtn.addEventListener("click", () => tree.collapseAll());
 
@@ -1038,7 +1138,7 @@ pageInput.addEventListener("change", () => {
 pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
 
 byId("open").addEventListener("click", async () => {
-  const [file] = await pickFiles(".json,application/json,text/plain");
+  const [file] = await pickFiles(".json,.csv,.tsv,application/json,text/csv,text/plain");
   if (file) await load(file);
 });
 copyBtn.addEventListener("click", async () => {

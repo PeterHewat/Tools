@@ -833,3 +833,34 @@ body:not([data-view="tree"]) .tree-area {
   display: block;
   font: inherit;
 }
+
+/* CSV: which array is the table, above the view, and why that one when nobody picked it. */
+.csvbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.csvbar.hidden {
+  display: none;
+}
+
+.csv-table {
+  min-width: 0;
+  max-width: 60%;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 13px var(--mono);
+}
+
+.csv-why {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

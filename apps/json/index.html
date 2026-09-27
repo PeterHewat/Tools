@@ -135,7 +135,7 @@
             type="button"
             class="ui-btn icon-btn"
             id="open"
-            title="Import JSON — a file from this device"
+            title="Import JSON — or a CSV file, which opens as JSON"
             aria-label="Import JSON"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -224,8 +224,17 @@
             </li>
             <li>
               <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Export
-              and Copy take whatever view is shown. CSV uses the array around the cursor (or
-              selected in the tree), else the document's first array.
+              and Copy take whatever view is shown.
+            </li>
+            <li>
+              <b>CSV</b> makes one array into a table: a row per item, a column per key.
+              <b>Rows from</b>, above it, says which array and lets you pick another; left alone it
+              follows the cursor into any array, else takes the first list of objects.
+            </li>
+            <li>
+              <b>CSV in</b> — import a <code>.csv</code> or <code>.tsv</code> file and it opens as
+              JSON, one object per row; paste CSV and <b>Convert CSV to JSON</b> offers the same.
+              Numbers, true, false and null become values; everything else stays text.
             </li>
           </ul>
 
@@ -379,6 +388,12 @@
         </div>
         <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
       </div>
+      <!-- CSV only: which array becomes the table. It says which one is in use, and why. -->
+      <div class="bar csvbar hidden" id="csvbar">
+        <label class="ui-label" for="csv-table">Rows from</label>
+        <select class="csv-table" id="csv-table"></select>
+        <span class="ui-label csv-why" id="csv-why"></span>
+      </div>
       <!-- YAML, CSV, Types, Schema: the same view as the text, read-only. -->
       <div class="code hidden" id="export">
         <div class="gutter" aria-hidden="true">
@@ -435,6 +450,9 @@
         <button type="button" class="ui-btn" id="goto">Go to error</button>
         <span class="ui-label hidden" id="fix-note"></span>
         <button type="button" class="ui-btn ui-btn--primary hidden" id="fix">Fix</button>
+        <button type="button" class="ui-btn ui-btn--primary hidden" id="from-csv">
+          Convert CSV to JSON
+        </button>
       </div>
       <p class="bar ui-status warning hidden" id="warning"></p>
 
