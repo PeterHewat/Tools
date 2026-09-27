@@ -2,22 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "home-dev",
+      "name": "tools-dev",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev", "home", "--port", "5170", "--strictPort"],
+      "runtimeArgs": ["run", "dev", "--port", "5170", "--strictPort"],
       "port": 5170
-    },
-    {
-      "name": "svg-dev",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev", "svg", "--port", "5173", "--strictPort"],
-      "port": 5173
-    },
-    {
-      "name": "json-dev",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev", "json", "--port", "5174", "--strictPort"],
-      "port": 5174
     },
     {
       "name": "tools-dist",

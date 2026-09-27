@@ -10,7 +10,7 @@
  * root (emitted by the index page's build), scoped to the whole site, and one service worker
  * there, written by the site build once every app is built (see `site-worker.ts`).
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite";
@@ -67,35 +67,112 @@ export function toolsHome(): UserConfig {
     base: siteBase(),
     appType: "mpa",
     define: siteDefine(),
-    plugins: [pageHead(null), siteManifest(), workers(null), appArtInDev()],
+    plugins: [pageHead(null), siteManifest(), workers(null)],
     // Not emptied: the site build writes the index first, then each app into its own folder.
     build: { outDir: "../../dist", emptyOutDir: false, target: "es2022" },
   };
 }
 
+const APPS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "apps");
+
 /**
- * Serves each app's card art to the index page's dev server. In a built site `<slug>/art.svg`
- * is the app's own file, in the folder beside the index; the dev server has only the index, so
- * without this every card's picture is a 404.
+ * One dev server for the whole site, laid out as it is deployed: the index at the site root and
+ * each app in its folder beside it, so links between them, the manifest and the theme all work
+ * as they do live, on one port. The index's `vite.config.ts` uses it for `vite` (serve); builds
+ * stay one per app, so each app still compiles on its own.
+ *
+ * Vite's root is `apps/`, so `<base>svg/` is `apps/svg/index.html`. What differs from the apps
+ * as they are built, this fills in: the index answers at the site root, each app's `public/`
+ * files at its own base, each page gets its app's head and header, and `BASE_URL` in an app's
+ * code is its own base rather than the site's.
  */
-function appArtInDev(): Plugin {
-  const appsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "apps");
+export function toolsSite(): UserConfig {
   return {
-    name: "tools-app-art",
+    root: APPS_DIR,
+    base: siteBase(),
+    appType: "mpa",
+    publicDir: false,
+    define: siteDefine(),
+    plugins: [sitePages(), siteManifest(), workers(null)],
+    server: { port: 5170 },
+  };
+}
+
+/** The app a file under `apps/` belongs to; null for the index page's own files. */
+function appOfFile(file: string): ToolsApp | null {
+  const rel = file.replace(/\\/g, "/").split("/apps/").at(-1) ?? "";
+  return findApp(rel.split("/")[0] ?? "") ?? null;
+}
+
+const MIME: Record<string, string> = {
+  svg: "image/svg+xml",
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+  ico: "image/x-icon",
+  json: "application/json",
+  webmanifest: "application/manifest+json",
+  js: "text/javascript; charset=utf-8",
+  css: "text/css; charset=utf-8",
+  txt: "text/plain; charset=utf-8",
+  woff2: "font/woff2",
+};
+
+function sitePages(): Plugin {
+  const base = siteBase();
+  const slugs = new Set(APPS.map((a) => a.slug));
+  return {
+    name: "tools-site-pages",
     apply: "serve",
     configureServer(server) {
-      const art = new Map(
-        APPS.filter((a) => a.art).map((a) => [
-          `${siteBase()}${a.slug}/art.svg`,
-          join(appsDir, a.slug, "public", "art.svg"),
-        ])
-      );
       server.middlewares.use((req, res, next) => {
-        const file = art.get((req.url ?? "").split("?")[0] ?? "");
-        if (!file || !existsSync(file)) return next();
-        res.setHeader("Content-Type", "image/svg+xml");
-        res.end(readFileSync(file));
+        const [path = "", query] = (req.url ?? "").split("?");
+        if (!path.startsWith(base)) return next();
+        const rest = decodeURIComponent(path.slice(base.length));
+        const [first = "", ...inside] = rest.split("/");
+        // The index is the site root, as when it is built into dist/.
+        if (rest === "" || rest === "index.html") {
+          req.url = `${base}home/index.html${query ? `?${query}` : ""}`;
+          return next();
+        }
+        // An app's folder without its slash: relative URLs in the page need the slash.
+        if (slugs.has(first) && !inside.length) {
+          res.statusCode = 301;
+          res.setHeader("Location", `${base}${first}/`);
+          return res.end();
+        }
+        // Files from an app's public/ at its base, the index's at the root; the rest is Vite's.
+        const file = slugs.has(first)
+          ? join(APPS_DIR, first, "public", ...inside)
+          : join(APPS_DIR, "home", "public", rest);
+        if (!rest.endsWith("/") && existsSync(file) && statSync(file).isFile()) {
+          res.setHeader("Content-Type", MIME[file.split(".").pop()!] ?? "application/octet-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          return res.end(readFileSync(file));
+        }
+        next();
       });
+    },
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        const app = appOfFile(ctx.filename);
+        if (/<title>|name="description"|rel="manifest"|name="color-scheme"/.test(html)) {
+          throw new Error(
+            "index.html must not set its own title, description, colour scheme or manifest"
+          );
+        }
+        // Script and style URLs from the page's own root ("/src/main.ts") are under its folder.
+        const folder = app ? app.slug : "home";
+        const own = html.replace(/(\s(?:src|href)=")\/src\//g, `$1/${folder}/src/`);
+        return { html: app ? withHeaderStart(own, app) : own, tags: headTags(app) };
+      },
+    },
+    transform(code, id) {
+      // An app's own base, as its build has it; the index's is the site's, which Vite gives.
+      const app = code.includes("import.meta.env.BASE_URL") ? appOfFile(id) : null;
+      if (!app) return null;
+      return code.replaceAll("import.meta.env.BASE_URL", JSON.stringify(appBase(app.slug)));
     },
   };
 }

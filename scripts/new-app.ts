@@ -52,7 +52,6 @@ const files: Record<string, string> = {
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

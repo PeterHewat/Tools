@@ -10,6 +10,7 @@ import {
   RETIRED_WORKER,
   toolsApp,
   toolsHome,
+  toolsSite,
   withHeaderStart,
 } from "./vite.js";
 
@@ -167,5 +168,15 @@ describe("base.css", () => {
     const light = block(':root[data-theme="light"]');
     expect(light.length).toBeGreaterThan(5);
     expect(block(':root:not([data-theme="dark"])')).toEqual(light);
+  });
+});
+
+describe("toolsSite", () => {
+  test("serves every app from apps/, at the site's base, on one port", () => {
+    const config = toolsSite();
+    expect(config.root?.replace(/\\/g, "/")).toEndWith("/apps");
+    expect(config.base).toBe(siteBase());
+    expect(config.publicDir).toBe(false);
+    expect(config.server?.port).toBe(5170);
   });
 });
