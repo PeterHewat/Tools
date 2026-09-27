@@ -27,10 +27,125 @@ body {
   gap: 6px;
 }
 
-.editor {
+/*
+ * The editor: a gutter of line numbers, then the text. The textarea's own text is transparent;
+ * what shows is the coloured copy underneath (code-view.ts). Both layers must lay text out
+ * identically, so they share font, size, line height, padding and tab size, and the colours
+ * never change weight or style: bold or italic glyphs can be wider and would drift.
+ */
+.code {
+  --code-font: 13px / 1.5 var(--mono);
+  --code-pad: 6px 10px;
+
+  display: flex;
   flex: 1;
   min-height: 8rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.code:focus-within {
+  border-color: var(--accent);
+}
+
+.gutter {
+  flex: none;
+  width: calc(var(--gutter-digits, 2) * 1ch + 20px);
+  padding: 6px 8px 6px 12px;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font: var(--code-font);
+  text-align: right;
+  user-select: none;
+}
+
+.gutter-lines {
+  white-space: pre;
+}
+
+.gutter .err {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.code-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.highlight,
+.editor {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: var(--code-pad);
+  font: var(--code-font);
+  tab-size: 2;
+  white-space: pre;
+}
+
+.highlight {
+  overflow: hidden;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.editor {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
   resize: none;
+}
+
+.editor::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: transparent;
+}
+
+.editor::placeholder {
+  color: var(--muted);
+}
+
+.editor.dragging {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+/* Too big to colour: the textarea shows its own text. */
+.code.plain .editor,
+.code.plain .editor::selection {
+  color: var(--text);
+}
+
+.t-key {
+  color: var(--accent);
+}
+
+.t-string {
+  color: var(--ok);
+}
+
+.t-number {
+  color: var(--warn);
+}
+
+.t-literal {
+  color: var(--violet);
+}
+
+.t-comment,
+.t-punct {
+  color: var(--muted);
 }
 
 /* Open, Copy, Download, Clear: actions everyone knows by their picture. */
@@ -98,4 +213,10 @@ body {
   .toolbar-gap {
     display: none;
   }
+}
+
+/* Moved by transform as the textarea scrolls; a block, so the transform applies. */
+.highlight code {
+  display: block;
+  font: inherit;
 }

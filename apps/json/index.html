@@ -69,15 +69,21 @@
         </button>
       </div>
 
-      <textarea
-        class="wb-code editor"
-        id="editor"
-        aria-label="JSON"
-        placeholder="Paste JSON here, or drop a .json file"
-        spellcheck="false"
-        autocomplete="off"
-        autocapitalize="off"
-      ></textarea>
+      <div class="code" id="code">
+        <div class="gutter" aria-hidden="true"><div class="gutter-lines" id="gutter"></div></div>
+        <div class="code-body">
+          <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
+          <textarea
+            class="wb-code editor"
+            id="editor"
+            aria-label="JSON"
+            placeholder="Paste JSON here, or drop a .json file"
+            spellcheck="false"
+            autocomplete="off"
+            autocapitalize="off"
+          ></textarea>
+        </div>
+      </div>
 
       <div class="statusbar">
         <p class="wb-status" id="status" role="status"></p>

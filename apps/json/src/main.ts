@@ -10,6 +10,7 @@ import {
 } from "@workbench/ui";
 import "@workbench/ui/base.css";
 import { applyEdits, parse, type Edit, type ParseResult, type RepairKind } from "./lib/ast.js";
+import { createCodeView } from "./code-view.js";
 import { byteSize, excerptAt, formatBytes } from "./lib/inspect.js";
 import { printJson } from "./lib/print.js";
 import "./styles.css";
@@ -29,6 +30,7 @@ const problem = byId("problem");
 const excerpt = byId("excerpt");
 const fixBtn = byId<HTMLButtonElement>("fix");
 const fixNote = byId("fix-note");
+const view = createCodeView(byId("code"), editor, byId("highlight"), byId("gutter"));
 
 /** The draft and options, kept across reloads. A convenience: the page works without it. */
 const STORAGE_KEY = "workbench.json.draft";
@@ -158,6 +160,8 @@ function validate(): void {
     fixNote.classList.toggle("hidden", !fault.edits);
     fixNote.textContent = fault.edits ? `Almost JSON: ${describeEdits(fault.edits)}.` : "";
   }
+  view.setErrorLine(fault?.position.line ?? null);
+  view.refresh();
   save();
 }
 
