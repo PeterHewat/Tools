@@ -11,6 +11,14 @@
 
 /* The measures every header shares, so the apps' bars match: an app sizes its own buttons from
    these rather than from its own. In px, not rem, because the apps' root font sizes differ. */
+/* Panels and menus that open over the work (Help, Settings, the SVG app's Document panel):
+   frosted, but lightly, so what lies under them still shows through - even small code text,
+   which a heavier blur wipes out entirely. */
+:root {
+  --ui-frost-bg: color-mix(in srgb, var(--panel) 64%, transparent);
+  --ui-frost-filter: blur(3px) saturate(140%);
+}
+
 .ui-header {
   /* Every control in the bar is this tall, and an icon button this wide. */
   --ui-control: 34px;

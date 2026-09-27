@@ -171,11 +171,10 @@ body {
   min-width: 180px;
   margin-top: 4px;
   padding: 4px;
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  /* Prefixed first: the minifier keeps only the last of the pair, and Chrome has no
-     -webkit- alias, so the standard property must win. */
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
+  background: var(--ui-frost-bg);
+  /* Prefixed first: the minifier keeps only the last of the pair. */
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 8px 24px var(--shadow);

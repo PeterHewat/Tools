@@ -36,6 +36,8 @@ export interface TreeView {
   expandAll(): void;
   collapseAll(): void;
   focus(): void;
+  /** Marks `query` in the keys and values of the rows shown, and of rows shown later. */
+  setQuery(query: string, matchCase: boolean): void;
 }
 
 interface Item {
@@ -49,6 +51,8 @@ interface Item {
   children: Item[];
   all: ReturnType<typeof childrenOf> | null;
   more: HTMLElement | null;
+  /** Its key and scalar value, with their text, for find's marks. */
+  labels: { el: HTMLElement; text: string }[];
 }
 
 /** Children shown per "Show more". */
@@ -73,6 +77,26 @@ function countOf(node: JsonNode): number {
       : 0;
 }
 
+/** Writes `text` into `el`, with each occurrence of `query` in a <mark>. */
+function markText(el: HTMLElement, text: string, query: string, matchCase: boolean): void {
+  if (!query) {
+    el.textContent = text;
+    return;
+  }
+  const hay = matchCase ? text : text.toLowerCase();
+  const needle = matchCase ? query : query.toLowerCase();
+  el.textContent = "";
+  let from = 0;
+  for (let at = hay.indexOf(needle); at >= 0; at = hay.indexOf(needle, from)) {
+    if (at > from) el.append(text.slice(from, at));
+    const mark = document.createElement("mark");
+    mark.textContent = text.slice(at, at + needle.length);
+    el.append(mark);
+    from = at + needle.length;
+  }
+  el.append(text.slice(from));
+}
+
 function span(className: string, text: string): HTMLSpanElement {
   const el = document.createElement("span");
   el.className = className;
@@ -89,6 +113,9 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
   let selected: Item | null = null;
   let lineAt: (offset: number) => number = () => 0;
   let unit = "Line";
+  /** What find is looking for: marked in every row as it is made. */
+  let query = "";
+  let matchCase = false;
 
   const keyOf = (item: Item) => item.indices.join("/");
 
@@ -117,9 +144,17 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
     line.title = `${unit} ${n.toLocaleString()}`;
     line.setAttribute("aria-hidden", "true");
     row.append(line, fold);
+    const labels: Item["labels"] = [];
+    const label = (el: HTMLElement) => {
+      labels.push({ el, text: el.textContent ?? "" });
+      if (query) markText(el, el.textContent ?? "", query, matchCase);
+      return el;
+    };
     if (seg !== null) {
       row.append(
-        typeof seg === "number" ? span("t-index", String(seg)) : span("t-key", JSON.stringify(seg)),
+        typeof seg === "number"
+          ? span("t-index", String(seg))
+          : label(span("t-key", JSON.stringify(seg))),
         span("t-punct", ": ")
       );
     }
@@ -130,7 +165,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
       );
     } else {
       const raw = node.raw.length > MAX_SHOWN ? `${node.raw.slice(0, MAX_SHOWN)}…` : node.raw;
-      row.append(span(VALUE_CLASS[node.kind], raw));
+      row.append(label(span(VALUE_CLASS[node.kind], raw)));
     }
     el.append(row);
 
@@ -145,6 +180,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
       children: [],
       all: null,
       more: null,
+      labels,
     };
     byRow.set(row, item);
     if (count) {
@@ -348,6 +384,19 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
 
     focus() {
       (selected ?? root)?.row.focus({ preventScroll: true });
+    },
+
+    setQuery(q, cs) {
+      if (q === query && cs === matchCase) return;
+      query = q;
+      matchCase = cs;
+      // Only rows already made; the rest are marked when they are.
+      const stack = root ? [root] : [];
+      while (stack.length) {
+        const item = stack.pop()!;
+        for (const l of item.labels) markText(l.el, l.text, query, matchCase);
+        stack.push(...item.children);
+      }
     },
   };
 }

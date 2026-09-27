@@ -10,7 +10,7 @@
     <!-- "‹ Tools", the name and the beta badge are written in at build time, from the catalog. -->
     <header class="ui-header json-header" id="header" data-tools-header>
       <div class="group" role="group" aria-label="View">
-        <div class="seg" role="group" aria-label="Show as">
+        <div class="seg views" role="group" aria-label="Show as">
           <button type="button" class="ui-btn" data-view="text" aria-pressed="true">Text</button>
           <button type="button" class="ui-btn" data-view="tree" aria-pressed="false">Tree</button>
           <button type="button" class="ui-btn" data-view="yaml" aria-pressed="false">YAML</button>
@@ -37,35 +37,15 @@
           <option value="ts">Types</option>
           <option value="schema">Schema</option>
         </select>
-        <span class="pair">
-          <button
-            type="button"
-            class="ui-btn icon-btn"
-            id="expand-all"
-            title="Expand all"
-            aria-label="Expand all"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M17 16l-5 5-5-5M7 8l5-5 5 5" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="ui-btn icon-btn"
-            id="collapse-all"
-            title="Collapse all"
-            aria-label="Collapse all"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 20l5-5 5 5M17 4l-5 5-5-5" />
-            </svg>
-          </button>
-        </span>
       </div>
 
       <div class="group" role="group" aria-label="Layout">
-        <button type="button" class="ui-btn" id="format" title="Format (Ctrl+Enter)">Format</button>
-        <button type="button" class="ui-btn" id="minify">Minify</button>
+        <div class="seg" role="group" aria-label="Layout">
+          <button type="button" class="ui-btn" id="format" title="Format (Ctrl+Enter)">
+            Format
+          </button>
+          <button type="button" class="ui-btn" id="minify">Minify</button>
+        </div>
         <button
           type="button"
           class="ui-btn icon-btn"
@@ -209,11 +189,19 @@
         </button>
         <!-- Docked right like the SVG app's: it stays open beside the work until its button closes it. -->
         <aside class="help" id="help" popover="manual" aria-label="Help">
-          <p class="panel-title">Help</p>
+          <div class="panel-head">
+            <p class="panel-title">Help</p>
+            <!-- On a phone the theme switch lives here, as in the SVG app, not in the bar. -->
+            <button
+              type="button"
+              class="ui-theme-toggle theme-in-help"
+              id="theme-toggle-help"
+            ></button>
+          </div>
           <h3>About</h3>
           <ul>
             <li>
-              JSON is one of a set of <a href="../">Tools</a> that run entirely in your browser and
+              JSON is part of a set of <a href="../">Tools</a> that run entirely in your browser and
               keep working offline.
             </li>
             <li>
@@ -243,6 +231,11 @@
 
           <h3>Editing</h3>
           <ul>
+            <li>
+              <b>Find</b> (the magnifying glass, or <kbd>Ctrl</kbd> + <kbd>F</kbd>) searches the
+              view shown: the text, the converted views, or the keys and values of the tree. Its
+              button closes it again.
+            </li>
             <li>
               <b>Format</b> and <b>Minify</b> keep numbers and strings exactly as written, so large
               IDs are never rounded.
@@ -358,7 +351,34 @@
           ></textarea>
         </div>
       </div>
-      <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
+      <!-- The tree, with its own buttons floating at its top right: they only apply to it. -->
+      <div class="tree-area">
+        <div class="tree-tools" role="group" aria-label="Tree">
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="expand-all"
+            title="Expand all"
+            aria-label="Expand all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17 16l-5 5-5-5M7 8l5-5 5 5" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="collapse-all"
+            title="Collapse all"
+            aria-label="Collapse all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 20l5-5 5 5M17 4l-5 5-5-5" />
+            </svg>
+          </button>
+        </div>
+        <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
+      </div>
       <!-- YAML, CSV, Types, Schema: the same view as the text, read-only. -->
       <div class="code hidden" id="export">
         <div class="gutter" aria-hidden="true">

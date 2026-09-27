@@ -50,12 +50,6 @@ body {
   padding-inline: 9px;
 }
 
-/* Two buttons that always sit together (Expand all, Collapse all). */
-.pair {
-  display: inline-flex;
-  gap: var(--ui-group-gap);
-}
-
 /* A bar between the header, the editor and the window's edge. */
 .bar {
   margin: 0;
@@ -148,11 +142,10 @@ body {
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  /* Prefixed first: the minifier keeps only the last of the pair, and Chrome has no -webkit-
-     alias, so the standard property must win. */
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
+  background: var(--ui-frost-bg);
+  /* Prefixed first: the minifier keeps only the last of the pair. */
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
   color: var(--text);
   box-shadow: 0 8px 24px var(--shadow);
 }
@@ -221,13 +214,31 @@ body {
   scrollbar-color: var(--scroll) transparent;
   border: 0;
   border-left: 1px solid var(--border);
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
+  background: var(--ui-frost-bg);
+  /* Prefixed first: the minifier keeps only the last of the pair. */
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
   color: var(--text);
   box-shadow: 0 8px 24px var(--shadow);
   font-size: 12.5px;
   line-height: 1.5;
+}
+
+/* Help's title row: the title, and on a phone the theme switch at its end. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-head .panel-title {
+  margin: 0;
+}
+
+.theme-in-help {
+  display: none;
 }
 
 .panel-title {
@@ -248,6 +259,7 @@ body {
   letter-spacing: 0.04em;
 }
 
+.help .panel-head + h3,
 .help .panel-title + h3 {
   margin-top: 0;
 }
@@ -283,6 +295,16 @@ body {
     border-left: 0;
     background: var(--panel);
   }
+
+  /* The theme switch moves from the bar into Help, as in the SVG app: a phone bar has no
+     room to spare for something set once. */
+  .json-header .ui-theme-toggle:not(.theme-in-help) {
+    display: none;
+  }
+
+  .theme-in-help {
+    display: inline-grid;
+  }
 }
 
 kbd {
@@ -305,27 +327,28 @@ kbd {
   text-align: center;
 }
 
-/* Find: a bar under the header, and marks drawn in the coloured layer. */
+/* Find: a bar under the header, and marks drawn in the coloured layer. One line at any width:
+   the field gives way first, down to a few characters. */
 .findbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   border-top: 0;
   border-bottom: 1px solid var(--border);
 }
 
-/* "Aa": match case, the way code editors show it. */
-.case-toggle {
+/* "Aa": match case, the way code editors show it; the size of the icon buttons beside it. */
+.findbar .case-toggle {
   justify-content: center;
-  min-width: 36px;
-  padding: 0 8px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   font-weight: 600;
 }
 
 .find-input {
-  flex: 1 1 12rem;
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: 4rem;
 }
 
 .findbar > .ui-btn {
@@ -339,17 +362,43 @@ kbd {
 .find-count {
   flex: none;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.highlight mark {
+@media (max-width: 480px) {
+  .findbar {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+
+  .find-count {
+    font-size: 0.78rem;
+  }
+}
+
+/*
+ * Matches in a solid highlighter yellow, the way the SVG app marks its search: every match
+ * tinted, the current one filled, with dark text so it reads in either theme. The same marks
+ * in the text, the converted views and the tree.
+ */
+.highlight mark,
+.tree mark {
   border-radius: 2px;
-  background: color-mix(in srgb, var(--warn) 30%, transparent);
+  background: rgb(255 210 31 / 38%);
+  box-shadow: 0 0 0 1px rgb(255 210 31 / 70%);
   color: inherit;
 }
 
-.highlight mark.cur {
-  background: color-mix(in srgb, var(--warn) 60%, transparent);
-  outline: 1px solid var(--warn);
+.highlight mark.cur,
+.tree .row.sel mark {
+  background: #ffd21f;
+  box-shadow: 0 0 0 1px #ffd21f;
+}
+
+.highlight mark.cur,
+.highlight mark.cur *,
+.tree .row.sel mark {
+  color: #1d1f24;
 }
 
 /* A long document's pages: shown under the editor only when there is more than one. */
@@ -366,6 +415,37 @@ kbd {
 }
 
 /* ---------- Tree ---------- */
+
+/* The tree and its own buttons: only there in the tree view. */
+.tree-area {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body:not([data-view="tree"]) .tree-area {
+  display: none;
+}
+
+/* Expand all, Collapse all: floating at the tree's top right, clear of its scrollbar, in a
+   frosted pill like the SVG app's floating controls. */
+.tree-tools {
+  position: absolute;
+  top: 8px;
+  right: 20px;
+  z-index: 2;
+  display: flex;
+  gap: var(--ui-group-gap, 4px);
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--ui-frost-bg);
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
+  box-shadow: 0 4px 14px var(--shadow);
+}
 
 /*
  * The tree has a gutter like the text: each row's cell holds the text line its value starts
@@ -730,17 +810,12 @@ kbd {
   }
 
   /* One dropdown for the six views: with it, the bar is two rows instead of three. */
-  .json-header .seg {
+  .json-header .seg.views {
     display: none;
   }
 
   .view-select {
     display: block;
-  }
-
-  /* Expand all and Collapse all do nothing outside the tree, so a phone spends no room on them. */
-  body:not([data-view="tree"]) .json-header .pair {
-    display: none;
   }
 
   /* "Valid JSON · … deep" on one line, the sizes on the next. */

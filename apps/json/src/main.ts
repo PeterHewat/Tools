@@ -460,14 +460,18 @@ function refreshFind(): void {
   if (key === findKey) return;
   findKey = key;
   const matchCase = { matchCase: isPressed(findCase) };
-  textMatches = mode === "text" ? findInText(documentText(), query, matchCase) : [];
+  textMatches = mode === "tree" ? [] : findInText(searchedText(), query, matchCase);
   treeMatches = mode === "tree" && doc && !stale ? findInTree(doc.root, query, matchCase) : [];
   findIndex = Math.min(findIndex, matchCount() - 1);
+  tree.setQuery(mode === "tree" ? query : "", matchCase.matchCase);
   showFindCount();
   showMarks();
 }
 
-const matchCount = () => (mode === "text" ? textMatches.length : treeMatches.length);
+/** What find searches outside the tree: the document, or the conversion on screen. */
+const searchedText = () => (isExport(mode) ? (exported ?? "") : documentText());
+
+const matchCount = () => (mode === "tree" ? treeMatches.length : textMatches.length);
 
 function showFindCount(): void {
   const n = matchCount();
@@ -484,6 +488,17 @@ function showFindCount(): void {
 
 /** Marks the matches on the page the editor shows; the current one stands out. */
 function showMarks(): void {
+  if (isExport(mode)) {
+    view.setMarks([]);
+    const size = findInput.value.length;
+    exportView.setMarks(
+      findOpen()
+        ? textMatches.map((m, k) => ({ start: m, end: m + size, current: k === findIndex }))
+        : []
+    );
+    return;
+  }
+  exportView.setMarks([]);
   if (!findOpen() || mode !== "text" || !textMatches.length) {
     view.setMarks([]);
     return;
@@ -511,11 +526,13 @@ function findStep(delta: number): void {
     return;
   }
   if (findIndex < 0 || delta === 0) {
-    const caret = aside.before.length + editor.selectionStart;
+    const caret = isExport(mode)
+      ? exportText.selectionStart
+      : aside.before.length + editor.selectionStart;
     const after =
-      mode === "text"
-        ? textMatches.findIndex((m) => m >= caret)
-        : treeMatches.findIndex((m) => m.node.start >= caret);
+      mode === "tree"
+        ? treeMatches.findIndex((m) => m.node.start >= caret)
+        : textMatches.findIndex((m) => m >= caret);
     findIndex = after < 0 ? 0 : after;
     if (delta < 0) findIndex = (findIndex - 1 + n) % n;
   } else {
@@ -524,16 +541,34 @@ function findStep(delta: number): void {
   if (mode === "text") {
     const start = textMatches[findIndex];
     selectInDocument(start, start + findInput.value.length, false);
-  } else {
+  } else if (mode === "tree") {
     tree.reveal(treeMatches[findIndex].indices);
+  } else {
+    const start = textMatches[findIndex];
+    selectInExport(start, start + findInput.value.length);
   }
   showFindCount();
   showMarks();
 }
 
+/** The search button: opens find, or closes it when it is already open. */
+function toggleFind(): void {
+  if (findOpen()) closeFind();
+  else openFind();
+}
+
+/** Selects a stretch of the converted text and scrolls it to the middle, as in the text. */
+function selectInExport(start: number, end: number): void {
+  exportText.setSelectionRange(start, end);
+  const line = positionAt(exportText.value, start).line;
+  const lineHeight = parseFloat(getComputedStyle(exportText).lineHeight) || 20;
+  exportText.scrollTop = Math.max(0, (line - 1) * lineHeight - exportText.clientHeight / 2);
+  exportView.refresh();
+}
+
 function openFind(): void {
-  if (mode !== "text" && mode !== "tree") return;
   findBar.classList.remove("hidden");
+  findOpenBtn.setAttribute("aria-expanded", "true");
   const selected = editor.value.slice(editor.selectionStart, editor.selectionEnd);
   if (mode === "text" && selected && selected.length < 200 && !selected.includes("\n")) {
     findInput.value = selected;
@@ -546,7 +581,10 @@ function openFind(): void {
 
 function closeFind(): void {
   findBar.classList.add("hidden");
+  findOpenBtn.setAttribute("aria-expanded", "false");
   view.setMarks([]);
+  exportView.setMarks([]);
+  tree.setQuery("", false);
   if (mode === "text") editor.focus();
   else if (mode === "tree") tree.focus();
 }
@@ -752,14 +790,11 @@ function setMode(next: ViewMode): void {
   document.body.dataset.view = mode;
   cursor.classList.toggle("hidden", mode !== "text");
   showPager();
-  if (findOpen()) {
-    if (isExport(mode)) closeFind();
-    else {
-      findIndex = -1;
-      refreshFind();
-    }
-  }
   showExport();
+  if (findOpen()) {
+    findIndex = -1;
+    refreshFind();
+  }
   if (mode === "tree") {
     showTree();
     const at = atCursor();
@@ -782,7 +817,6 @@ function setMode(next: ViewMode): void {
 /** Controls that act on one view: disabled, not hidden, while another is shown. */
 function showViewControls(): void {
   expandAllBtn.disabled = collapseAllBtn.disabled = mode !== "tree" || !doc;
-  findOpenBtn.disabled = isExport(mode);
   showFileControls();
 }
 
@@ -981,14 +1015,14 @@ findCase.addEventListener("click", () => {
 byId("find-prev").addEventListener("click", () => findStep(-1));
 byId("find-next").addEventListener("click", () => findStep(1));
 byId("find-close").addEventListener("click", closeFind);
-findOpenBtn.addEventListener("click", openFind);
+findOpenBtn.addEventListener("click", toggleFind);
 // Ctrl+F opens this find rather than the browser's, which cannot see other pages of a long
 // document; F3 steps through matches like most editors.
 document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && !isExport(mode)) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
     e.preventDefault();
     openFind();
-  } else if (e.key === "F3" && !isExport(mode)) {
+  } else if (e.key === "F3") {
     e.preventDefault();
     if (!findOpen()) openFind();
     else findStep(e.shiftKey ? -1 : 1);
@@ -1025,6 +1059,7 @@ onFileDrop(editor, ([file]) => {
 });
 
 bindThemeToggle(byId("theme-toggle"));
+bindThemeToggle(byId("theme-toggle-help"));
 restore();
 showColours();
 validate();
