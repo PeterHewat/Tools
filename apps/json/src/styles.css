@@ -811,6 +811,11 @@ body:not([data-view="tree"]) .tree-area {
   font-weight: 700;
 }
 
+/* Only on a phone (below). */
+.status-toggle {
+  display: none;
+}
+
 @media (max-width: 640px) {
   /* The groups' buttons flow straight into the header's rows, so everything wraps as single
      buttons rather than as whole groups leaving gaps. */
@@ -834,6 +839,82 @@ body:not([data-view="tree"]) .tree-area {
 
   .sizes .sep {
     display: none;
+  }
+
+  /* The status bar folds away behind a round button at the bottom right, and opens over the
+     editor: its text changes as you type, and nothing under it may move when it does. */
+  .status-toggle {
+    position: fixed;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--ui-frost-bg);
+    -webkit-backdrop-filter: var(--ui-frost-filter);
+    backdrop-filter: var(--ui-frost-filter);
+    box-shadow: 0 4px 14px var(--shadow);
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .status-toggle.ok {
+    color: var(--ok);
+  }
+
+  .status-toggle.error {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .status-toggle svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.15s;
+  }
+
+  .status-open .status-toggle svg {
+    transform: rotate(180deg);
+  }
+
+  body:not(.status-open) .json-footer {
+    display: none;
+  }
+
+  .json-footer {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    box-shadow: 0 -4px 14px var(--shadow);
+  }
+
+  .json-footer .bar {
+    background: var(--ui-frost-bg);
+    -webkit-backdrop-filter: var(--ui-frost-filter);
+    backdrop-filter: var(--ui-frost-filter);
+  }
+
+  .statusbar {
+    min-height: calc(60px + env(safe-area-inset-bottom));
+    padding: 8px 64px calc(8px + env(safe-area-inset-bottom)) 12px;
+    align-content: center;
+  }
+
+  /* Clear of the button, which floats over the bars' right end. */
+  .pager {
+    padding-right: 64px;
   }
 }
 

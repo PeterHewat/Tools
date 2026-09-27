@@ -49,6 +49,7 @@ const downloadBtn = byId<HTMLButtonElement>("download");
 const clearBtn = byId<HTMLButtonElement>("clear");
 const findOpenBtn = byId<HTMLButtonElement>("find-open");
 const status = byId("status");
+const statusToggle = byId<HTMLButtonElement>("status-toggle");
 const cursor = byId("cursor");
 const warning = byId("warning");
 const problem = byId("problem");
@@ -712,6 +713,8 @@ function validate(): void {
   clearBtn.disabled = empty;
   status.classList.toggle("ui-status--error", !!fault);
   status.classList.toggle("ui-status--ok", !!doc);
+  statusToggle.classList.toggle("error", !!fault);
+  statusToggle.classList.toggle("ok", !!doc);
   problem.classList.toggle("hidden", !fault);
   warning.classList.add("hidden");
 
@@ -878,7 +881,9 @@ function showCursor(): void {
   const line = page.firstLine + lineCount(before) - 1;
   const column = before.length - before.lastIndexOf("\n");
   cursor.textContent = `Ln ${line.toLocaleString()}, Col ${column}`;
-  showPath(atCursor()?.path ?? null);
+  // While typing, the parse is behind the text: the last path stays until it catches up,
+  // rather than vanishing and coming back and moving everything beside it.
+  if (!stale) showPath(atCursor()?.path ?? null);
 }
 
 let shownPath: PathSegment[] | null = null;
@@ -1193,6 +1198,13 @@ pageInput.addEventListener("change", () => {
   showPager();
 });
 pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
+// A phone's status bar: folded away until this opens it over the editor (see styles.css).
+statusToggle.addEventListener("click", () => {
+  const open = document.body.classList.toggle("status-open");
+  statusToggle.setAttribute("aria-expanded", String(open));
+  statusToggle.title = open ? "Hide status" : "Show status";
+  statusToggle.setAttribute("aria-label", statusToggle.title);
+});
 
 byId("open").addEventListener("click", async () => {
   const [file] = await pickFiles(".json,.csv,.tsv,application/json,text/csv,text/plain");

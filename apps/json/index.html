@@ -469,24 +469,40 @@
         <span class="ui-label" id="page-lines"></span>
       </div>
 
-      <div class="bar problem hidden" id="problem">
-        <pre class="excerpt" id="excerpt"></pre>
-        <button type="button" class="ui-btn" id="goto">Go to error</button>
-        <span class="ui-label hidden" id="fix-note"></span>
-        <button type="button" class="ui-btn ui-btn--primary hidden" id="fix">Fix</button>
-        <button type="button" class="ui-btn ui-btn--primary hidden" id="from-csv">
-          Convert CSV to JSON
-        </button>
-      </div>
-      <p class="bar ui-status warning hidden" id="warning"></p>
+      <!-- Everything that reports on the text. On a phone it folds away behind the button below. -->
+      <footer class="json-footer" id="footer">
+        <div class="bar problem hidden" id="problem">
+          <pre class="excerpt" id="excerpt"></pre>
+          <button type="button" class="ui-btn" id="goto">Go to error</button>
+          <span class="ui-label hidden" id="fix-note"></span>
+          <button type="button" class="ui-btn ui-btn--primary hidden" id="fix">Fix</button>
+          <button type="button" class="ui-btn ui-btn--primary hidden" id="from-csv">
+            Convert CSV to JSON
+          </button>
+        </div>
+        <p class="bar ui-status warning hidden" id="warning"></p>
 
-      <div class="bar statusbar">
-        <p class="ui-status" id="status" role="status"></p>
-        <span class="where">
-          <button type="button" class="path ui-mono hidden" id="path" title="Copy path"></button>
-          <span class="ui-label ui-mono" id="cursor"></span>
-        </span>
-      </div>
+        <div class="bar statusbar" id="statusbar">
+          <p class="ui-status" id="status" role="status"></p>
+          <span class="where">
+            <button type="button" class="path ui-mono hidden" id="path" title="Copy path"></button>
+            <span class="ui-label ui-mono" id="cursor"></span>
+          </span>
+        </div>
+      </footer>
+      <!-- A phone folds the footer away behind this, coloured by whether the text is valid; it
+           opens over the editor, so nothing under it moves as the status changes. -->
+      <button
+        type="button"
+        class="status-toggle"
+        id="status-toggle"
+        aria-controls="footer"
+        aria-expanded="false"
+        title="Show status"
+        aria-label="Show status"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+      </button>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
