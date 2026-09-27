@@ -433,25 +433,10 @@ body {
   font-size: 12px;
 }
 
-.svg-preview {
-  margin: 0;
-  padding: 8px;
-  overflow: auto;
-  background: var(--field);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: min(50vh, 360px);
-  min-height: 120px;
-}
-
-.svg-line {
-  border-radius: 3px;
-}
-
+/* The selected shapes' lines in the SVG source: tinted, with a bar at the start. */
 .svg-line--selected {
-  color: var(--sel-text);
+  background: color-mix(in srgb, var(--sel-text) 13%, transparent);
+  box-shadow: inset 2px 0 var(--sel-text);
 }
 
 .hidden {
@@ -815,55 +800,24 @@ body {
   flex: 0 0 auto;
 }
 
-.svg-preview,
-.svg-input {
-  position: absolute;
-  inset: 0;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 8px;
+/* The SVG source (@tools/editor): the editor fills the box, framed like the other fields. */
+.svg-editor {
+  --editor-font: 12px / 1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.svg-editor > .cm-editor {
+  height: 100%;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.45;
-  letter-spacing: normal;
-  white-space: pre-wrap;
-  word-break: break-all;
-  tab-size: 2;
-}
-
-.svg-preview {
-  max-height: none;
-  min-height: 0;
   overflow: hidden;
-  pointer-events: none;
+  background: var(--field);
 }
 
-.svg-input {
-  resize: none;
-  overflow-y: auto;
-  background: transparent;
-  color: transparent;
-  caret-color: var(--text);
-  scrollbar-width: none;
-  outline: none;
-}
-
-.svg-input::-webkit-scrollbar {
-  display: none;
-}
-
-.svg-input::selection {
-  background: rgba(91, 141, 239, 0.35);
-  color: transparent;
-}
-
-.svg-input:focus {
+.svg-editor > .cm-editor.cm-focused {
   border-color: var(--accent);
 }
 
-.svg-input.invalid {
+.svg-editor > .cm-editor.invalid {
   border-color: var(--danger);
 }
 

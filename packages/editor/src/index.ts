@@ -139,11 +139,13 @@ export interface Editor {
   readonly selection: { from: number; to: number; head: number };
   readonly focused: boolean;
   /**
-   * Replaces the text, changing only what differs, so the caret, scroll and folds stay put
-   * where the text did not change. `undoable` (default true) makes it one step of undo;
-   * false replaces all of it and starts a fresh history (a new file).
+   * Replaces the text. "edit" (the default) and "sync" change only what differs, so the caret,
+   * scroll and folds stay put where the text did not change: an "edit" is one step of undo (a
+   * Format, a Fix), a "sync" is not (the text follows something else, as the SVG app's source
+   * follows its drawing). "new" replaces all of it, caret at the start, history started again
+   * (a file opened).
    */
-  setText(text: string, options?: { undoable?: boolean }): void;
+  setText(text: string, how?: SetTextMode): void;
   /**
    * Selects a stretch, unfolding what hides it. `scroll`: "center" (default) brings it to the
    * middle of the view, "top" to the top, "nearest" just into view, false leaves the scroll.
@@ -166,12 +168,17 @@ export interface Editor {
   /** Folds every object, array or element, except the one holding the whole document. */
   foldAll(): void;
   unfoldAll(): void;
-  /** Scrolls an offset into view without moving the selection. */
+  /**
+   * Scrolls the editor, and only the editor, to show an offset without moving the selection:
+   * the page and any panel holding the editor stay where they are.
+   */
   scrollTo(offset: number, where?: ScrollTo): void;
   destroy(): void;
 }
 
 export type ScrollTo = "center" | "top" | "nearest";
+
+export type SetTextMode = "edit" | "sync" | "new";
 
 /** Past this many characters, a language's structure is not worth parsing: the text stays plain. */
 const MAX_STRUCTURED = 30_000_000;
@@ -484,10 +491,10 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
       return view.hasFocus;
     },
 
-    setText(next, { undoable = true } = {}) {
+    setText(next, how = "edit") {
       const current = view.state.doc.toString();
       const languageEffect = reconfigureLanguageFor(next.length);
-      if (!undoable) {
+      if (how === "new") {
         // Everything replaced, with the history dropped and started again.
         view.dispatch({
           changes: { from: 0, to: current.length, insert: next },
@@ -504,7 +511,10 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
       view.dispatch({
         changes: change,
         effects: languageEffect ? [languageEffect] : [],
-        annotations: [fromCode.of(true), isolateHistory.of("full")],
+        annotations: [
+          fromCode.of(true),
+          how === "edit" ? isolateHistory.of("full") : Transaction.addToHistory.of(false),
+        ],
         userEvent: "input.replace",
       });
     },
@@ -609,7 +619,34 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
 
     scrollTo(offset, where = "center") {
       const at = clamp(offset);
-      view.dispatch({ effects: scrollEffect(at, at, where) });
+      const scroller = view.scrollDOM;
+      // Line heights off screen are estimates until drawn: place it, then again once measured.
+      const place = (top: number, height: number) => {
+        const room = scroller.clientHeight;
+        if (where === "nearest") {
+          if (top < scroller.scrollTop) scroller.scrollTop = top - 5;
+          else if (top + height > scroller.scrollTop + room)
+            scroller.scrollTop = top + height - room + 5;
+        } else {
+          scroller.scrollTop = where === "top" ? top - 20 : top - (room - height) / 2;
+        }
+      };
+      const block = () => {
+        const b = view.lineBlockAt(at);
+        return {
+          top:
+            b.top + (view.documentTop - scroller.getBoundingClientRect().top + scroller.scrollTop),
+          height: b.height,
+        };
+      };
+      const first = block();
+      place(first.top, first.height);
+      view.requestMeasure({
+        read: block,
+        write: (b) => {
+          if (Math.abs(b.top - first.top) > 1) place(b.top, b.height);
+        },
+      });
     },
 
     destroy: () => view.destroy(),

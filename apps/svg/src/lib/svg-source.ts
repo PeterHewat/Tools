@@ -9,21 +9,19 @@ import {
   formatExportSvg,
   importSvgFile,
 } from "./io.js";
-import { escapeXml } from "./utils.js";
 import { groupsOf, selectedGroups } from "./groups.js";
 import { type EditorState, type SceneElement } from "./types.js";
 import { byId } from "@tools/ui";
+import { createEditor, type Highlight } from "@tools/editor";
 import { noteChange } from "./documents.js";
 
 /* ---------- SVG source: editable, highlighted, synced with the selection ---------- */
-const svgInput = byId<HTMLTextAreaElement>("svg-input");
-const svgPre = byId("svg-preview");
 const svgError = byId("svg-error");
 const primitiveListEl = byId("primitive-list");
 let svgEditUndoPushed = false;
 let svgApplyTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSelectionKey = "";
-/** What the highlighted copy was last built from; see `refreshSvgHighlight`. */
+/** What the highlights were last built from; see `refreshSvgHighlight`. */
 let highlightKey = "";
 
 // Primitive-row field that has keyboard focus -> the SVG attribute(s) it edits.
@@ -59,29 +57,56 @@ const FIELD_BLOCKS: Record<string, [string, string?]> = {
 };
 let svgFocus: { id: string; field: string } | null = null;
 
-function highlightAttrs(esc: string, field: string): string {
-  let out = esc;
+const editor = createEditor(byId("svg-editor"), {
+  language: "xml",
+  colours: "syntax",
+  lineWrapping: true,
+  label: "SVG source (editable)",
+  onChange(user) {
+    if (!user) return;
+    refreshSvgHighlight(getState().selection.elementIds);
+    if (svgApplyTimer) clearTimeout(svgApplyTimer);
+    svgApplyTimer = setTimeout(applySvgText, 500);
+  },
+  onSelection: selectFromCaret,
+  onFocus(focused) {
+    if (focused) {
+      svgEditUndoPushed = false;
+    } else if (svgApplyTimer) {
+      clearTimeout(svgApplyTimer);
+      applySvgText();
+    }
+  },
+});
+
+/** Stretches of a line (starting at offset `at`) holding what a primitive field edits. */
+function attrRanges(line: string, at: number, field: string): Highlight[] {
+  const out: Highlight[] = [];
+  const add = (index: number, length: number) =>
+    out.push({ from: at + index, to: at + index + length, class: "svg-attr-focus" });
   for (const attr of FIELD_ATTRS[field] ?? []) {
-    out = out.replace(
-      new RegExp(`(\\s)(${attr}="[^"]*")`, "g"),
-      '$1<span class="svg-attr-focus">$2</span>'
-    );
+    for (const m of line.matchAll(new RegExp(`(?<=\\s)${attr}="[^"]*"`, "g"))) {
+      add(m.index, m[0].length);
+    }
   }
   if (field === "text") {
-    out = out.replace(/(&gt;)([^<]*)(&lt;\/text)/, '$1<span class="svg-attr-focus">$2</span>$3');
+    const m = /(?<=>)[^<]*(?=<\/text)/.exec(line);
+    if (m && m[0]) add(m.index, m[0].length);
   }
   return out;
 }
 
-/** Colored copy of the textarea's text: selected shapes blue, the focused attribute highlighted. */
+/** Where the selected shapes, and the focused attribute, first show: scrolled to. */
+let firstSelected = -1;
+let firstFocused = -1;
+
+/** Highlights the selected shapes' lines and the attribute the focused primitive field edits. */
 function refreshSvgHighlight(selectedIds: readonly string[]): void {
-  // The copy is rebuilt only when what it shows changed: on a drag, the text changes every frame
-  // but on a pointer move or a click elsewhere it rarely does, and a rebuild re-lays the panel.
-  const key = `${svgInput.value}\0${selectedIds.join(",")}\0${svgFocus?.id}:${svgFocus?.field}`;
-  if (key === highlightKey) {
-    svgPre.scrollTop = svgInput.scrollTop;
-    return;
-  }
+  // Rebuilt only when what it shows changed: on a drag, the text changes every frame, but on a
+  // pointer move or a click elsewhere it rarely does.
+  const text = editor.text;
+  const key = `${text}\0${selectedIds.join(",")}\0${svgFocus?.id}:${svgFocus?.field}`;
+  if (key === highlightKey) return;
   highlightKey = key;
   const sel = new Set(selectedIds);
   // A group counts as selected when all of it is; its <g> and its </g> are highlighted then.
@@ -91,34 +116,43 @@ function refreshSvgHighlight(selectedIds: readonly string[]): void {
   const focus = svgFocus;
   const block = focus ? FIELD_BLOCKS[focus.field] : undefined;
   let inBlock = false;
-  svgPre.innerHTML = svgInput.value
-    .split("\n")
-    .map((line) => {
-      let esc = escapeXml(line);
-      const m = line.match(/\bid="([^"]+)"/);
-      const svgId = m ? m[1]! : "";
-      const elId = m ? elementIdFromSvgId(svgId) : null;
-      if (focus && elId === focus.id) esc = highlightAttrs(esc, focus.field);
-      let selected = !!elId && sel.has(elId);
-      if (/^\s*<g[\s>]/.test(line) && !/\/>\s*$/.test(line)) {
-        const gid = groupIdFromSvgId(svgId);
-        selected = !!gid && groups.has(gid);
-        open.push(selected);
-      } else if (/^\s*<\/g>/.test(line)) {
-        selected = open.pop() ?? false;
+  const highlights: Highlight[] = [];
+  firstSelected = firstFocused = -1;
+  let at = 0;
+  for (const line of text.split("\n")) {
+    const m = line.match(/\bid="([^"]+)"/);
+    const svgId = m ? m[1]! : "";
+    const elId = m ? elementIdFromSvgId(svgId) : null;
+    if (focus && elId === focus.id) highlights.push(...attrRanges(line, at, focus.field));
+    let selected = !!elId && sel.has(elId);
+    if (/^\s*<g[\s>]/.test(line) && !/\/>\s*$/.test(line)) {
+      const gid = groupIdFromSvgId(svgId);
+      selected = !!gid && groups.has(gid);
+      open.push(selected);
+    } else if (/^\s*<\/g>/.test(line)) {
+      selected = open.pop() ?? false;
+    }
+    if (selected) {
+      highlights.push({ from: at, to: at, class: "svg-line--selected", line: true });
+      if (firstSelected < 0) firstSelected = at;
+    }
+    if (block && focus) {
+      if (svgId.startsWith(block[0] + focus.id) && (!block[1] || svgId.endsWith(block[1]))) {
+        inBlock = true;
       }
-      let out = selected ? `<span class="svg-line svg-line--selected">${esc}</span>` : esc;
-      if (block && focus) {
-        if (svgId.startsWith(block[0] + focus.id) && (!block[1] || svgId.endsWith(block[1]))) {
-          inBlock = true;
-        }
-        if (inBlock) out = `<span class="svg-attr-focus">${escapeXml(line)}</span>`;
-        if (inBlock && /<\/(linearGradient|radialGradient|marker)>/.test(line)) inBlock = false;
+      if (inBlock && line) {
+        highlights.push({ from: at, to: at + line.length, class: "svg-attr-focus" });
       }
-      return out;
-    })
-    .join("\n");
-  svgPre.scrollTop = svgInput.scrollTop;
+      if (inBlock && /<\/(linearGradient|radialGradient|marker)>/.test(line)) inBlock = false;
+    }
+    at += line.length + 1;
+  }
+  for (const h of highlights) {
+    if (h.class === "svg-attr-focus" && (firstFocused < 0 || h.from < firstFocused)) {
+      firstFocused = h.from;
+    }
+  }
+  editor.setHighlights(highlights);
 }
 
 export function setSvgFocus(next: { id: string; field: string } | null): void {
@@ -126,13 +160,7 @@ export function setSvgFocus(next: { id: string; field: string } | null): void {
   svgFocus = next;
   if (same) return;
   refreshSvgHighlight(getState().selection.elementIds);
-  if (next && document.activeElement !== svgInput) {
-    const hit = svgPre.querySelector<HTMLElement>(".svg-attr-focus");
-    if (hit) {
-      svgInput.scrollTop = Math.max(0, hit.offsetTop - 60);
-      svgPre.scrollTop = svgInput.scrollTop;
-    }
-  }
+  if (next && !editor.focused && firstFocused >= 0) editor.scrollTo(firstFocused, "top");
 }
 
 function fieldOf(target: EventTarget | null): { id: string; field: string } | null {
@@ -167,13 +195,14 @@ let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let stale = false;
 
 function onScreen(): boolean {
-  return typeof svgInput.checkVisibility === "function" ? svgInput.checkVisibility() : true;
+  const dom = editor.dom;
+  return typeof dom.checkVisibility === "function" ? dom.checkVisibility() : true;
 }
 
 // Opening the section or the panel lays the field out again, and that is when it catches up.
 new ResizeObserver(() => {
   if (stale && onScreen()) syncSvgEditorNow(getState());
-}).observe(svgInput);
+}).observe(editor.dom);
 
 /** Keeps the panel in step with the document: at once when it can, soon after when it cannot. */
 export function syncSvgEditor(state: EditorState): void {
@@ -199,22 +228,20 @@ function syncSvgEditorNow(state: EditorState): void {
   }
   lastSyncAt = performance.now();
   stale = false;
-  const focused = document.activeElement === svgInput;
+  const focused = editor.focused;
   if (!focused) {
     const text = formatExportSvg(state, true);
-    if (svgInput.value !== text) {
-      const top = svgInput.scrollTop;
-      svgInput.value = text;
-      svgInput.scrollTop = top;
+    // Only what changed is replaced, so the scroll stays put. The text follows the drawing, so
+    // it is not a step of the editor's undo: the app's own undo covers the drawing.
+    if (editor.text !== text) {
+      editor.setText(text, "sync");
       hideSvgError();
     }
   }
   refreshSvgHighlight(state.selection.elementIds);
   const key = state.selection.elementIds.join(",");
-  if (!focused && key !== lastSelectionKey) {
-    const line = svgPre.querySelector<HTMLElement>(".svg-line--selected");
-    if (line) svgInput.scrollTop = Math.max(0, line.offsetTop - 40);
-    svgPre.scrollTop = svgInput.scrollTop;
+  if (!focused && key !== lastSelectionKey && firstSelected >= 0) {
+    editor.scrollTo(firstSelected, "top");
   }
   lastSelectionKey = key;
 }
@@ -222,12 +249,12 @@ function syncSvgEditorNow(state: EditorState): void {
 function showSvgError(message: string): void {
   svgError.textContent = `Invalid SVG — not applied: ${message}`;
   svgError.classList.remove("hidden");
-  svgInput.classList.add("invalid");
+  editor.dom.classList.add("invalid");
 }
 
 function hideSvgError(): void {
   svgError.classList.add("hidden");
-  svgInput.classList.remove("invalid");
+  editor.dom.classList.remove("invalid");
 }
 
 function sameElement(a: SceneElement, b: SceneElement): boolean {
@@ -264,7 +291,7 @@ function applySvgText(): void {
   svgApplyTimer = null;
   let parsed;
   try {
-    parsed = importSvgFile(svgInput.value, { keepIds: true });
+    parsed = importSvgFile(editor.text, { keepIds: true });
   } catch (err) {
     showSvgError(err instanceof Error ? err.message : String(err));
     return;
@@ -308,33 +335,14 @@ function applySvgText(): void {
   noteChange();
 }
 
-svgInput.addEventListener("focus", () => {
-  svgEditUndoPushed = false;
-});
-svgInput.addEventListener("input", () => {
-  refreshSvgHighlight(getState().selection.elementIds);
-  if (svgApplyTimer) clearTimeout(svgApplyTimer);
-  svgApplyTimer = setTimeout(applySvgText, 500);
-});
-svgInput.addEventListener("blur", () => {
-  if (svgApplyTimer) {
-    clearTimeout(svgApplyTimer);
-    applySvgText();
-  }
-});
-svgInput.addEventListener("scroll", () => {
-  svgPre.scrollTop = svgInput.scrollTop;
-});
-
-// Cursor inside a shape's line selects that shape (like picking it in Primitives).
-document.addEventListener("selectionchange", () => {
-  if (document.activeElement !== svgInput) return;
-  const before = svgInput.value.slice(0, svgInput.selectionStart ?? 0);
-  const line = svgInput.value.split("\n")[before.split("\n").length - 1] ?? "";
+/** The caret inside a shape's line selects that shape (like picking it in Primitives). */
+function selectFromCaret(): void {
+  if (!editor.focused) return;
+  const line = editor.line(editor.position(editor.selection.head).line);
   const m = line.match(/\bid="([^"]+)"/);
   const elId = m ? elementIdFromSvgId(m[1]) : null;
   if (!elId || !findElement(elId)) return;
   const cur = getState().selection.elementIds;
   if (cur.length === 1 && cur[0] === elId) return;
   setState({ tool: "select", selection: selectOnly([elId]) });
-});
+}

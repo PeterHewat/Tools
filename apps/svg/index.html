@@ -1033,17 +1033,8 @@
                     </button>
                   </div>
                 </div>
-                <div class="svg-editor">
-                  <pre id="svg-preview" class="svg-preview mono" aria-hidden="true"></pre>
-                  <textarea
-                    id="svg-input"
-                    class="svg-input mono"
-                    spellcheck="false"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    aria-label="SVG source (editable)"
-                  ></textarea>
-                </div>
+                <!-- The editor (@tools/editor) is created in here. -->
+                <div class="svg-editor" id="svg-editor"></div>
                 <p id="svg-error" class="svg-error hidden" role="status"></p>
               </div>
             </section>

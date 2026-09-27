@@ -286,7 +286,7 @@ function documentText(): string {
 
 /** Puts a new document in the editor: a file, or the draft on reload. Not a step of undo. */
 function showDocument(text: string): void {
-  editor.setText(text, { undoable: false });
+  editor.setText(text, "new");
   showMarks();
 }
 
@@ -496,7 +496,7 @@ function showExport(): void {
     // Only when it changed: an edit elsewhere must not throw the reader back to the top.
     if (exportShown !== result.text) {
       exportShown = result.text;
-      exportView.setText(result.text, { undoable: false });
+      exportView.setText(result.text, "new");
     }
   } else {
     exportMessage.textContent = result.message;

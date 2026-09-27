@@ -265,7 +265,7 @@ fold, and which are open is remembered for the tab.
 - **Reference images:** one row per image (§4).
 - **SVG:** artboard size, grid visibility and step, background, and the live SVG source, with
   import, export and copy buttons, and **Export PNG** (`png-export.ts`): the artboard's size, one pixel to a unit,
-  drawn from the exported SVG so it shows exactly what that does. Named `Name.png`. The source is editable: about half a second after typing stops,
+  drawn from the exported SVG so it shows exactly what that does. Named `Name.png`. The source is the shared code editor (`@tools/editor`: XML colours, folding, bracket and tag matching, its own undo while it has focus). It is editable: about half a second after typing stops,
   or on blur, it is re-imported with its ids kept (`importSvgFile(text, { keepIds: true })`);
   invalid markup shows an error and changes nothing. Shapes whose markup did not change keep their
   exact geometry. Putting the cursor in a shape's line selects it; selected shapes' lines are
