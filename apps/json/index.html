@@ -12,6 +12,10 @@
     </header>
     <main class="wb-main json-main">
       <div class="wb-row toolbar">
+        <div class="seg" role="group" aria-label="View">
+          <button type="button" class="wb-btn" id="view-text" aria-pressed="true">Text</button>
+          <button type="button" class="wb-btn" id="view-tree" aria-pressed="false">Tree</button>
+        </div>
         <button
           type="button"
           class="wb-btn wb-btn--primary"
@@ -33,6 +37,8 @@
             <option value="tab">Tab</option>
           </select>
         </label>
+        <button type="button" class="wb-btn hidden" id="expand-all">Expand all</button>
+        <button type="button" class="wb-btn hidden" id="collapse-all">Collapse all</button>
         <span class="toolbar-gap"></span>
         <button
           type="button"
@@ -84,10 +90,20 @@
           ></textarea>
         </div>
       </div>
+      <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
 
       <div class="statusbar">
         <p class="wb-status" id="status" role="status"></p>
-        <span class="wb-label wb-mono" id="cursor"></span>
+        <span class="where">
+          <button type="button" class="path wb-mono hidden" id="path" title="Copy path"></button>
+          <button
+            type="button"
+            class="path-style hidden"
+            id="path-style"
+            title="Switch between JavaScript and JSON Pointer paths"
+          ></button>
+          <span class="wb-label wb-mono" id="cursor"></span>
+        </span>
       </div>
       <p class="wb-status warning hidden" id="warning"></p>
       <div class="problem hidden" id="problem">

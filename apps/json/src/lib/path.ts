@@ -6,37 +6,46 @@ import type { JsonNode } from "./ast.js";
 
 export type PathSegment = string | number;
 
+/** A container's children with the path segment that reaches each: key or index. */
+export function childrenOf(node: JsonNode): { seg: PathSegment; node: JsonNode }[] {
+  if (node.kind === "object") return node.members.map((m) => ({ seg: m.key, node: m.value }));
+  if (node.kind === "array") return node.items.map((v, k) => ({ seg: k, node: v }));
+  return [];
+}
+
+export interface Located {
+  node: JsonNode;
+  path: PathSegment[];
+  /**
+   * The child position at each step. Unlike keys, positions are unambiguous when an object
+   * repeats a key, so the tree follows these.
+   */
+  indices: number[];
+}
+
 /** The deepest value at `offset`, and the path to it. A key belongs to its value. */
-export function nodeAt(root: JsonNode, offset: number): { node: JsonNode; path: PathSegment[] } {
+export function nodeAt(root: JsonNode, offset: number): Located {
   const path: PathSegment[] = [];
+  const indices: number[] = [];
   let node = root;
   for (;;) {
     if (node.kind === "object") {
-      const member = node.members.find((m) => m.keyStart <= offset && offset <= m.value.end);
-      if (!member) break;
-      path.push(member.key);
-      node = member.value;
+      const k = node.members.findIndex((m) => m.keyStart <= offset && offset <= m.value.end);
+      if (k < 0) break;
+      path.push(node.members[k].key);
+      indices.push(k);
+      node = node.members[k].value;
     } else if (node.kind === "array") {
-      const index = node.items.findIndex((v) => v.start <= offset && offset <= v.end);
-      if (index < 0) break;
-      path.push(index);
-      node = node.items[index];
+      const k = node.items.findIndex((v) => v.start <= offset && offset <= v.end);
+      if (k < 0) break;
+      path.push(k);
+      indices.push(k);
+      node = node.items[k];
     } else {
       break;
     }
   }
-  return { node, path };
-}
-
-/** Follows a path down from the root; undefined when the document has no such value. */
-export function nodeAtPath(root: JsonNode, path: readonly PathSegment[]): JsonNode | undefined {
-  let node: JsonNode | undefined = root;
-  for (const seg of path) {
-    if (node?.kind === "object") node = node.members.findLast((m) => m.key === seg)?.value;
-    else if (node?.kind === "array" && typeof seg === "number") node = node.items[seg];
-    else return undefined;
-  }
-  return node;
+  return { node, path, indices };
 }
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;

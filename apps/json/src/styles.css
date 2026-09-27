@@ -27,6 +27,157 @@ body {
   gap: 6px;
 }
 
+/* Text | Tree: two buttons joined into one switch. */
+.seg {
+  display: inline-flex;
+}
+
+.seg .wb-btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.seg .wb-btn:last-child {
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Pressed reads as "you are here", quieter than the primary action beside it. */
+.seg .wb-btn[aria-pressed="true"] {
+  position: relative;
+  border-color: var(--accent);
+  background: var(--bg);
+  color: var(--accent);
+}
+
+/* ---------- Tree ---------- */
+
+.tree {
+  flex: 1;
+  min-height: 8rem;
+  padding: 6px 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font: 13px / 1.6 var(--mono);
+}
+
+.tree .row {
+  padding: 0 12px 0 calc(var(--level) * 18px + 8px);
+  white-space: pre;
+  cursor: default;
+}
+
+.tree .row:hover {
+  background: var(--panel-2);
+}
+
+/* Translucent, so every syntax colour stays readable on it. */
+.tree .row.sel {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.tree .row:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* The fold arrow: a fixed-width cell, turned down when the row is open. */
+.tw {
+  display: inline-block;
+  width: 18px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.ti[aria-expanded="true"] > .row > .tw {
+  transform: rotate(90deg);
+}
+
+.t-index {
+  color: var(--muted);
+}
+
+.tree .more {
+  margin: 2px 0;
+  padding: 0 0 0 calc(var(--level) * 18px + 26px);
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tree .more:hover {
+  text-decoration: underline;
+}
+
+.tree-empty {
+  display: block;
+  padding: 24px;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+/* ---------- Where the caret is: path, then line and column ---------- */
+
+.where {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.path,
+.path-style {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.path {
+  overflow: hidden;
+  max-width: 40vw;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.path:hover:not(:disabled),
+.path.copied {
+  color: var(--accent);
+}
+
+.path.copied::after {
+  content: " copied";
+  color: var(--ok);
+}
+
+.path-style {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.path-style:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
 /*
  * The editor: a gutter of line numbers, then the text. The textarea's own text is transparent;
  * what shows is the coloured copy underneath (code-view.ts). Both layers must lay text out
@@ -169,8 +320,9 @@ body {
 .statusbar {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
 }
 
 .statusbar .wb-status {

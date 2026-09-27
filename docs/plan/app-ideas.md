@@ -25,11 +25,6 @@ Workbench fit: client-only, offline, static output. No "save online", no fetchin
 | 6   | `diff`       | Diff       | Compare two texts, or two JSON documents structurally.       | Line diff side-by-side or unified; JSON mode compares parsed values (key order ignored). Handy for two Vellum SVG exports too.                                                                    |
 | 7   | `time`       | Time       | Unix timestamps ⇄ dates, across time zones.                  | Seconds or milliseconds auto-detected; ISO 8601; relative ("in 3 h"). Small, and pairs with JWT's claims.                                                                                         |
 
-## JSON: next
-
-- Collapsible tree view of the parsed document.
-- JSON Pointer of the value under the cursor, with a copy button.
-
 ## Out of scope
 
 - **Separate SVG tools around Vellum.** What drawing needs belongs in Vellum itself. Tools for

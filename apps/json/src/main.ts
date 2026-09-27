@@ -9,10 +9,19 @@ import {
   registerServiceWorker,
 } from "@workbench/ui";
 import "@workbench/ui/base.css";
-import { applyEdits, parse, type Edit, type ParseResult, type RepairKind } from "./lib/ast.js";
+import {
+  applyEdits,
+  parse,
+  type Edit,
+  type JsonNode,
+  type ParseResult,
+  type RepairKind,
+} from "./lib/ast.js";
 import { createCodeView } from "./code-view.js";
 import { byteSize, excerptAt, formatBytes } from "./lib/inspect.js";
+import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson } from "./lib/print.js";
+import { createTree } from "./tree.js";
 import "./styles.css";
 
 const editor = byId<HTMLTextAreaElement>("editor");
@@ -30,23 +39,46 @@ const problem = byId("problem");
 const excerpt = byId("excerpt");
 const fixBtn = byId<HTMLButtonElement>("fix");
 const fixNote = byId("fix-note");
-const view = createCodeView(byId("code"), editor, byId("highlight"), byId("gutter"));
+const codeEl = byId("code");
+const treeEl = byId("tree");
+const viewTextBtn = byId<HTMLButtonElement>("view-text");
+const viewTreeBtn = byId<HTMLButtonElement>("view-tree");
+const expandAllBtn = byId<HTMLButtonElement>("expand-all");
+const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
+const pathBtn = byId<HTMLButtonElement>("path");
+const pathStyleBtn = byId<HTMLButtonElement>("path-style");
+const view = createCodeView(codeEl, editor, byId("highlight"), byId("gutter"));
+const tree = createTree(treeEl, {
+  select: (path) => showPath(path),
+  open: (node) => showInText(node),
+});
 
 /** The draft and options, kept across reloads. A convenience: the page works without it. */
 const STORAGE_KEY = "workbench.json.draft";
 /** Past this, a draft is not worth the storage quota it would eat. */
 const MAX_SAVED = 2_000_000;
 
+type ViewMode = "text" | "tree";
+type PathStyle = "js" | "pointer";
+
 interface Saved {
   text: string;
   indent: string;
   sortKeys: boolean;
+  view: ViewMode;
+  pathStyle: PathStyle;
 }
 
 let fileName = "data.json";
 type Doc = Extract<ParseResult, { ok: true }>;
 /** The parsed document while the text is strict JSON; null otherwise. */
 let doc: Doc | null = null;
+/** The text `doc` was parsed from: positions in it are only good while the text still matches. */
+let docText = "";
+let mode: ViewMode = "text";
+let pathStyle: PathStyle = "js";
+/** The tree shows an older document until it is next opened. */
+let treeStale = true;
 /** Why the text is not JSON, and the edits that would make it JSON when there are some. */
 let fault: { message: string; position: JsonPosition; edits: Edit[] | null } | null = null;
 
@@ -59,6 +91,8 @@ function restore(): void {
       indentSel.value = saved.indent;
     }
     sortKeys.checked = saved.sortKeys === true;
+    if (saved.view === "tree") mode = "tree";
+    if (saved.pathStyle === "pointer") pathStyle = "pointer";
   } catch {
     /* storage refused or holds something else: start empty */
   }
@@ -66,7 +100,13 @@ function restore(): void {
 
 function save(): void {
   const text = editor.value.length > MAX_SAVED ? "" : editor.value;
-  const saved: Saved = { text, indent: indentSel.value, sortKeys: sortKeys.checked };
+  const saved: Saved = {
+    text,
+    indent: indentSel.value,
+    sortKeys: sortKeys.checked,
+    view: mode,
+    pathStyle,
+  };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
   } catch {
@@ -107,6 +147,7 @@ function validate(): void {
   const empty = !text.trim();
   const parsed = empty ? null : parse(text);
   doc = parsed?.ok && !parsed.edits.length ? parsed : null;
+  docText = text;
   fault = null;
   if (parsed && !doc) {
     // The strict parser words errors best; the lenient one knows whether a Fix exists.
@@ -151,17 +192,16 @@ function validate(): void {
     const caretEl = document.createElement("span");
     caretEl.className = "caret";
     caretEl.textContent = caret;
-    excerpt.replaceChildren(
-      `${code}
-`,
-      caretEl
-    );
+    excerpt.replaceChildren(`${code}\n`, caretEl);
     fixBtn.classList.toggle("hidden", !fault.edits);
     fixNote.classList.toggle("hidden", !fault.edits);
     fixNote.textContent = fault.edits ? `Almost JSON: ${describeEdits(fault.edits)}.` : "";
   }
   view.setErrorLine(fault?.position.line ?? null);
   view.refresh();
+  treeStale = true;
+  if (mode === "tree") showTree();
+  showCursor();
   save();
 }
 
@@ -189,7 +229,7 @@ const MAX_UNDO = 20;
 
 function setText(text: string): void {
   editor.value = text;
-  editor.focus();
+  if (mode === "text") editor.focus();
   editor.setSelectionRange(0, 0);
   editor.scrollTop = 0;
   validate();
@@ -228,11 +268,74 @@ function fix(): void {
   if (fault?.edits) replaceText(applyEdits(editor.value, fault.edits));
 }
 
+/** The value under the caret, while the document is valid and parsed from the text as it is. */
+function atCursor(): ReturnType<typeof nodeAt> | null {
+  return doc && docText === editor.value ? nodeAt(doc.root, editor.selectionStart) : null;
+}
+
 function showCursor(): void {
+  if (mode !== "text") return;
   const before = editor.value.slice(0, editor.selectionStart);
   const line = before.split("\n").length;
   const column = before.length - before.lastIndexOf("\n");
   cursor.textContent = `Ln ${line}, Col ${column}`;
+  showPath(atCursor()?.path ?? null);
+}
+
+let shownPath: PathSegment[] | null = null;
+
+/** The path of the value under the caret or selected in the tree; click it to copy. */
+function showPath(path: PathSegment[] | null): void {
+  shownPath = path;
+  const text = path && (pathStyle === "js" ? jsPath(path) : jsonPointer(path));
+  pathBtn.classList.toggle("hidden", !path);
+  pathStyleBtn.classList.toggle("hidden", !path);
+  pathBtn.textContent = text || "root";
+  pathBtn.disabled = !text;
+  pathStyleBtn.textContent = pathStyle === "js" ? "a.b" : "/a/b";
+}
+
+function showTree(): void {
+  if (!treeStale) return;
+  tree.show(
+    doc?.root ?? null,
+    fault ? "Not valid JSON: switch to Text to fix it." : "Nothing to show yet."
+  );
+  treeStale = false;
+}
+
+function setMode(next: ViewMode): void {
+  mode = next;
+  const inTree = mode === "tree";
+  codeEl.classList.toggle("hidden", inTree);
+  treeEl.classList.toggle("hidden", !inTree);
+  expandAllBtn.classList.toggle("hidden", !inTree);
+  collapseAllBtn.classList.toggle("hidden", !inTree);
+  cursor.classList.toggle("hidden", inTree);
+  viewTextBtn.setAttribute("aria-pressed", String(!inTree));
+  viewTreeBtn.setAttribute("aria-pressed", String(inTree));
+  if (inTree) {
+    showTree();
+    const at = atCursor();
+    if (at) tree.reveal(at.indices);
+    else showPath(null);
+    tree.focus();
+  } else {
+    view.refresh();
+    editor.focus();
+    showCursor();
+  }
+  save();
+}
+
+/** Switches to the text with a value selected and scrolled to the middle. */
+function showInText(node: JsonNode): void {
+  setMode("text");
+  editor.setSelectionRange(node.start, node.end);
+  const line = positionAt(editor.value, node.start).line;
+  const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 20;
+  editor.scrollTop = Math.max(0, (line - 1) * lineHeight - editor.clientHeight / 2);
+  showCursor();
 }
 
 function goToError(): void {
@@ -281,6 +384,16 @@ sortKeys.addEventListener("change", () => (doc ? rewrite(minified) : save()));
 indentSel.addEventListener("change", () => (doc ? rewrite(false) : validate()));
 byId("goto").addEventListener("click", goToError);
 fixBtn.addEventListener("click", fix);
+viewTextBtn.addEventListener("click", () => setMode("text"));
+viewTreeBtn.addEventListener("click", () => setMode("tree"));
+expandAllBtn.addEventListener("click", () => tree.expandAll());
+collapseAllBtn.addEventListener("click", () => tree.collapseAll());
+pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
+pathStyleBtn.addEventListener("click", () => {
+  pathStyle = pathStyle === "js" ? "pointer" : "js";
+  showPath(shownPath);
+  save();
+});
 
 byId("open").addEventListener("click", async () => {
   const [file] = await pickFiles(".json,application/json,text/plain");
@@ -305,6 +418,6 @@ onFileDrop(editor, ([file]) => {
 bindThemeToggle(byId("theme-toggle"));
 restore();
 validate();
-showCursor();
+setMode(mode);
 
 registerServiceWorker();

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parse, type JsonNode } from "./ast.js";
-import { jsPath, jsonPointer, nodeAt, nodeAtPath } from "./path.js";
+import { childrenOf, jsPath, jsonPointer, nodeAt } from "./path.js";
 
 const TEXT = '{"data": {"shapes": [{"id": "a"}, {"id": "b"}]}, "a b": 1}';
 
@@ -21,12 +21,21 @@ describe("nodeAt", () => {
   });
 });
 
-test("nodeAtPath follows a path down, and misses cleanly", () => {
-  const r = root(TEXT);
-  const node = nodeAtPath(r, ["data", "shapes", 1, "id"]);
-  expect(node && TEXT.slice(node.start, node.end)).toBe('"b"');
-  expect(nodeAtPath(r, ["data", "nope"])).toBeUndefined();
-  expect(nodeAtPath(r, ["data", "shapes", "0"])).toBeUndefined();
+test("nodeAt follows positions, so a repeated key finds the right copy", () => {
+  const text = '{"a": 1, "a": [0, 2]}';
+  const at = nodeAt(root(text), text.indexOf("2"));
+  expect([at.path, at.indices]).toEqual([
+    ["a", 1],
+    [1, 1],
+  ]);
+});
+
+test("childrenOf pairs each child with its key or index", () => {
+  const r = root('{"a": [true]}');
+  const [a] = childrenOf(r);
+  expect(a.seg).toBe("a");
+  expect(childrenOf(a.node).map((c) => c.seg)).toEqual([0]);
+  expect(childrenOf(childrenOf(a.node)[0].node)).toEqual([]);
 });
 
 describe("path formats", () => {
