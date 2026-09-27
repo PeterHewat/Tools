@@ -12,7 +12,7 @@
 ## Project conventions
 
 - **Shape:** Bun workspaces. Apps in `apps/`, shared code in `packages/`, repo scripts in `scripts/`.
-- **Apps are independent and dependency-free at runtime.** Vite is a build tool, not a framework: an app compiles to plain static files that work off any file server. Do not add a runtime framework (React, Svelte, …) to an app. That rule is what keeps these tools working years from now.
+- **Apps are independent and dependency-free at runtime.** Vite is a build tool, not a framework: an app compiles to plain static files that work off any file server. Do not add a runtime framework (React, Svelte, …) to an app. That rule is what keeps these tools working years from now. The one exception is code editing: CodeMirror 6, bundled and pinned, reached only through `@tools/editor` — never import `@codemirror/*` or `@lezer/*` from an app ([ADR 003](docs/adr/003-codemirror-for-code-editing.md)).
 - **Catalog:** `packages/catalog/src/index.ts` is the single source of truth for which apps exist. Adding an app means one entry there plus one folder under `apps/`. The index page, the build and the deploy all read it — never hand-maintain a second list. An entry with `art: true` ships `apps/<slug>/public/art.svg` (320 × 320, translucent or no background so it suits both themes), shown across the top of its index card.
 - **Deploy path:** `packages/catalog/src/site.ts` decides it, from `TOOLS_BASE`. GitHub Pages serves a project site from `/<repo>/`, so apps build with `base: /Tools/<slug>/`. Moving to a custom domain is a one-line change there, not a grep.
 - **Package manager:** Bun. Do not add an npm or pnpm lockfile.

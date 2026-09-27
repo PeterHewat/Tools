@@ -1,51 +1,58 @@
 # Plan: one code editor, shared by the apps
 
-**Kind:** Plan — nothing here is built yet.
+**Kind:** Plan — in progress on the `code-editor-codemirror` branch.
 
 ## Why
 
-The JSON app edits in a plain `<textarea>` with a coloured layer drawn under it
-(`apps/json/src/code-view.ts`). That keeps typing, selection, undo and IME native and fast on
-big documents, but a textarea cannot hide lines. So folding lives in a second view, the Tree,
-and the app has two places to look at one document.
+The JSON app edits in a plain `<textarea>` with a coloured layer drawn under it. A textarea
+cannot hide lines, so folding lives in a second view, the Tree, and the app has two places to
+look at one document. A very long document is edited a page of 5,000 lines at a time, because
+a textarea slows down with every line it holds.
 
-An IDE has one: the text, with fold arrows in the gutter. The goal is that, for JSON, and the
-same editor for the SVG app's live source panel, which today is its own textarea.
+An IDE has one place: the text, with fold arrows in the gutter. The goal is that, for JSON, and
+the same editor for the SVG app's live source panel and the planned apps that show code.
 
-## What the editor needs
+## Decision
 
-What an IDE has that the textarea does not:
+**CodeMirror 6, behind `@tools/editor`** — see
+[ADR 003](../adr/003-codemirror-for-code-editing.md). Apps import only from that package.
 
-- **Folding** — an arrow in the gutter beside each object and array; folded, the value shows as
-  `{ … }` or `[ … ]` in place, and the line numbers skip. Fold all / unfold all (what Expand all
-  and Collapse all do in the Tree today).
-- **Click a line number to select the line**; drag down the gutter to select several.
-- **Matching bracket** highlighted beside the caret.
-- **Auto-closing** brackets and quotes, and typing over the closer.
-- **Indent on Enter** to the enclosing level, and one level more after `{` or `[`.
-- **Tab / Shift+Tab** indent and outdent the selected lines.
-- **Go to line** (Ctrl+G).
-- **Expand selection** to the enclosing value (Shift+Alt+→), and shrink it back.
-- **Errors in place** — the Fix / parse error underlined where it is, not only in the status bar.
-- **Find in folded text** unfolds the match it moves to.
+## `@tools/editor`
 
-What must not regress: pages of a very long document (`lib/pages.ts`), drawing only the lines
-on screen, undo of whole-text rewrites (Format, Minify, Fix), and marks from find.
+`createEditor(parent, options)` returns an `Editor` with what the apps use:
 
-With folding in the text, the Tree view can go, or stay as a read-only outline.
+- text in and out; whole-text replacement as **one undoable step** (Format, Minify, Fix, Clear,
+  Unwrap), so the browser's and the app's undo are one history;
+- selection, and "select this range" that scrolls it to the middle and **unfolds** what hides
+  it (find, Go to error, a tree row opened in the text);
+- **marks** (find results, the current one filled) and **line classes** (the SVG panel's
+  selected shapes);
+- an **error** at an offset: underlined in place, its line number red, the message on hover;
+- **languages**: JSON and XML give structure (folding, bracket matching, indentation); colours
+  come from the app's own line lexers where it has them, so every view colours alike and the
+  Colours setting turns them all off;
+- **gutter labels** in place of line numbers (the CSV view numbers rows by their JSON line);
+- read-only views; theme from the site's CSS custom properties, so light / dark needs nothing.
 
-## Two ways to get there
+Keys, beyond CodeMirror's defaults: fold / unfold (Ctrl+Shift+[ / ]), fold all / unfold all,
+go to line (Ctrl+G), expand / shrink selection (Shift+Alt+→ / ←), indent and outdent (Tab /
+Shift+Tab), select next occurrence (Ctrl+D), auto-closed brackets and quotes.
 
-- **Bundle CodeMirror 6.** It already does all of the above, well, including accessibility and
-  mobile input. It is a library, not a framework, and bundles into the app's static files — but
-  it would be the first runtime dependency in the repo, which
-  [ADR 001](../adr/001-static-apps-no-framework.md) rules out. Taking it means a new ADR.
-- **Build a small editor in `@tools/ui`.** A `contenteditable`-free design stays closest to
-  today's: keep the textarea for input and draw folds by giving it only the unfolded text,
-  mapping offsets back to the document (the paging code already maps a page to the whole). A
-  substantial piece of work, but it keeps the no-dependency rule, and both apps share it.
+## Steps
 
-Decide between them first; it changes everything after.
+1. **`@tools/editor`** — the package above, with tests for what is logic (not the DOM).
+2. **JSON text view** on it. Paging goes (`pageOf`, the pager bar); the app's rewrite undo stack
+   goes. Expand all / Collapse all apply to the text too (fold all / unfold all). Find keeps the
+   app's own bar, which also searches the tree and the converted views.
+3. **JSON converted views** (YAML, CSV, Types, Schema) on it, read-only, with their lexers and
+   the CSV gutter labels.
+4. **SVG source panel** on it, XML: the selected shapes' lines and the focused attribute as
+   decorations instead of the coloured `<pre>`; the rest of the panel (re-import on a pause,
+   selection from the caret) unchanged. The app's global shortcuts must leave the editor's keys
+   alone, as they do a textarea's.
+5. **Measure**: the largest document the pages were made for, and a minified multi-megabyte
+   line; bundle size per app. Record what was found in the PR.
+6. Decide the **Tree**: it stays as an outline with search, or goes now that the text folds.
 
 ## YAML in
 
@@ -65,3 +72,9 @@ Scalars map to JSON as YAML 1.2's core schema does (`true`, `null`, numbers; `ye
 string). Out of scope: anchors and aliases, tags, several documents in one file, complex keys —
 a file using them gets a clear "not supported" message rather than a wrong result. The app's
 own YAML view is the test: every document it writes must read back to the same JSON.
+
+## Later
+
+- **Diff** (app-ideas #6) on `@codemirror/merge`, added to `@tools/editor`: side by side or
+  unified, editable, unchanged stretches collapsed.
+- JWT's header and payload, and Icon Check's pasted SVG, in the editor.
