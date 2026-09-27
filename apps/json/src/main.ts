@@ -26,6 +26,7 @@ import { unwrapString, wrapAsString } from "./lib/nested.js";
 import { lineCount, lineOf, lineStarts, pageAt, pageOf } from "./lib/pages.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson, printedSize } from "./lib/print.js";
+import { SAMPLE } from "./lib/sample.js";
 import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
@@ -150,7 +151,7 @@ function restore(): void {
       if (prefs.indent === "2" || prefs.indent === "4" || prefs.indent === "tab") {
         indentChoice = prefs.indent;
       }
-      setPressed(sortKeys, prefs.sortKeys === true);
+      setOn(sortKeys, prefs.sortKeys === true);
       if (prefs.view && VIEWS.includes(prefs.view)) mode = prefs.view;
       if (prefs.pathStyle === "pointer") pathStyle = "pointer";
       if (prefs.colours === false) colours = false;
@@ -159,10 +160,11 @@ function restore(): void {
     /* storage refused or holds something else: defaults */
   }
   try {
-    const draft = sessionStorage.getItem(DRAFT_KEY);
-    if (draft !== null) showDocument(draft);
+    // A tab with no draft yet opens on the sample. Cleared, the draft is "" and stays empty.
+    showDocument(sessionStorage.getItem(DRAFT_KEY) ?? SAMPLE);
   } catch {
-    /* storage refused: start empty */
+    /* storage refused: the sample, as for a new tab */
+    showDocument(SAMPLE);
   }
   showOptions();
 }
@@ -170,7 +172,7 @@ function restore(): void {
 function save(): void {
   const prefs: Prefs = {
     indent: indentChoice,
-    sortKeys: isPressed(sortKeys),
+    sortKeys: isOn(sortKeys),
     view: mode,
     pathStyle,
     colours,
@@ -192,6 +194,9 @@ function save(): void {
 const isPressed = (button: HTMLElement) => button.getAttribute("aria-pressed") === "true";
 const setPressed = (button: HTMLElement, on: boolean) =>
   button.setAttribute("aria-pressed", String(on));
+/** Switches (settings that are on or off) keep theirs in aria-checked, as role="switch" has it. */
+const isOn = (button: HTMLElement) => button.getAttribute("aria-checked") === "true";
+const setOn = (button: HTMLElement, on: boolean) => button.setAttribute("aria-checked", String(on));
 
 function indent(): number | "\t" {
   return indentChoice === "tab" ? "\t" : Number(indentChoice);
@@ -415,9 +420,7 @@ function showColours(): void {
  */
 function showOptions(): void {
   for (const b of indentButtons) setPressed(b, b.dataset.indent === indentChoice);
-  sortKeys.textContent = isPressed(sortKeys) ? "On" : "Off";
-  setPressed(coloursBtn, colours);
-  coloursBtn.textContent = colours ? "On" : "Off";
+  setOn(coloursBtn, colours);
   for (const b of pathStyleButtons) setPressed(b, b.dataset.pathStyle === pathStyle);
 
   const chain = contextChain();
@@ -689,9 +692,7 @@ function stepHistory(back: boolean): boolean {
 
 function rewrite(minify: boolean): void {
   if (!doc) return;
-  replaceText(
-    printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isPressed(sortKeys) })
-  );
+  replaceText(printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isOn(sortKeys) }));
 }
 
 /** Makes almost-JSON strict in place, keeping the layout: only the offending bits change. */
@@ -878,7 +879,7 @@ for (const b of indentButtons) {
   });
 }
 sortKeys.addEventListener("click", () => {
-  setPressed(sortKeys, !isPressed(sortKeys));
+  setOn(sortKeys, !isOn(sortKeys));
   if (doc) rewrite(minified);
   showOptions();
   save();

@@ -77,7 +77,7 @@
           <div class="menu-label first">Format with</div>
           <div class="menu-row">
             <span>Indent</span>
-            <div class="seg small" role="group" aria-label="Indent">
+            <div class="seg small equal" role="group" aria-label="Indent">
               <button type="button" class="ui-btn" data-indent="2" aria-pressed="true">2</button>
               <button type="button" class="ui-btn" data-indent="4" aria-pressed="false">4</button>
               <button type="button" class="ui-btn" data-indent="tab" aria-pressed="false">
@@ -89,31 +89,29 @@
             <span>Sort keys</span>
             <button
               type="button"
-              class="ui-btn toggle small"
+              class="ui-switch"
               id="sort-keys"
-              aria-pressed="false"
+              role="switch"
+              aria-checked="false"
               aria-label="Sort keys"
-            >
-              Off
-            </button>
+            ></button>
           </div>
           <div class="menu-label">Display</div>
           <div class="menu-row">
             <span>Colours</span>
             <button
               type="button"
-              class="ui-btn toggle small"
+              class="ui-switch"
               id="colours"
-              aria-pressed="true"
+              role="switch"
+              aria-checked="true"
               aria-label="Syntax colours"
-            >
-              On
-            </button>
+            ></button>
           </div>
           <div class="menu-label">Paths</div>
           <div class="menu-row">
             <span>Style</span>
-            <div class="seg small" role="group" aria-label="Path style">
+            <div class="seg small equal" role="group" aria-label="Path style">
               <button type="button" class="ui-btn" data-path-style="js" aria-pressed="true">
                 a.b[0]
               </button>
@@ -206,6 +204,10 @@
             <li>
               Nothing you open or paste leaves this page: the draft is kept only for this tab, so a
               reload keeps it and closing the tab ends it.
+            </li>
+            <li>
+              A new tab opens on a small sample to try things on; <b>Clear</b> empties it, and it
+              does not come back in that tab.
             </li>
           </ul>
 
