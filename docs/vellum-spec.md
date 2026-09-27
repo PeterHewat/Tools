@@ -289,7 +289,7 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
 - **Phones** (below 720px, or 800px on a touch screen): both bars float over the canvas; the tools
   and snap switches move to a bottom bar under the thumb. An open panel covers the canvas, so
   opening one closes the other, and the rulers and cursor readout are hidden. The Workbench button
-  and the theme switch move into the Help panel, and the name is left out.
+  reduces to its "‹" and the name is left out; the theme switch moves into the Help panel.
 - **Zoom** is one control: a button reading the level that opens a list - fit the artboard, fit
   the selection, then presets (25%–800%); wheel and pinch go from 10% to 1600%.
 - **Touch:** handles have ~44px targets (shrunk where points crowd), a drag starts only past a

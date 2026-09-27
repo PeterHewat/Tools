@@ -1341,8 +1341,7 @@ body {
 }
 
 /* Back to the index, as a regular button: the same one every Workbench page starts with (the
-   shared base.css draws it for the other apps). Like the theme switch, it moves into the Help
-   panel on a phone. */
+   shared base.css draws it for the other apps). On a phone it reduces to its "‹". */
 .wb-home {
   display: inline-flex;
   align-items: center;
@@ -1370,10 +1369,6 @@ body {
 .wb-home:hover,
 .wb-home:focus-visible {
   border-color: var(--accent);
-}
-
-.wb-home--panel {
-  display: none;
 }
 
 .app-name {
@@ -1968,16 +1963,42 @@ body {
   }
 
   .cursor-readout,
-  .top-bar > .theme-btn,
-  .top-bar > .wb-home,
-  .top-bar > .app-name {
+  .top-bar > .theme-btn {
     display: none;
   }
 
-  .theme-btn--panel,
-  .wb-home--panel {
+  .theme-btn--panel {
     display: inline-flex;
     flex: 0 0 auto;
+  }
+
+  /* "‹ Workbench  Vellum" reduces to "‹": a floating button like Help, its words kept for
+     screen readers. */
+  .top-bar > .wb-home {
+    flex: 0 0 auto;
+    justify-content: center;
+    min-width: 46px;
+    min-height: 46px;
+    padding: 0;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--panel) 86%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    box-shadow: 0 6px 20px var(--shadow);
+  }
+
+  .top-bar > .wb-home::before {
+    margin-left: 4px;
+  }
+
+  .wb-home-label,
+  .top-bar > .app-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* Seven controls on one line at 360px, so none of them is behind a menu. They shrink to fit

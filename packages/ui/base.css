@@ -137,6 +137,30 @@ a {
   border-color: var(--accent);
 }
 
+/* On a narrow screen "‹ Workbench  Name" reduces to "‹"; the words stay for screen readers. */
+@media (max-width: 720px) {
+  .wb-home {
+    justify-content: center;
+    min-width: 36px;
+    min-height: 34px;
+    padding: 0;
+  }
+
+  .wb-home::before {
+    margin-left: 4px;
+  }
+
+  .wb-home-label,
+  .wb-header h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .wb-main {
   max-width: 1200px;
   margin: 0 auto;
