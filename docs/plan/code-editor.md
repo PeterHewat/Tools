@@ -1,58 +1,17 @@
-# Plan: one code editor, shared by the apps
+# Plan: after the shared code editor
 
-**Kind:** Plan — in progress on the `code-editor-codemirror` branch.
+**Kind:** Plan — nothing here is built yet.
 
-## Why
+The JSON app (its text and its converted views) and the SVG app's source panel edit in
+`@tools/editor`: CodeMirror 6 behind a small API
+([ADR 003](../adr/003-codemirror-for-code-editing.md)). The JSON text folds, shows its parse
+error in place, and is one document however long it is. What follows builds on that.
 
-The JSON app edits in a plain `<textarea>` with a coloured layer drawn under it. A textarea
-cannot hide lines, so folding lives in a second view, the Tree, and the app has two places to
-look at one document. A very long document is edited a page of 5,000 lines at a time, because
-a textarea slows down with every line it holds.
+## The Tree
 
-An IDE has one place: the text, with fold arrows in the gutter. The goal is that, for JSON, and
-the same editor for the SVG app's live source panel and the planned apps that show code.
-
-## Decision
-
-**CodeMirror 6, behind `@tools/editor`** — see
-[ADR 003](../adr/003-codemirror-for-code-editing.md). Apps import only from that package.
-
-## `@tools/editor`
-
-`createEditor(parent, options)` returns an `Editor` with what the apps use:
-
-- text in and out; whole-text replacement as **one undoable step** (Format, Minify, Fix, Clear,
-  Unwrap), so the browser's and the app's undo are one history;
-- selection, and "select this range" that scrolls it to the middle and **unfolds** what hides
-  it (find, Go to error, a tree row opened in the text);
-- **marks** (find results, the current one filled) and **line classes** (the SVG panel's
-  selected shapes);
-- an **error** at an offset: underlined in place, its line number red, the message on hover;
-- **languages**: JSON and XML give structure (folding, bracket matching, indentation); colours
-  come from the app's own line lexers where it has them, so every view colours alike and the
-  Colours setting turns them all off;
-- **gutter labels** in place of line numbers (the CSV view numbers rows by their JSON line);
-- read-only views; theme from the site's CSS custom properties, so light / dark needs nothing.
-
-Keys, beyond CodeMirror's defaults: fold / unfold (Ctrl+Shift+[ / ]), fold all / unfold all,
-go to line (Ctrl+G), expand / shrink selection (Shift+Alt+→ / ←), indent and outdent (Tab /
-Shift+Tab), select next occurrence (Ctrl+D), auto-closed brackets and quotes.
-
-## Steps
-
-1. **`@tools/editor`** — the package above, with tests for what is logic (not the DOM).
-2. **JSON text view** on it. Paging goes (`pageOf`, the pager bar); the app's rewrite undo stack
-   goes. Expand all / Collapse all apply to the text too (fold all / unfold all). Find keeps the
-   app's own bar, which also searches the tree and the converted views.
-3. **JSON converted views** (YAML, CSV, Types, Schema) on it, read-only, with their lexers and
-   the CSV gutter labels.
-4. **SVG source panel** on it, XML: the selected shapes' lines and the focused attribute as
-   decorations instead of the coloured `<pre>`; the rest of the panel (re-import on a pause,
-   selection from the caret) unchanged. The app's global shortcuts must leave the editor's keys
-   alone, as they do a textarea's.
-5. **Measure**: the largest document the pages were made for, and a minified multi-megabyte
-   line; bundle size per app. Record what was found in the PR.
-6. Decide the **Tree**: it stays as an outline with search, or goes now that the text folds.
+With folding in the text, the JSON Tree view overlaps it. Decide whether it stays (an outline
+with search over keys and values, and a place to read nested JSON without the punctuation) or
+goes. Until then it stays as it is.
 
 ## YAML in
 
