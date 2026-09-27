@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { cardHtml, escapeHtml, pageHtml } from "./render.js";
-import type { WorkbenchApp } from "@workbench/catalog";
+import type { ToolsApp } from "@tools/catalog";
 
-const app: WorkbenchApp = {
+const app: ToolsApp = {
   slug: "demo",
   name: "Demo",
   blurb: "Does a thing.",
@@ -28,7 +28,7 @@ describe("escaping", () => {
 
 describe("cards", () => {
   test("the link is the app's folder under the site base", () => {
-    expect(cardHtml(app, "/Workbench/")).toContain('href="/Workbench/demo/"');
+    expect(cardHtml(app, "/Tools/")).toContain('href="/Tools/demo/"');
     expect(cardHtml(app, "/")).toContain('href="/demo/"');
   });
 
@@ -41,9 +41,7 @@ describe("cards", () => {
   });
 
   test("an app with art shows it from its own folder; one without shows none", () => {
-    expect(cardHtml({ ...app, art: true }, "/Workbench/")).toContain(
-      'src="/Workbench/demo/art.svg"'
-    );
+    expect(cardHtml({ ...app, art: true }, "/Tools/")).toContain('src="/Tools/demo/art.svg"');
     expect(cardHtml(app, "/")).not.toContain("card-art");
   });
 

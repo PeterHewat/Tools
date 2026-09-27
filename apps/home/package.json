@@ -1,9 +1,9 @@
 {
-  "name": "@workbench/home",
+  "name": "@tools/home",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The Workbench index page, generated from the app catalog",
+  "description": "The Tools index page, generated from the app catalog",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,8 +12,8 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@workbench/catalog": "workspace:*",
-    "@workbench/ui": "workspace:*",
+    "@tools/catalog": "workspace:*",
+    "@tools/ui": "workspace:*",
     "typescript": "~6.0.3",
     "vite": "^8.3.0"
   }

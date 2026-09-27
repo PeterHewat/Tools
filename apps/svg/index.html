@@ -893,11 +893,9 @@
 
     <div id="app">
       <header class="top-bar" role="toolbar" aria-label="Main toolbar">
-        <!-- Back to the index, then the app's name: how every Workbench page starts. On a phone
+        <!-- Back to the index, then the app's name: how every Tools page starts. On a phone
              both reduce to the "‹" button. -->
-        <a class="wb-home" href="../" title="All tools"
-          ><span class="wb-home-label">Workbench</span></a
-        >
+        <a class="ui-home" href="../" title="All tools"><span class="ui-home-label">Tools</span></a>
         <h1 class="app-name">SVG</h1>
         <div class="menu" id="menu-document-wrap">
           <button
@@ -909,7 +907,7 @@
             title="Document"
             aria-label="Document"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-document" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-document" /></svg>
           </button>
           <div
             class="menu-dropdown menu-dropdown--panel menu-dropdown--docked hidden"
@@ -932,7 +930,7 @@
                       title="Export every document, in one file"
                       aria-label="Export every document"
                     >
-                      <svg class="ui-icon" aria-hidden="true"><use href="#icon-export" /></svg>
+                      <svg class="glyph" aria-hidden="true"><use href="#icon-export" /></svg>
                     </button>
                     <button
                       type="button"
@@ -941,7 +939,7 @@
                       title="Import documents — single files or a whole library; nothing already here is replaced"
                       aria-label="Import documents"
                     >
-                      <svg class="ui-icon" aria-hidden="true"><use href="#icon-import" /></svg>
+                      <svg class="glyph" aria-hidden="true"><use href="#icon-import" /></svg>
                     </button>
                     <button
                       type="button"
@@ -972,7 +970,7 @@
                       title="Search"
                       aria-label="Search"
                     >
-                      <svg class="ui-icon" aria-hidden="true"><use href="#icon-search" /></svg>
+                      <svg class="glyph" aria-hidden="true"><use href="#icon-search" /></svg>
                     </button>
                   </div>
                   <ul id="doc-list" class="doc-list"></ul>
@@ -1016,7 +1014,7 @@
                     title="Import SVG"
                     aria-label="Import SVG"
                   >
-                    <svg class="ui-icon" aria-hidden="true"><use href="#icon-import" /></svg>
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-import" /></svg>
                   </button>
                   <button
                     type="button"
@@ -1025,7 +1023,7 @@
                     title="Export SVG"
                     aria-label="Export SVG"
                   >
-                    <svg class="ui-icon" aria-hidden="true"><use href="#icon-export" /></svg>
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-export" /></svg>
                   </button>
                   <button
                     type="button"
@@ -1035,7 +1033,7 @@
                     aria-label="Export PNG"
                     aria-haspopup="dialog"
                   >
-                    <svg class="ui-icon" aria-hidden="true"><use href="#icon-png" /></svg>
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-png" /></svg>
                   </button>
                   <button
                     type="button"
@@ -1044,7 +1042,7 @@
                     title="Copy SVG to clipboard"
                     aria-label="Copy SVG to clipboard"
                   >
-                    <svg class="ui-icon" aria-hidden="true"><use href="#icon-copy" /></svg>
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-copy" /></svg>
                   </button>
                 </div>
               </div>
@@ -1080,7 +1078,7 @@
                       aria-label="Show grid"
                       aria-pressed="true"
                     >
-                      <svg class="ui-icon" aria-hidden="true"><use href="#icon-grid" /></svg>
+                      <svg class="glyph" aria-hidden="true"><use href="#icon-grid" /></svg>
                     </button>
                     <input
                       type="number"
@@ -1166,7 +1164,7 @@
             aria-label="Undo"
             disabled
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-undo" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-undo" /></svg>
           </button>
           <button
             type="button"
@@ -1176,7 +1174,7 @@
             aria-label="Redo"
             disabled
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-redo" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-redo" /></svg>
           </button>
         </div>
         <div class="tool-slot" id="tool-slot"></div>
@@ -1188,7 +1186,7 @@
             title="Select (S) — also pans: Space or middle-drag, or one finger on empty canvas"
             aria-label="Select"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-select" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-select" /></svg>
           </button>
           <button
             type="button"
@@ -1197,7 +1195,7 @@
             title="Pen (P) — click for corners, drag for curves, double-click/Enter to finish, click the start point to close"
             aria-label="Pen"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-pen" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-pen" /></svg>
           </button>
           <button
             type="button"
@@ -1206,7 +1204,7 @@
             title="Rectangle (R) — hold Shift for a square"
             aria-label="Rectangle"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-rect" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-rect" /></svg>
           </button>
           <button
             type="button"
@@ -1215,7 +1213,7 @@
             title="Ellipse (E) — hold Shift for a circle"
             aria-label="Ellipse"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-ellipse" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-ellipse" /></svg>
           </button>
           <button
             type="button"
@@ -1224,7 +1222,7 @@
             title="Text (T) — click to place"
             aria-label="Text"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-text" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-text" /></svg>
           </button>
           <button
             type="button"
@@ -1234,7 +1232,7 @@
             aria-label="Snap to grid"
             aria-pressed="false"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-snap-grid" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-snap-grid" /></svg>
           </button>
           <!-- Alt, as a switch: a finger has no key to hold. -->
           <button
@@ -1245,7 +1243,7 @@
             aria-label="Snap to other shapes"
             aria-pressed="false"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-snap-shapes" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-snap-shapes" /></svg>
           </button>
         </div>
 
@@ -1273,7 +1271,7 @@
             aria-label="Final SVG"
             aria-pressed="false"
           >
-            <svg class="ui-icon" aria-hidden="true"><use href="#icon-eye" /></svg>
+            <svg class="glyph" aria-hidden="true"><use href="#icon-eye" /></svg>
           </button>
         </div>
 
@@ -1290,7 +1288,7 @@
           title="Help — what everything does"
           aria-label="Help"
         >
-          <svg class="ui-icon" aria-hidden="true"><use href="#icon-help" /></svg>
+          <svg class="glyph" aria-hidden="true"><use href="#icon-help" /></svg>
         </button>
       </header>
 
@@ -1318,7 +1316,7 @@
           <h3>About</h3>
           <ul>
             <li>
-              SVG is part of <a href="../">Workbench</a>, a set of useful tools that run entirely in
+              SVG is part of <a href="../">Tools</a>, a set of useful tools that run entirely in
               your browser and keep working offline.
             </li>
             <li>
@@ -1791,7 +1789,7 @@
             <li>
               <b>Light / dark</b> — the sun or moon beside Help switches the theme. Until you use
               it, the app follows your system's setting; once you have, it keeps your choice, and so
-              does every other Workbench tool.
+              does every other tool here.
             </li>
             <li>
               Reloading the page puts you back where you were: the zoom and pan, and whichever

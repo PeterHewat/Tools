@@ -6,7 +6,7 @@
  * shows exactly what the SVG does, transparent where the document is.
  */
 
-import { byId, downloadBlob } from "@workbench/ui";
+import { byId, downloadBlob } from "@tools/ui";
 
 /** The pixel size of the artboard: whole pixels, never less than one. */
 export function pngSize(artboard: { width: number; height: number }): {

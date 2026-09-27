@@ -226,7 +226,7 @@ body {
   overflow: hidden;
 }
 
-.ui-icon {
+.glyph {
   width: 18px;
   height: 18px;
   display: block;
@@ -234,8 +234,8 @@ body {
 
 /* A toolbar button is a target with a picture in it, and the picture is the whole point: at
    18px in a 34-44px button the glyph read as a smudge rather than as what it means. */
-.tool-btn .ui-icon,
-.menu-trigger--icon .ui-icon {
+.tool-btn .glyph,
+.menu-trigger--icon .glyph {
   width: 22px;
   height: 22px;
 }
@@ -1340,9 +1340,9 @@ body {
   display: none;
 }
 
-/* Back to the index, as a regular button: the same one every Workbench page starts with (the
+/* Back to the index, as a regular button: the same one every Tools page starts with (the
    shared base.css draws it for the other apps). On a phone it reduces to its "‹". */
-.wb-home {
+.ui-home {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1356,7 +1356,7 @@ body {
   text-decoration: none;
 }
 
-.wb-home::before {
+.ui-home::before {
   content: "";
   width: 7px;
   height: 7px;
@@ -1366,8 +1366,8 @@ body {
   transform: rotate(45deg);
 }
 
-.wb-home:hover,
-.wb-home:focus-visible {
+.ui-home:hover,
+.ui-home:focus-visible {
   border-color: var(--accent);
 }
 
@@ -1809,7 +1809,7 @@ body {
   cursor: default;
 }
 
-.acc-icon-btn .ui-icon {
+.acc-icon-btn .glyph {
   width: 15px;
   height: 15px;
 }
@@ -1972,9 +1972,9 @@ body {
     flex: 0 0 auto;
   }
 
-  /* "‹ Workbench  SVG" reduces to "‹": a floating button like Help, its words kept for
+  /* "‹ Tools  SVG" reduces to "‹": a floating button like Help, its words kept for
      screen readers. */
-  .top-bar > .wb-home {
+  .top-bar > .ui-home {
     flex: 0 0 auto;
     justify-content: center;
     min-width: 46px;
@@ -1987,11 +1987,11 @@ body {
     box-shadow: 0 6px 20px var(--shadow);
   }
 
-  .top-bar > .wb-home::before {
+  .top-bar > .ui-home::before {
     margin-left: 4px;
   }
 
-  .wb-home-label,
+  .ui-home-label,
   .top-bar > .app-name {
     position: absolute;
     width: 1px;
@@ -2317,7 +2317,7 @@ body {
   color: var(--text);
 }
 
-.doc-search-btn .ui-icon {
+.doc-search-btn .glyph {
   width: 16px;
   height: 16px;
 }

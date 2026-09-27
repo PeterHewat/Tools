@@ -8,7 +8,7 @@
 
 export type AppStatus = "stable" | "beta" | "experiment";
 
-export interface WorkbenchApp {
+export interface ToolsApp {
   /** URL segment and workspace folder name under `apps/`. */
   readonly slug: string;
   /** Display name. */
@@ -30,7 +30,7 @@ export interface WorkbenchApp {
   readonly listed: boolean;
 }
 
-export const APPS: readonly WorkbenchApp[] = [
+export const APPS: readonly ToolsApp[] = [
   {
     slug: "svg",
     name: "SVG",
@@ -54,8 +54,8 @@ export const APPS: readonly WorkbenchApp[] = [
   },
 ];
 
-export function findApp(slug: string): WorkbenchApp | undefined {
+export function findApp(slug: string): ToolsApp | undefined {
   return APPS.find((a) => a.slug === slug);
 }
 
-export const listedApps = (): readonly WorkbenchApp[] => APPS.filter((a) => a.listed);
+export const listedApps = (): readonly ToolsApp[] => APPS.filter((a) => a.listed);

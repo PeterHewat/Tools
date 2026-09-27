@@ -12,7 +12,7 @@ import {
   reorder,
   towardFront,
 } from "./accordion.js";
-import { byId } from "@workbench/ui";
+import { byId } from "@tools/ui";
 
 const imageListEl = byId("image-list");
 

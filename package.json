@@ -1,12 +1,12 @@
 {
-  "name": "workbench",
+  "name": "tools",
   "version": "0.0.0",
-  "description": "Workbench — small, self-contained browser tools",
+  "description": "Tools — small, self-contained browser tools",
   "author": "Peter Hewat",
-  "homepage": "https://peterhewat.github.io/Workbench/",
+  "homepage": "https://peterhewat.github.io/Tools/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/PeterHewat/Workbench.git"
+    "url": "git+https://github.com/PeterHewat/Tools.git"
   },
   "license": "MIT",
   "private": true,
@@ -21,9 +21,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun tools/dev.ts",
-    "build": "bun tools/build-site.ts",
-    "preview": "bun run --filter @workbench/home preview",
+    "dev": "bun scripts/dev.ts",
+    "build": "bun scripts/build-site.ts",
+    "preview": "bun run --filter @tools/home preview",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
@@ -31,7 +31,7 @@
     "check": "bun run lint && bun run typecheck && bun run format",
     "test": "bun run --filter '*' test",
     "verify": "bun run check && bun run test && bun run build",
-    "new-app": "bun tools/new-app.ts",
+    "new-app": "bun scripts/new-app.ts",
     "outdated": "bun outdated -r",
     "update": "bun update -r",
     "prepare": "husky"

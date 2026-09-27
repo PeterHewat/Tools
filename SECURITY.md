@@ -7,7 +7,7 @@ send anonymous page-view analytics to Cloudflare.
 ## Reporting
 
 Report a vulnerability privately through
-[GitHub Security Advisories](https://github.com/PeterHewat/Workbench/security/advisories/new).
+[GitHub Security Advisories](https://github.com/PeterHewat/Tools/security/advisories/new).
 Please do not open a public issue for an undisclosed vulnerability.
 
 ## Scope

@@ -1,4 +1,4 @@
-import { parseJson, positionAt, type JsonPosition } from "@workbench/codec";
+import { parseJson, positionAt, type JsonPosition } from "@tools/codec";
 import {
   bindThemeToggle,
   byId,
@@ -7,8 +7,8 @@ import {
   onFileDrop,
   pickFiles,
   registerServiceWorker,
-} from "@workbench/ui";
-import "@workbench/ui/base.css";
+} from "@tools/ui";
+import "@tools/ui/base.css";
 import {
   applyEdits,
   parse,
@@ -128,8 +128,8 @@ let fault: { message: string; position: JsonPosition; edits: Edit[] | null } | n
  * Settings persist (localStorage, shared by every tab). The draft is the person's data, so
  * it lives only as long as the tab (sessionStorage): a reload keeps it, closing the tab ends it.
  */
-const PREFS_KEY = "workbench.json.prefs";
-const DRAFT_KEY = "workbench.json.draft";
+const PREFS_KEY = "tools.json.prefs";
+const DRAFT_KEY = "tools.json.draft";
 /** Past this, a draft is not worth the storage quota it would eat. */
 const MAX_SAVED = 2_000_000;
 
@@ -570,8 +570,8 @@ function validate(): void {
 
   formatBtn.disabled = minifyBtn.disabled = !doc;
   clearBtn.disabled = empty;
-  status.classList.toggle("wb-status--error", !!fault);
-  status.classList.toggle("wb-status--ok", !!doc);
+  status.classList.toggle("ui-status--error", !!fault);
+  status.classList.toggle("ui-status--ok", !!doc);
   problem.classList.toggle("hidden", !fault);
   warning.classList.add("hidden");
 
@@ -924,7 +924,7 @@ options.addEventListener("toggle", (e) => {
 // its button closes it, and a reload of the tab keeps it open, as in the SVG app.
 const help = byId("help");
 const helpBtn = byId("help-btn");
-const HELP_KEY = "workbench.json.help";
+const HELP_KEY = "tools.json.help";
 function placeHelp(): void {
   help.style.top = `${byId("header").getBoundingClientRect().bottom}px`;
 }

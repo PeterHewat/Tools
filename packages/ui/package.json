@@ -1,9 +1,9 @@
 {
-  "name": "@workbench/ui",
+  "name": "@tools/ui",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared browser helpers, base styles and build wiring for every Workbench app",
+  "description": "Shared browser helpers, base styles and build wiring for every Tools app",
   "exports": {
     ".": "./src/index.ts",
     "./vite": "./src/vite.ts",
@@ -20,7 +20,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@workbench/catalog": "workspace:*"
+    "@tools/catalog": "workspace:*"
   },
   "devDependencies": {
     "typescript": "~6.0.3",

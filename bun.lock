@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "workbench",
+      "name": "tools",
       "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@types/bun": "^1.4.2",
@@ -20,59 +20,59 @@
       },
     },
     "apps/home": {
-      "name": "@workbench/home",
+      "name": "@tools/home",
       "version": "0.0.0",
       "devDependencies": {
-        "@workbench/catalog": "workspace:*",
-        "@workbench/ui": "workspace:*",
+        "@tools/catalog": "workspace:*",
+        "@tools/ui": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.3.0",
       },
     },
     "apps/json": {
-      "name": "@workbench/json",
+      "name": "@tools/json",
       "version": "0.0.0",
       "devDependencies": {
-        "@workbench/catalog": "workspace:*",
-        "@workbench/codec": "workspace:*",
-        "@workbench/ui": "workspace:*",
+        "@tools/catalog": "workspace:*",
+        "@tools/codec": "workspace:*",
+        "@tools/ui": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.3.0",
       },
     },
     "apps/svg": {
-      "name": "@workbench/svg",
+      "name": "@tools/svg",
       "version": "0.0.0",
       "devDependencies": {
         "@happy-dom/global-registrator": "^20.14.5",
-        "@workbench/ui": "workspace:*",
+        "@tools/ui": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.3.0",
       },
     },
     "packages/catalog": {
-      "name": "@workbench/catalog",
+      "name": "@tools/catalog",
       "version": "0.0.0",
       "devDependencies": {
         "typescript": "~6.0.3",
       },
     },
     "packages/codec": {
-      "name": "@workbench/codec",
+      "name": "@tools/codec",
       "version": "0.0.0",
       "devDependencies": {
         "typescript": "~6.0.3",
       },
     },
     "packages/tsconfig": {
-      "name": "@workbench/tsconfig",
+      "name": "@tools/tsconfig",
       "version": "0.0.0",
     },
     "packages/ui": {
-      "name": "@workbench/ui",
+      "name": "@tools/ui",
       "version": "0.0.0",
       "dependencies": {
-        "@workbench/catalog": "workspace:*",
+        "@tools/catalog": "workspace:*",
       },
       "devDependencies": {
         "typescript": "~6.0.3",
@@ -187,19 +187,19 @@
 
     "@typescript-eslint/visitor-keys": ["@typescript-eslint/visitor-keys@8.70.0", "", { "dependencies": { "@typescript-eslint/types": "8.70.0", "eslint-visitor-keys": "^5.0.0" } }, "sha512-BoC8PiO4Hkdo0TVJh9Ntxr5MxPDI7/oFsrygN5ADelFSeXG/qgNuucIGA+L5Z6JpPTE/uRfcTWtscjbUaufepQ=="],
 
-    "@workbench/catalog": ["@workbench/catalog@workspace:packages/catalog"],
+    "@tools/catalog": ["@tools/catalog@workspace:packages/catalog"],
 
-    "@workbench/codec": ["@workbench/codec@workspace:packages/codec"],
+    "@tools/codec": ["@tools/codec@workspace:packages/codec"],
 
-    "@workbench/home": ["@workbench/home@workspace:apps/home"],
+    "@tools/home": ["@tools/home@workspace:apps/home"],
 
-    "@workbench/json": ["@workbench/json@workspace:apps/json"],
+    "@tools/json": ["@tools/json@workspace:apps/json"],
 
-    "@workbench/tsconfig": ["@workbench/tsconfig@workspace:packages/tsconfig"],
+    "@tools/tsconfig": ["@tools/tsconfig@workspace:packages/tsconfig"],
 
-    "@workbench/ui": ["@workbench/ui@workspace:packages/ui"],
+    "@tools/ui": ["@tools/ui@workspace:packages/ui"],
 
-    "@workbench/svg": ["@workbench/svg@workspace:apps/svg"],
+    "@tools/svg": ["@tools/svg@workspace:apps/svg"],
 
     "acorn": ["acorn@8.18.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ=="],
 

@@ -1,7 +1,7 @@
 /**
- * Precaching service worker shared by every Workbench app.
+ * Precaching service worker shared by every Tools app.
  *
- * The `@workbench/ui/vite` plugin prepends two constants when it emits this file into a build:
+ * The `@tools/ui/vite` plugin prepends two constants when it emits this file into a build:
  * `VERSION`, a hash of the build, and `PRECACHE`, every file the build produced (relative to the
  * worker). A new deploy therefore ships a byte-different worker, the browser installs it, and it
  * drops the previous build's cache — so hashed assets from old deploys do not pile up forever.
@@ -11,7 +11,7 @@
  */
 /* global VERSION, PRECACHE */
 
-const PREFIX = `workbench:${self.registration.scope}:`;
+const PREFIX = `tools:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const SHELL = new URL("./", self.registration.scope).href;
 const OWNED = new Set([SHELL, ...PRECACHE.map((p) => new URL(p, self.registration.scope).href)]);

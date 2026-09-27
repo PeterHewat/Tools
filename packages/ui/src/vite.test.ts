@@ -1,18 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { findApp } from "@workbench/catalog";
-import { SITE, appBase } from "@workbench/catalog/site";
+import { findApp } from "@tools/catalog";
+import { SITE, appBase } from "@tools/catalog/site";
 import { THEME_BOOT_SCRIPT, THEME_KEY } from "./theme.js";
-import { cfBeaconTag, headTags, manifestFor, workbenchApp } from "./vite.js";
+import { cfBeaconTag, headTags, manifestFor, toolsApp } from "./vite.js";
 
 const svg = findApp("svg")!;
 
-describe("workbenchApp", () => {
+describe("toolsApp", () => {
   test("refuses an app the catalog does not list", () => {
-    expect(() => workbenchApp("not-an-app")).toThrow(/not in packages\/catalog/);
+    expect(() => toolsApp("not-an-app")).toThrow(/not in packages\/catalog/);
   });
 
   test("builds into the app's folder under the site", () => {
-    const config = workbenchApp("svg");
+    const config = toolsApp("svg");
     expect(config.build?.outDir).toBe("../../dist/svg");
     expect(config.base).toEndWith("/svg/");
   });
@@ -24,7 +24,7 @@ describe("page head", () => {
 
   test("an app's title and description come from the catalog", () => {
     const tags = headTags(svg);
-    expect(tags.find((t) => t.tag === "title")?.children).toBe("SVG — Workbench");
+    expect(tags.find((t) => t.tag === "title")?.children).toBe("SVG — Tools");
     expect(attr(tags, "name", "description")?.attrs?.content).toBe(svg.description!);
     expect(attr(tags, "rel", "manifest")).toBeDefined();
   });
@@ -38,7 +38,7 @@ describe("page head", () => {
   });
 
   test("an unknown path is a 404, not the app served somewhere it does not live", () => {
-    expect(workbenchApp("svg").appType).toBe("mpa");
+    expect(toolsApp("svg").appType).toBe("mpa");
   });
 
   test("the index page has no manifest", () => {
@@ -51,7 +51,7 @@ describe("page head", () => {
     const hasBeacon = (tags: ReturnType<typeof headTags>) =>
       tags.some((t) => String(t.attrs?.src ?? "").includes("cloudflareinsights"));
     expect(hasBeacon(headTags(svg, env))).toBe(false);
-    const withToken = { WORKBENCH_CF_BEACON_TOKEN: "test-token" };
+    const withToken = { TOOLS_CF_BEACON_TOKEN: "test-token" };
     const beacon = cfBeaconTag(withToken)!;
     expect(String(beacon.attrs?.src)).toContain("cloudflareinsights");
     expect(beacon.attrs?.["data-cf-beacon"]).toBe(JSON.stringify({ token: "test-token" }));

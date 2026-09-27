@@ -85,7 +85,7 @@ export function rowDotHtml(
         ? "icon-check-on"
         : "icon-check-off";
   return `<button type="button" class="btn-visibility${on ? "" : " is-off"}"${extra} title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}" role="${kind === "radio" ? "radio" : "checkbox"}" aria-checked="${on}">
-      <svg class="ui-icon" aria-hidden="true"><use href="#${icon}" /></svg>
+      <svg class="glyph" aria-hidden="true"><use href="#${icon}" /></svg>
     </button>`;
 }
 
@@ -99,14 +99,14 @@ export function eyeHtml(
   extra = ' data-action="toggle-eye"'
 ): string {
   return `<button type="button" class="btn-visibility btn-eye${visible ? "" : " is-off"}"${extra} title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}" aria-pressed="${!visible}">
-      <svg class="ui-icon" aria-hidden="true"><use href="#${visible ? "icon-eye" : "icon-eye-off"}" /></svg>
+      <svg class="glyph" aria-hidden="true"><use href="#${visible ? "icon-eye" : "icon-eye-off"}" /></svg>
     </button>`;
 }
 
 /** The padlock: whether a thing can be reached on the canvas. Faint while it can. */
 function lockHtml(locked: boolean, title: string): string {
   return `<button type="button" class="btn-visibility btn-lock${locked ? "" : " is-off"}" data-action="toggle-lock" title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}" aria-pressed="${locked}">
-      <svg class="ui-icon" aria-hidden="true"><use href="#${locked ? "icon-lock" : "icon-unlock"}" /></svg>
+      <svg class="glyph" aria-hidden="true"><use href="#${locked ? "icon-lock" : "icon-unlock"}" /></svg>
     </button>`;
 }
 
@@ -123,7 +123,7 @@ export function accHeaderHtml(o: AccHeaderOptions): string {
       <button type="button" class="acc-icon-btn acc-move" data-action="move-up" title="Bring forward (Shift: to the front)" aria-label="Bring forward"${(o.canUp ?? o.index > 0) ? "" : " disabled"}>▲</button>
       <button type="button" class="acc-icon-btn acc-move" data-action="move-down" title="Send backward (Shift: to the back)" aria-label="Send backward"${(o.canDown ?? o.index < o.count - 1) ? "" : " disabled"}>▼</button>
       <button type="button" class="acc-icon-btn acc-trash" data-action="delete" title="Delete" aria-label="Delete">
-        <svg class="ui-icon" aria-hidden="true"><use href="#icon-trash" /></svg>
+        <svg class="glyph" aria-hidden="true"><use href="#icon-trash" /></svg>
       </button>
     </div>`;
 }

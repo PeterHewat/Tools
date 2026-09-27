@@ -282,13 +282,13 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
 
 ## 11. Layout, touch and help
 
-- **Wide screens:** one bar across the top — the Workbench button and the name, then Document,
+- **Wide screens:** one bar across the top — the Tools button and the name, then Document,
   undo/redo and the tools on the left; fit, zoom and Final SVG on the right beside the theme switch
   and Help. The cursor position floats over the canvas at the top right. Rulers are always on,
   starting right of the Document panel.
 - **Phones** (below 720px, or 800px on a touch screen): both bars float over the canvas; the tools
   and snap switches move to a bottom bar under the thumb. An open panel covers the canvas, so
-  opening one closes the other, and the rulers and cursor readout are hidden. The Workbench button
+  opening one closes the other, and the rulers and cursor readout are hidden. The Tools button
   reduces to its "‹" and the name is left out; the theme switch moves into the Help panel.
 - **Zoom** is one control: a button reading the level that opens a list - fit the artboard, fit
   the selection, then presets (25%–800%); wheel and pinch go from 10% to 1600%.

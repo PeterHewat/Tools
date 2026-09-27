@@ -1,5 +1,5 @@
 {
-  "name": "@workbench/svg",
+  "name": "@tools/svg",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.14.5",
-    "@workbench/ui": "workspace:*",
+    "@tools/ui": "workspace:*",
     "typescript": "~6.0.3",
     "vite": "^8.3.0"
   }

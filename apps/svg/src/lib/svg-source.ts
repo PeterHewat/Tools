@@ -12,7 +12,7 @@ import {
 import { escapeXml } from "./utils.js";
 import { groupsOf, selectedGroups } from "./groups.js";
 import { type EditorState, type SceneElement } from "./types.js";
-import { byId } from "@workbench/ui";
+import { byId } from "@tools/ui";
 import { noteChange } from "./documents.js";
 
 /* ---------- SVG source: editable, highlighted, synced with the selection ---------- */

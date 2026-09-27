@@ -30,7 +30,7 @@ import {
   reorder,
   towardFront,
 } from "./accordion.js";
-import { byId } from "@workbench/ui";
+import { byId } from "@tools/ui";
 
 const primitiveListEl = byId("primitive-list");
 

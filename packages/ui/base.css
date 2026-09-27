@@ -1,7 +1,7 @@
 /*
- * The look every Workbench page shares: colour tokens, a reset, and the handful of controls a
- * small tool needs. An app imports it once (`import "@workbench/ui/base.css"`) and adds its own
- * layout on top. Classes are prefixed `wb-` so they never collide with an app's own.
+ * The look every Tools page shares: colour tokens, a reset, and the handful of controls a
+ * small tool needs. An app imports it once (`import "@tools/ui/base.css"`) and adds its own
+ * layout on top. Classes are prefixed `ui-` so they never collide with an app's own.
  *
  * `--bg` must match SITE.themeColor in packages/catalog/src/site.ts (the dark one: the head
  * announces it before any script runs, and theme.ts replaces it once the page knows better).
@@ -93,7 +93,7 @@ a {
 
 /* ---------- Page header: back to the index, then the app's name ---------- */
 
-.wb-header {
+.ui-header {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -103,19 +103,19 @@ a {
 }
 
 /* The theme switch, when a page puts it in the header, takes the far end. */
-.wb-header .wb-theme-toggle {
+.ui-header .ui-theme-toggle {
   margin-left: auto;
 }
 
-.wb-header h1 {
+.ui-header h1 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
 }
 
 /* Back to the index: a regular button, its "‹" drawn in CSS so every page's markup is just
-   "Workbench". */
-.wb-home {
+   "Tools". */
+.ui-home {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -128,7 +128,7 @@ a {
   text-decoration: none;
 }
 
-.wb-home::before {
+.ui-home::before {
   content: "";
   width: 7px;
   height: 7px;
@@ -138,26 +138,26 @@ a {
   transform: rotate(45deg);
 }
 
-.wb-home:hover,
-.wb-home:focus-visible {
+.ui-home:hover,
+.ui-home:focus-visible {
   border-color: var(--accent);
 }
 
-/* On a narrow screen "‹ Workbench  Name" reduces to "‹"; the words stay for screen readers. */
+/* On a narrow screen "‹ Tools  Name" reduces to "‹"; the words stay for screen readers. */
 @media (max-width: 720px) {
-  .wb-home {
+  .ui-home {
     justify-content: center;
     min-width: 36px;
     min-height: 34px;
     padding: 0;
   }
 
-  .wb-home::before {
+  .ui-home::before {
     margin-left: 4px;
   }
 
-  .wb-home-label,
-  .wb-header h1 {
+  .ui-home-label,
+  .ui-header h1 {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -167,7 +167,7 @@ a {
   }
 }
 
-.wb-main {
+.ui-main {
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
@@ -175,7 +175,7 @@ a {
 
 /* ---------- Controls ---------- */
 
-.wb-btn {
+.ui-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -189,28 +189,28 @@ a {
   cursor: pointer;
 }
 
-.wb-btn:hover:not(:disabled) {
+.ui-btn:hover:not(:disabled) {
   border-color: var(--accent);
 }
 
-.wb-btn:disabled {
+.ui-btn:disabled {
   opacity: 0.45;
   cursor: default;
 }
 
-.wb-btn--primary {
+.ui-btn--primary {
   background: var(--accent-dim);
   border-color: var(--accent);
 }
 
-.wb-btn.copied {
+.ui-btn.copied {
   border-color: var(--ok);
   color: var(--ok);
 }
 
-.wb-input,
-.wb-select,
-.wb-code {
+.ui-input,
+.ui-select,
+.ui-code {
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -219,14 +219,14 @@ a {
   font: inherit;
 }
 
-.wb-input:focus,
-.wb-select:focus,
-.wb-code:focus {
+.ui-input:focus,
+.ui-select:focus,
+.ui-code:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-.wb-code {
+.ui-code {
   display: block;
   width: 100%;
   min-height: 12rem;
@@ -238,19 +238,19 @@ a {
   white-space: pre;
 }
 
-pre.wb-code {
+pre.ui-code {
   margin: 0;
   overflow: auto;
 }
 
-.wb-code.dragging {
+.ui-code.dragging {
   border-style: dashed;
   border-color: var(--accent);
 }
 
 /* The light/dark switch (see theme.ts): an icon button that shows the theme it switches to,
    drawn like every other icon button beside it. */
-.wb-theme-toggle {
+.ui-theme-toggle {
   display: inline-grid;
   place-items: center;
   width: 34px;
@@ -263,52 +263,52 @@ pre.wb-code {
   cursor: pointer;
 }
 
-.wb-theme-toggle:hover,
-.wb-theme-toggle:focus-visible {
+.ui-theme-toggle:hover,
+.ui-theme-toggle:focus-visible {
   border-color: var(--accent);
 }
 
-.wb-theme-icon {
+.ui-theme-icon {
   width: 22px;
   height: 22px;
 }
 
 /* ---------- Layout pieces ---------- */
 
-.wb-panel {
+.ui-panel {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
   padding: 12px;
 }
 
-.wb-row {
+.ui-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-.wb-label {
+.ui-label {
   color: var(--muted);
   font-size: 0.85rem;
 }
 
-.wb-status {
+.ui-status {
   margin: 8px 0 0;
   font-size: 0.88rem;
   color: var(--muted);
 }
 
-.wb-status--error {
+.ui-status--error {
   color: var(--danger);
 }
 
-.wb-status--ok {
+.ui-status--ok {
   color: var(--ok);
 }
 
-.wb-mono {
+.ui-mono {
   font-family: var(--mono);
 }
 

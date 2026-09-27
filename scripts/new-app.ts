@@ -47,7 +47,7 @@ const entry = `
 
 const files: Record<string, string> = {
   "package.json": `{
-  "name": "@workbench/${slug}",
+  "name": "@tools/${slug}",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -59,8 +59,8 @@ const files: Record<string, string> = {
     "test": "bun test"
   },
   "devDependencies": {
-    "@workbench/catalog": "workspace:*",
-    "@workbench/ui": "workspace:*",
+    "@tools/catalog": "workspace:*",
+    "@tools/ui": "workspace:*",
     "typescript": "~6.0.3",
     "vite": "^8.3.0"
   }
@@ -75,9 +75,9 @@ const files: Record<string, string> = {
 }
 `,
   "vite.config.ts": `import { defineConfig } from "vite";
-import { workbenchApp } from "@workbench/ui/vite";
+import { toolsApp } from "@tools/ui/vite";
 
-export default defineConfig(workbenchApp("${slug}"));
+export default defineConfig(toolsApp("${slug}"));
 `,
   // Title, description, colour scheme, icon and manifest are added at build time.
   "index.html": `<!doctype html>
@@ -87,18 +87,18 @@ export default defineConfig(workbenchApp("${slug}"));
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
   <body>
-    <header class="wb-header">
-      <a class="wb-home" href="../" title="All tools"><span class="wb-home-label">Workbench</span></a>
+    <header class="ui-header">
+      <a class="ui-home" href="../" title="All tools"><span class="ui-home-label">Tools</span></a>
       <h1>${title}</h1>
-      <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
+      <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
     </header>
-    <main class="wb-main" id="app"></main>
+    <main class="ui-main" id="app"></main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
 `,
-  "src/main.ts": `import { bindThemeToggle, byId, registerServiceWorker } from "@workbench/ui";
-import "@workbench/ui/base.css";
+  "src/main.ts": `import { bindThemeToggle, byId, registerServiceWorker } from "@tools/ui";
+import "@tools/ui/base.css";
 import "./styles.css";
 
 bindThemeToggle(byId("theme-toggle"));
@@ -109,13 +109,13 @@ registerServiceWorker();
   // `bun test` fails when it finds no tests, and `bun run verify` runs it in every app: a first
   // test keeps a new app passing until it has tests of its own.
   "src/catalog.test.ts": `import { expect, test } from "bun:test";
-import { findApp } from "@workbench/catalog";
+import { findApp } from "@tools/catalog";
 
 test("is in the catalog", () => {
   expect(findApp("${slug}")).toBeDefined();
 });
 `,
-  "src/styles.css": `/* ${title}'s own layout. Tokens and controls come from @workbench/ui/base.css. */
+  "src/styles.css": `/* ${title}'s own layout. Tokens and controls come from @tools/ui/base.css. */
 `,
   "public/icon.svg": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#5b8def" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/></svg>
 `,

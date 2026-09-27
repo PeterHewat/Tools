@@ -38,7 +38,7 @@ import { initPngExport } from "./png-export.js";
 import { forgetTurns } from "./turn-tally.js";
 import { fileBase } from "./document-files.js";
 import { canJoin } from "./model.js";
-import { THEME_EVENT, bindThemeToggle, byId, copyText, downloadText } from "@workbench/ui";
+import { THEME_EVENT, bindThemeToggle, byId, copyText, downloadText } from "@tools/ui";
 import { bindTouch, setTouchFinishPathHandler } from "./touch.js";
 import {
   openColorPicker,
@@ -136,7 +136,7 @@ window.addEventListener("resize", () => renderRulers(getState()));
 window.addEventListener(THEME_EVENT, () => renderRulers(getState()));
 document
   .querySelectorAll<HTMLElement>("[data-theme-toggle]")
-  .forEach((btn) => bindThemeToggle(btn, "ui-icon"));
+  .forEach((btn) => bindThemeToggle(btn, "glyph"));
 
 let lastSavedViewport: EditorState["viewport"] | null = null;
 let lastSelection = "";
