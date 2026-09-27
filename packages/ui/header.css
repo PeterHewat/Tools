@@ -9,14 +9,26 @@
  * where an app might not define one.
  */
 
+/* The measures every header shares, so the apps' bars match: an app sizes its own buttons from
+   these rather than from its own. In px, not rem, because the apps' root font sizes differ. */
 .ui-header {
+  /* Every control in the bar is this tall, and an icon button this wide. */
+  --ui-control: 34px;
+  /* The picture in an icon button. */
+  --ui-glyph: 22px;
+  /* Between the buttons of one group; groups are the header's own gap apart. */
+  --ui-group-gap: 4px;
+  --ui-control-font: 13px;
+
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  min-height: 48px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
+  font-size: 14px;
 }
 
 /* Back to the index: a regular button, its "‹" drawn in CSS so the markup is just "Tools". */
@@ -25,13 +37,13 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
-  padding: 6px 12px 6px 10px;
+  min-height: var(--ui-control);
+  padding: 0 12px 0 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius, 6px);
   background: var(--panel-2);
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: var(--ui-control-font);
   line-height: 1.2;
   text-decoration: none;
 }
@@ -53,7 +65,7 @@
 
 .ui-app-name {
   margin: 0 4px 0 0;
-  font-size: 1rem;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -65,7 +77,7 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--muted, currentColor);
-  font-size: 0.68rem;
+  font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;

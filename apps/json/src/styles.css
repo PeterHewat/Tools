@@ -25,7 +25,24 @@ body {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--ui-group-gap);
+}
+
+/* Sized by the shared header (header.css), so the bar matches the SVG app's. */
+.json-header .ui-btn {
+  min-height: var(--ui-control);
+  padding-block: 0;
+  font-size: var(--ui-control-font);
+}
+
+.json-header .icon-btn {
+  width: var(--ui-control);
+  height: var(--ui-control);
+}
+
+.json-header .icon-btn svg {
+  width: var(--ui-glyph);
+  height: var(--ui-glyph);
 }
 
 /* Text buttons a little tighter than elsewhere, so the whole bar fits one row on a laptop. */
@@ -36,12 +53,7 @@ body {
 /* Two buttons that always sit together (Expand all, Collapse all). */
 .pair {
   display: inline-flex;
-  gap: 6px;
-}
-
-.group + .group {
-  padding-left: 8px;
-  border-left: 1px solid var(--border);
+  gap: var(--ui-group-gap);
 }
 
 /* A bar between the header, the editor and the window's edge. */
