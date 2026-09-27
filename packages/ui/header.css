@@ -1,0 +1,134 @@
+/*
+ * The start of every app's header: back to the index, the app's name, and its status while it
+ * is not stable. The markup is written by the build from the catalog, into the page's
+ * `<header data-tools-header>` (see `withHeaderStart` in src/vite.ts); the app brings only its
+ * own controls after it.
+ *
+ * base.css imports this. An app with its own tokens and controls (the SVG editor) imports it on
+ * its own; it needs --border, --panel, --panel-2, --text, --accent and --radius, and falls back
+ * where an app might not define one.
+ */
+
+/* Panels and menus that open over the work (Help, Settings, menus): frosted, but lightly, so
+   what lies under them still shows through - even small code text, which a heavier blur wipes
+   out entirely. An app whose work is large shapes rather than text may frost more heavily. */
+:root {
+  --ui-frost-bg: color-mix(in srgb, var(--panel) 64%, transparent);
+  --ui-frost-filter: blur(3px) saturate(140%);
+}
+
+/* The measures every header shares, so the apps' bars match: an app sizes its own buttons from
+   these rather than from its own. In px, not rem, because the apps' root font sizes differ. */
+.ui-header {
+  /* Every control in the bar is this tall, and an icon button this wide. */
+  --ui-control: 34px;
+  /* The picture in an icon button. */
+  --ui-glyph: 22px;
+  /* Between the buttons of one group; groups are the header's own gap apart. */
+  --ui-group-gap: 4px;
+  --ui-control-font: 13px;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 14px;
+}
+
+/* Back to the index: a regular button, its "‹" drawn in CSS so the markup is just "Tools". */
+.ui-home {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--ui-control);
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 6px);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: var(--ui-control-font);
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.ui-home::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: 3px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.ui-home:hover,
+.ui-home:focus-visible {
+  border-color: var(--accent);
+}
+
+.ui-app-name {
+  margin: 0 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The same badge as on the app's index card. */
+.ui-app-status {
+  margin: 0 4px 0 -6px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted, currentColor);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ui-app-status--beta {
+  color: var(--warn, #e0b050);
+  border-color: color-mix(in srgb, var(--warn, #e0b050) 40%, transparent);
+}
+
+.ui-app-status--experiment {
+  color: var(--violet, #c98fe0);
+  border-color: color-mix(in srgb, var(--violet, #c98fe0) 40%, transparent);
+}
+
+/* What sits at the far end - the theme switch, Help - kept together, and wrapping together. */
+.ui-header-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* On a narrow screen "‹ Tools  Name" reduces to "‹"; the words stay for screen readers. */
+@media (max-width: 720px) {
+  .ui-home {
+    justify-content: center;
+    min-width: 36px;
+    padding: 0;
+  }
+
+  .ui-home::before {
+    margin-left: 4px;
+  }
+
+  .ui-home-label,
+  .ui-app-name,
+  .ui-app-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

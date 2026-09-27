@@ -13,15 +13,16 @@
 
 - **Shape:** Bun workspaces. Apps in `apps/`, shared code in `packages/`, repo scripts in `scripts/`.
 - **Apps are independent and dependency-free at runtime.** Vite is a build tool, not a framework: an app compiles to plain static files that work off any file server. Do not add a runtime framework (React, Svelte, …) to an app. That rule is what keeps these tools working years from now.
-- **Catalog:** `packages/catalog/src/index.ts` is the single source of truth for which apps exist. Adding an app means one entry there plus one folder under `apps/`. The index page, the build and the deploy all read it — never hand-maintain a second list. An entry with `art: true` ships `apps/<slug>/public/art.svg` (512 × 320, translucent or no background so it suits both themes), shown across the top of its index card.
+- **Catalog:** `packages/catalog/src/index.ts` is the single source of truth for which apps exist. Adding an app means one entry there plus one folder under `apps/`. The index page, the build and the deploy all read it — never hand-maintain a second list. An entry with `art: true` ships `apps/<slug>/public/art.svg` (320 × 320, translucent or no background so it suits both themes), shown across the top of its index card.
 - **Deploy path:** `packages/catalog/src/site.ts` decides it, from `TOOLS_BASE`. GitHub Pages serves a project site from `/<repo>/`, so apps build with `base: /Tools/<slug>/`. Moving to a custom domain is a one-line change there, not a grep.
 - **Package manager:** Bun. Do not add an npm or pnpm lockfile.
 - **TypeScript:** strict, `verbatimModuleSyntax`, ESM with `.js` import specifiers. `noUncheckedIndexedAccess` is deliberately **off**: the geometry code is full of indexed loops where it buys assertions rather than safety.
 - **Names:** kebab-case files; camelCase functions; PascalCase types. App slugs are lowercase and dash-separated, and match the folder name.
 - **New app:** `bun run new-app <slug> "Display Name"` — it also adds an unlisted catalog entry to fill in.
-- **App wiring:** an app's `vite.config.ts` is `defineConfig(toolsApp("<slug>"))` from `@tools/ui/vite`. It sets the base path and output folder, and injects `<title>`, description, icon and manifest from the catalog — so an app's `index.html` must not set those itself (the build fails if it does). Each app keeps its own `public/icon.svg`.
+- **App wiring:** an app's `vite.config.ts` is `defineConfig(toolsApp("<slug>"))` from `@tools/ui/vite`, used to build it; the site's one dev server serves it (see [Running it](#running-it)). It sets the base path and output folder, and injects `<title>`, description, icon and manifest from the catalog — so an app's `index.html` must not set those itself (the build fails if it does). Each app keeps its own `public/icon.svg`.
+- **Header:** every app's page has one `<header data-tools-header>` holding only its own controls. The build writes its start from the catalog — "‹ Tools", the app's name and, unless it is stable, its status badge — styled by `@tools/ui/header.css` (base.css imports it). Put the far-end controls (theme switch, Help) in `.ui-header-end`. The build fails if the marker is missing or the page writes its own home link or name.
 - **Light / dark:** every page follows the browser until someone presses a theme switch; from then on the choice (`tools.theme` in localStorage, shared by the whole site) is light or dark, never "system" again. The Vite plugin inlines a script that applies it before first paint. Colours are CSS custom properties with a dark base and a light override keyed on `prefers-color-scheme` and `<html data-theme>` (see `packages/ui/base.css`); an app adds a button and calls `bindThemeToggle(button)` from `@tools/ui`, and repaints anything drawn outside CSS (a canvas) on `THEME_EVENT`.
-- **Offline:** apps call `registerServiceWorker()` from `@tools/ui`. The same plugin emits `packages/ui/sw.js` into the build with a version hash and the list of files to precache, so every deploy replaces the previous cache. The worker is not registered under the dev server.
+- **Install and offline:** the site installs as one app — the index, with every tool inside its scope, so moving between tools never leaves the installed window. Every page links the one manifest at the site root (emitted by the index build; each listed app is a shortcut in it). Pages call `registerServiceWorker()` from `@tools/ui`, which registers the one worker at the site root; `scripts/build-site.ts` writes it last (`packages/ui/src/site-worker.ts` + `packages/ui/sw.js`) with a version hash and every file of every app to precache, so one visit makes all tools work offline and every deploy replaces the previous cache. Each app folder keeps a `sw.js` that only unregisters itself, for browsers that installed the per-app workers this replaced. Nothing is registered under the dev server.
 
 ## Git
 
@@ -67,7 +68,7 @@ Pass explicit paths for the files you changed, not a blind repo-wide format.
 
 ## Running it
 
-Do not start `bun run dev <slug>` — it is probably already running. Use `bun run build` to validate.
+One dev server serves the whole site as deployed: `bun run dev` (port 5170; `bun run dev <slug>` also opens that app). The index's `vite.config.ts` uses `toolsSite()` from `@tools/ui/vite` for it; builds stay one per app. Do not start it — it is probably already running. Use `bun run build` to validate.
 To preview the built site locally, build with the base at the root:
 
 ```bash

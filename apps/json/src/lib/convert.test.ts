@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { parse, type JsonNode } from "./ast.js";
-import { toCsv, toJsonSchema, toTypeScript, toYaml } from "./convert.js";
+import {
+  exactCandidates,
+  MAX_EXACT,
+  toCsv,
+  toJsonSchema,
+  toTypeScript,
+  toYaml,
+} from "./convert.js";
+import { SAMPLE } from "./sample.js";
 
 function root(text: string): JsonNode {
   const r = parse(text);
@@ -133,5 +141,32 @@ describe("toJsonSchema", () => {
       type: ["string", "null"],
     });
     expect(JSON.parse(toJsonSchema(root('[1, {"a": 1}]'))).items.anyOf).toHaveLength(2);
+  });
+});
+
+describe("exact values", () => {
+  test("places with a handful of strings are offered, in document order", () => {
+    expect(exactCandidates(root(SAMPLE))).toEqual([
+      { place: "name", values: ["Tools"] },
+      { place: "tags[]", values: ["json", "svg"] },
+      { place: "apps[].id", values: ["svg", "json"] },
+    ]);
+    const many = Array.from({ length: MAX_EXACT + 1 }, (_, k) => `"s${k}"`).join(",");
+    expect(exactCandidates(root(`[${many}]`))).toEqual([]);
+  });
+
+  test("Types lists a chosen place's strings instead of string", () => {
+    const text = toTypeScript(root(SAMPLE), { exact: new Set(["tags[]", "apps[].id"]) });
+    expect(text).toContain('  tags: ("json" | "svg")[];');
+    expect(text).toContain('  id: "svg" | "json";');
+    expect(text).toContain("  name: string;");
+  });
+
+  test("Schema makes a chosen place an enum, with null in it when null was seen", () => {
+    const exact = { exact: new Set(["[].a"]) };
+    const schema = JSON.parse(toJsonSchema(root('[{"a": "x"}, {"a": null}]'), exact));
+    expect(schema.items.properties.a).toEqual({ enum: ["x", null] });
+    const mixed = JSON.parse(toJsonSchema(root('[{"a": "x"}, {"a": 1}]'), exact));
+    expect(mixed.items.properties.a).toEqual({ anyOf: [{ enum: ["x"] }, { type: "integer" }] });
   });
 });

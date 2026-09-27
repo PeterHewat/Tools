@@ -1,8 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { findApp } from "@tools/catalog";
-import { SITE, appBase } from "@tools/catalog/site";
+import { SITE, appBase, siteBase } from "@tools/catalog/site";
 import { THEME_BOOT_SCRIPT, THEME_KEY } from "./theme.js";
-import { cfBeaconTag, headTags, manifestFor, toolsApp } from "./vite.js";
+import {
+  cfBeaconTag,
+  headTags,
+  headerStartHtml,
+  manifestFor,
+  RETIRED_WORKER,
+  toolsApp,
+  toolsHome,
+  toolsSite,
+  withHeaderStart,
+} from "./vite.js";
 
 const svg = findApp("svg")!;
 
@@ -29,20 +39,18 @@ describe("page head", () => {
     expect(attr(tags, "rel", "manifest")).toBeDefined();
   });
 
-  test("the icon and manifest are addressed from the app's base, not from the page", () => {
-    const tags = headTags(svg);
-    expect(attr(tags, "rel", "icon")?.attrs?.href).toBe(`${appBase("svg")}icon.svg`);
-    expect(attr(tags, "rel", "manifest")?.attrs?.href).toBe(
-      `${appBase("svg")}manifest.webmanifest`
-    );
+  test("the icon is the app's own, addressed from its base rather than from the page", () => {
+    expect(attr(headTags(svg), "rel", "icon")?.attrs?.href).toBe(`${appBase("svg")}icon.svg`);
+  });
+
+  test("every page, the index and each app, names the site's one manifest", () => {
+    for (const tags of [headTags(svg), headTags(null)]) {
+      expect(attr(tags, "rel", "manifest")?.attrs?.href).toBe(`${siteBase()}manifest.webmanifest`);
+    }
   });
 
   test("an unknown path is a 404, not the app served somewhere it does not live", () => {
     expect(toolsApp("svg").appType).toBe("mpa");
-  });
-
-  test("the index page has no manifest", () => {
-    expect(attr(headTags(null), "rel", "manifest")).toBeUndefined();
   });
 
   test("the analytics beacon is omitted unless a token is set at build time", () => {
@@ -71,12 +79,73 @@ describe("page head", () => {
   });
 });
 
+describe("app header", () => {
+  const json = findApp("json")!;
+  const page = (header: string) => `<body>${header}<button>Mine</button></header></body>`;
+
+  test("starts with the way back, then the app's name from the catalog", () => {
+    const html = withHeaderStart(page('<header class="ui-header" data-tools-header>'), svg);
+    expect(html).toContain(
+      '<header class="ui-header" data-tools-header><a class="ui-home" href="../"'
+    );
+    expect(html).toContain('<h1 class="ui-app-name">SVG</h1><button>Mine</button>');
+  });
+
+  test("a stable app has no badge; one that is not says what it is", () => {
+    expect(headerStartHtml({ ...svg, status: "stable" })).not.toContain("ui-app-status");
+    expect(headerStartHtml({ ...json, status: "beta" })).toContain(
+      '<span class="ui-app-status ui-app-status--beta">beta</span>'
+    );
+  });
+
+  test("the marker is found among other attributes", () => {
+    const html = withHeaderStart(page('<header class="x" data-tools-header role="toolbar">'), svg);
+    expect(html).toContain('role="toolbar"><a class="ui-home"');
+  });
+
+  test("a page without the marker, or with its own home link, fails the build", () => {
+    expect(() => withHeaderStart(page("<header>"), svg)).toThrow(/data-tools-header/);
+    expect(() =>
+      withHeaderStart(page('<header data-tools-header><a class="ui-home">'), svg)
+    ).toThrow(/must not write its own/);
+  });
+
+  test("markup in a name cannot break out", () => {
+    expect(headerStartHtml({ ...svg, name: "<b>" })).toContain("&lt;b&gt;");
+  });
+});
+
 describe("manifest", () => {
-  test("names the app and stays inside its folder", () => {
-    const m = manifestFor(svg);
-    expect(m.name).toBe("SVG");
+  test("installs the site: it opens on the index, and every app is inside its scope", () => {
+    const m = manifestFor([svg]);
+    expect(m.name).toBe(SITE.name);
     expect(m.start_url).toBe(".");
     expect(m.scope).toBe(".");
+    expect(m.display).toBe("standalone");
+  });
+
+  test("each app is a shortcut to its own folder, with its own icon", () => {
+    expect(manifestFor([svg]).shortcuts).toEqual([
+      {
+        name: "SVG",
+        description: svg.blurb,
+        url: "svg/",
+        icons: [{ src: "svg/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+      },
+    ]);
+  });
+
+  test("the pages learn the site root, to register its worker", () => {
+    for (const config of [toolsApp("svg"), toolsHome()]) {
+      expect(config.define?.["import.meta.env.TOOLS_SITE_BASE"]).toBe(JSON.stringify(siteBase()));
+    }
+  });
+});
+
+describe("retired worker", () => {
+  test("an app folder's old worker only removes itself", () => {
+    expect(RETIRED_WORKER).toContain("self.registration.unregister()");
+    expect(RETIRED_WORKER).not.toContain("fetch");
   });
 });
 
@@ -99,5 +168,15 @@ describe("base.css", () => {
     const light = block(':root[data-theme="light"]');
     expect(light.length).toBeGreaterThan(5);
     expect(block(':root:not([data-theme="dark"])')).toEqual(light);
+  });
+});
+
+describe("toolsSite", () => {
+  test("serves every app from apps/, at the site's base, on one port", () => {
+    const config = toolsSite();
+    expect(config.root?.replace(/\\/g, "/")).toEndWith("/apps");
+    expect(config.base).toBe(siteBase());
+    expect(config.publicDir).toBe(false);
+    expect(config.server?.port).toBe(5170);
   });
 });

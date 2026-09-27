@@ -6,10 +6,10 @@ send anonymous page-view analytics to Cloudflare when you are online.
 
 **[peterhewat.github.io/Tools](https://peterhewat.github.io/Tools/)**
 
-| Tool                 | What it does                                                                   |
-| -------------------- | ------------------------------------------------------------------------------ |
-| [SVG](./apps/svg/)   | Trace reference images and export clean, pure SVG.                             |
-| [JSON](./apps/json/) | Format, minify and validate JSON, with errors pinned to their line and column. |
+| Tool                 | What it does                                                                                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [SVG](./apps/svg/)   | Trace images with a Bézier pen and shapes; combine, align, group and fill with gradients. A searchable library of drawings, exported as clean SVG or PNG. |
+| [JSON](./apps/json/) | Format, minify and validate JSON, and fix almost-JSON. Explore it as a tree, or convert it to YAML, CSV, TypeScript types or a JSON Schema.               |
 
 ## Running it
 
@@ -17,13 +17,12 @@ Requires [Bun](https://bun.sh).
 
 ```bash
 bun install
-bun run dev svg
+bun run dev
 ```
 
-`bun run dev <slug>` serves one app with hot reload; `bun run dev home` serves the index page.
-Each app is its own Vite root on its own port, and the index's links point at built paths like
-`/Tools/svg/` that only resolve in a built site — use the build-and-serve below to see
-them joined up.
+`bun run dev` serves the whole site with hot reload on one port (5170), laid out as it is
+deployed: the index at `/Tools/` and each app beside it, so the links between them work.
+`bun run dev svg` does the same and opens that app.
 
 To build and preview the whole site, including the index page:
 
@@ -64,14 +63,14 @@ ES modules that will still work off any file server in ten years.
 
 ## Commands
 
-| Command              | What it does                              |
-| -------------------- | ----------------------------------------- |
-| `bun run dev <slug>` | Serve one app (or `home`) with hot reload |
-| `bun run check`      | Lint, typecheck and format check          |
-| `bun run test`       | Run the test suites                       |
-| `bun run build`      | Build the whole site into `dist/`         |
-| `bun run verify`     | `check` + `test` + `build`                |
-| `bun run new-app`    | Scaffold a new app                        |
+| Command              | What it does                         |
+| -------------------- | ------------------------------------ |
+| `bun run dev [slug]` | Serve the whole site with hot reload |
+| `bun run check`      | Lint, typecheck and format check     |
+| `bun run test`       | Run the test suites                  |
+| `bun run build`      | Build the whole site into `dist/`    |
+| `bun run verify`     | `check` + `test` + `build`           |
+| `bun run new-app`    | Scaffold a new app                   |
 
 ## Contributing
 

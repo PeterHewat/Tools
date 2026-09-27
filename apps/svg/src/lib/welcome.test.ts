@@ -7,7 +7,7 @@ describe("the welcome drawing", () => {
   const imported = importSvgFile(ART);
 
   test("imports whole, on its own artboard", () => {
-    expect(imported.artboard).toEqual({ width: 512, height: 320 });
+    expect(imported.artboard).toEqual({ width: 320, height: 320 });
     expect(imported.elements.length).toBeGreaterThan(30);
   });
 

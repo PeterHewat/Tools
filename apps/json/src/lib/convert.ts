@@ -85,12 +85,16 @@ function csvCell(node: JsonNode | undefined): string {
  */
 export function toCsv(node: JsonNode): Converted {
   if (node.kind !== "array") {
-    return {
-      ok: false,
-      message:
-        "CSV needs an array. Put the cursor in one (or select one in the tree), or open a document that is one.",
-    };
+    return { ok: false, message: "CSV needs an array: a list of objects makes a table." };
   }
+  return { ok: true, text: csvRows(node).join("\r\n") + "\r\n" };
+}
+
+/**
+ * The rows of an array's table: the column names, then one row per item. A row holds line
+ * breaks where a cell does (quoted), so it may take more than one line of text.
+ */
+export function csvRows(node: JsonNode & { kind: "array" }): string[] {
   const columns: string[] = [];
   const seen = new Set<string>();
   const add = (key: string) => {
@@ -112,7 +116,7 @@ export function toCsv(node: JsonNode): Converted {
     else byKey.set("value", item);
     rows.push(columns.map((c) => csvCell(byKey.get(c))));
   }
-  return { ok: true, text: rows.map((r) => r.join(",")).join("\r\n") + "\r\n" };
+  return rows.map((r) => r.join(","));
 }
 
 // ---------- Shapes: what TypeScript types and JSON Schema are made from ----------
@@ -121,15 +125,24 @@ type Primitive = "string" | "integer" | "number" | "boolean" | "null";
 
 /** Every value seen at one place in the document, merged: array items all land in one shape. */
 interface Shape {
+  /** Where in the document, as `apps[].id`: every item of an array is one place. */
+  place: string;
   primitives: Set<Primitive>;
+  /** The distinct strings seen here, while there are few enough to list; null past that. */
+  strings: Set<string> | null;
   object: { fields: Map<string, { shape: Shape; seen: number }>; count: number } | null;
   /** Items of every array seen here; null when only empty arrays were. */
   items: Shape | null;
   sawArray: boolean;
 }
 
-const emptyShape = (): Shape => ({
+/** Past this many distinct strings, a place's strings are data, not a set of choices. */
+export const MAX_EXACT = 8;
+
+const emptyShape = (place: string): Shape => ({
+  place,
   primitives: new Set(),
+  strings: new Set(),
   object: null,
   items: null,
   sawArray: false,
@@ -138,6 +151,12 @@ const emptyShape = (): Shape => ({
 function addTo(shape: Shape, node: JsonNode): void {
   switch (node.kind) {
     case "string":
+      shape.primitives.add("string");
+      if (shape.strings) {
+        shape.strings.add(decode(node.raw));
+        if (shape.strings.size > MAX_EXACT) shape.strings = null;
+      }
+      return;
     case "boolean":
     case "null":
       shape.primitives.add(node.kind);
@@ -152,7 +171,10 @@ function addTo(shape: Shape, node: JsonNode): void {
       const last = new Map(node.members.map((m) => [m.key, m.value]));
       for (const [key, value] of last) {
         let field = object.fields.get(key);
-        if (!field) object.fields.set(key, (field = { shape: emptyShape(), seen: 0 }));
+        if (!field) {
+          const place = shape.place ? `${shape.place}.${key}` : key;
+          object.fields.set(key, (field = { shape: emptyShape(place), seen: 0 }));
+        }
         field.seen++;
         addTo(field.shape, value);
       }
@@ -160,15 +182,42 @@ function addTo(shape: Shape, node: JsonNode): void {
     }
     case "array":
       shape.sawArray = true;
-      for (const item of node.items) addTo((shape.items ??= emptyShape()), item);
+      for (const item of node.items) addTo((shape.items ??= emptyShape(`${shape.place}[]`)), item);
   }
 }
 
-export function shapeOf(root: JsonNode): Shape {
-  const shape = emptyShape();
+function shapeOf(root: JsonNode): Shape {
+  const shape = emptyShape("");
   addTo(shape, root);
   return shape;
 }
+
+/** A place whose strings are few: Types and Schema can list them instead of saying "string". */
+export interface ExactCandidate {
+  place: string;
+  values: string[];
+}
+
+/** The places with a handful of distinct strings, in document order. */
+export function exactCandidates(root: JsonNode): ExactCandidate[] {
+  const found: ExactCandidate[] = [];
+  const walk = (shape: Shape): void => {
+    if (shape.strings?.size) found.push({ place: shape.place, values: [...shape.strings] });
+    for (const field of shape.object?.fields.values() ?? []) walk(field.shape);
+    if (shape.items) walk(shape.items);
+  };
+  walk(shapeOf(root));
+  return found;
+}
+
+/** For Types and Schema: the places (see `exactCandidates`) whose strings are listed. */
+export interface ShapeOptions {
+  exact?: ReadonlySet<string>;
+}
+
+/** The strings to list at a place, or null to say "string". */
+const exactAt = (shape: Shape, options: ShapeOptions) =>
+  shape.strings?.size && options.exact?.has(shape.place) ? [...shape.strings] : null;
 
 // ---------- TypeScript ----------
 
@@ -188,7 +237,11 @@ function singular(hint: string): string {
 }
 
 /** Interfaces for every object shape, named after the keys they sit under. */
-export function toTypeScript(root: JsonNode, rootName = "Root"): string {
+export function toTypeScript(
+  root: JsonNode,
+  options: ShapeOptions = {},
+  rootName = "Root"
+): string {
   const names = new Set<string>();
   const queue: { name: string; object: NonNullable<Shape["object"]> }[] = [];
   const unique = (base: string) => {
@@ -201,7 +254,9 @@ export function toTypeScript(root: JsonNode, rootName = "Root"): string {
   const typeOf = (shape: Shape, hint: string): string => {
     const parts: string[] = [];
     const p = shape.primitives;
-    if (p.has("string")) parts.push("string");
+    const exact = exactAt(shape, options);
+    if (exact) parts.push(...exact.map((s) => JSON.stringify(s)));
+    else if (p.has("string")) parts.push("string");
     if (p.has("integer") || p.has("number")) parts.push("number");
     if (p.has("boolean")) parts.push("boolean");
     if (shape.object) {
@@ -239,33 +294,43 @@ export function toTypeScript(root: JsonNode, rootName = "Root"): string {
 
 type Schema = Record<string, unknown>;
 
-function schemaOf(shape: Shape): Schema {
+function schemaOf(shape: Shape, options: ShapeOptions): Schema {
   const alternatives: Schema[] = [];
+  const exact = exactAt(shape, options);
   const types = [...shape.primitives].filter(
-    (t) => !(t === "integer" && shape.primitives.has("number"))
+    (t) => !(t === "integer" && shape.primitives.has("number")) && !(exact && t === "string")
   );
+  // Listed strings are an enum; null beside them joins it rather than making an anyOf.
+  if (exact) {
+    const withNull = types.length === 1 && types[0] === "null";
+    alternatives.push({ enum: withNull ? [...exact, null] : exact });
+    if (withNull) types.length = 0;
+  }
   if (types.length) alternatives.push({ type: types.length === 1 ? types[0] : types });
   if (shape.object) {
     const properties: Record<string, Schema> = {};
     const required: string[] = [];
     for (const [key, field] of shape.object.fields) {
-      properties[key] = schemaOf(field.shape);
+      properties[key] = schemaOf(field.shape, options);
       if (field.seen === shape.object.count) required.push(key);
     }
     alternatives.push({ type: "object", properties, ...(required.length ? { required } : {}) });
   }
   if (shape.sawArray) {
-    alternatives.push({ type: "array", ...(shape.items ? { items: schemaOf(shape.items) } : {}) });
+    alternatives.push({
+      type: "array",
+      ...(shape.items ? { items: schemaOf(shape.items, options) } : {}),
+    });
   }
   if (alternatives.length === 1) return alternatives[0];
   return alternatives.length ? { anyOf: alternatives } : {};
 }
 
 /** A JSON Schema (draft 2020-12) that the document, and documents shaped like it, satisfy. */
-export function toJsonSchema(root: JsonNode): string {
+export function toJsonSchema(root: JsonNode, options: ShapeOptions = {}): string {
   const schema = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    ...schemaOf(shapeOf(root)),
+    ...schemaOf(shapeOf(root), options),
   };
   return `${JSON.stringify(schema, null, 2)}\n`;
 }

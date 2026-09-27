@@ -4,26 +4,41 @@
  *     export default toolsApp("svg");
  *
  * From the catalog it sets the base path and output folder, writes the document `<title>`,
- * description and manifest, and emits the offline service worker with the build's file list.
+ * description and a link to the site's manifest, and starts the page header (see `appHeader`).
+ *
+ * The site installs as one app, the index with every tool inside it: one manifest at the site
+ * root (emitted by the index page's build), scoped to the whole site, and one service worker
+ * there, written by the site build once every app is built (see `site-worker.ts`).
  */
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite";
-import { APPS, findApp, type ToolsApp } from "@tools/catalog";
+import { APPS, findApp, listedApps, type ToolsApp } from "@tools/catalog";
 import { SITE, appBase, siteBase } from "@tools/catalog/site";
 // By package name, not "./theme.js": Node loads this file for the Vite config, and it does not
 // map a .js specifier onto the .ts file beside it the way the bundler does.
 import { THEME_BOOT_SCRIPT } from "@tools/ui/theme";
 
-const SW_SOURCE = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "..", "sw.js"),
-  "utf8"
-);
-
 /** Served in dev instead of the real worker: it removes itself, so hot reload never sees a cache. */
 const DEV_SW = "self.registration.unregister();\n";
+
+/**
+ * Each app folder's `sw.js`. Until the site shared one worker, every app registered its own,
+ * scoped to its folder, and a browser that has one checks that URL for updates; this is what it
+ * finds. It removes itself, so the site's worker at the root takes the folder over (and clears
+ * its cache). Keep it while such browsers may still be about.
+ */
+export const RETIRED_WORKER =
+  "// Replaced by the site's worker at the root, which now answers for this folder too.\n" +
+  'self.addEventListener("install", () => self.skipWaiting());\n' +
+  'self.addEventListener("activate", (e) => e.waitUntil(self.registration.unregister()));\n';
+
+/**
+ * The site root as the pages see it, for `registerServiceWorker`: an app's own base is one
+ * folder below it.
+ */
+const siteDefine = () => ({ "import.meta.env.TOOLS_SITE_BASE": JSON.stringify(siteBase()) });
 
 const ICON = "icon.svg";
 const MANIFEST = "manifest.webmanifest";
@@ -40,7 +55,8 @@ export function toolsApp(slug: string): UserConfig {
     // Not "spa": its fallback served the app at any path under the base, where every relative
     // URL - the icon, the manifest, the welcome drawing - then resolved into the wrong folder.
     appType: "mpa",
-    plugins: [pageHead(app), manifest(app), serviceWorker()],
+    define: siteDefine(),
+    plugins: [pageHead(app), appHeader(app), workers(app)],
     build: { outDir: `../../dist/${slug}`, emptyOutDir: true, target: "es2022" },
   };
 }
@@ -50,51 +66,141 @@ export function toolsHome(): UserConfig {
   return {
     base: siteBase(),
     appType: "mpa",
-    plugins: [pageHead(null), serviceWorker(), appArtInDev()],
+    define: siteDefine(),
+    plugins: [pageHead(null), siteManifest(), workers(null)],
     // Not emptied: the site build writes the index first, then each app into its own folder.
     build: { outDir: "../../dist", emptyOutDir: false, target: "es2022" },
   };
 }
 
+const APPS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "apps");
+
 /**
- * Serves each app's card art to the index page's dev server. In a built site `<slug>/art.svg`
- * is the app's own file, in the folder beside the index; the dev server has only the index, so
- * without this every card's picture is a 404.
+ * One dev server for the whole site, laid out as it is deployed: the index at the site root and
+ * each app in its folder beside it, so links between them, the manifest and the theme all work
+ * as they do live, on one port. The index's `vite.config.ts` uses it for `vite` (serve); builds
+ * stay one per app, so each app still compiles on its own.
+ *
+ * Vite's root is `apps/`, so `<base>svg/` is `apps/svg/index.html`. What differs from the apps
+ * as they are built, this fills in: the index answers at the site root, each app's `public/`
+ * files at its own base, each page gets its app's head and header, and `BASE_URL` in an app's
+ * code is its own base rather than the site's.
  */
-function appArtInDev(): Plugin {
-  const appsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "apps");
+export function toolsSite(): UserConfig {
   return {
-    name: "tools-app-art",
+    root: APPS_DIR,
+    base: siteBase(),
+    appType: "mpa",
+    publicDir: false,
+    define: siteDefine(),
+    plugins: [sitePages(), siteManifest(), workers(null)],
+    server: { port: 5170 },
+  };
+}
+
+/** The app a file under `apps/` belongs to; null for the index page's own files. */
+function appOfFile(file: string): ToolsApp | null {
+  const rel = file.replace(/\\/g, "/").split("/apps/").at(-1) ?? "";
+  return findApp(rel.split("/")[0] ?? "") ?? null;
+}
+
+const MIME: Record<string, string> = {
+  svg: "image/svg+xml",
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+  ico: "image/x-icon",
+  json: "application/json",
+  webmanifest: "application/manifest+json",
+  js: "text/javascript; charset=utf-8",
+  css: "text/css; charset=utf-8",
+  txt: "text/plain; charset=utf-8",
+  woff2: "font/woff2",
+};
+
+function sitePages(): Plugin {
+  const base = siteBase();
+  const slugs = new Set(APPS.map((a) => a.slug));
+  return {
+    name: "tools-site-pages",
     apply: "serve",
     configureServer(server) {
-      const art = new Map(
-        APPS.filter((a) => a.art).map((a) => [
-          `${siteBase()}${a.slug}/art.svg`,
-          join(appsDir, a.slug, "public", "art.svg"),
-        ])
-      );
       server.middlewares.use((req, res, next) => {
-        const file = art.get((req.url ?? "").split("?")[0] ?? "");
-        if (!file || !existsSync(file)) return next();
-        res.setHeader("Content-Type", "image/svg+xml");
-        res.end(readFileSync(file));
+        const [path = "", query] = (req.url ?? "").split("?");
+        if (!path.startsWith(base)) return next();
+        const rest = decodeURIComponent(path.slice(base.length));
+        const [first = "", ...inside] = rest.split("/");
+        // The index is the site root, as when it is built into dist/.
+        if (rest === "" || rest === "index.html") {
+          req.url = `${base}home/index.html${query ? `?${query}` : ""}`;
+          return next();
+        }
+        // An app's folder without its slash: relative URLs in the page need the slash.
+        if (slugs.has(first) && !inside.length) {
+          res.statusCode = 301;
+          res.setHeader("Location", `${base}${first}/`);
+          return res.end();
+        }
+        // Files from an app's public/ at its base, the index's at the root; the rest is Vite's.
+        const file = slugs.has(first)
+          ? join(APPS_DIR, first, "public", ...inside)
+          : join(APPS_DIR, "home", "public", rest);
+        if (!rest.endsWith("/") && existsSync(file) && statSync(file).isFile()) {
+          res.setHeader("Content-Type", MIME[file.split(".").pop()!] ?? "application/octet-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          return res.end(readFileSync(file));
+        }
+        next();
       });
+    },
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        const app = appOfFile(ctx.filename);
+        if (/<title>|name="description"|rel="manifest"|name="color-scheme"/.test(html)) {
+          throw new Error(
+            "index.html must not set its own title, description, colour scheme or manifest"
+          );
+        }
+        // Script and style URLs from the page's own root ("/src/main.ts") are under its folder.
+        const folder = app ? app.slug : "home";
+        const own = html.replace(/(\s(?:src|href)=")\/src\//g, `$1/${folder}/src/`);
+        return { html: app ? withHeaderStart(own, app) : own, tags: headTags(app) };
+      },
+    },
+    transform(code, id) {
+      // An app's own base, as its build has it; the index's is the site's, which Vite gives.
+      const app = code.includes("import.meta.env.BASE_URL") ? appOfFile(id) : null;
+      if (!app) return null;
+      return code.replaceAll("import.meta.env.BASE_URL", JSON.stringify(appBase(app.slug)));
     },
   };
 }
 
-/** The web app manifest for one app, as served next to its page. */
-export function manifestFor(app: ToolsApp): Record<string, unknown> {
+/**
+ * The site's web app manifest, served at its root. Installed from any page, it is this one app:
+ * it opens on the index, and every tool is inside its scope, so moving between them never
+ * leaves it for the browser. Each listed tool is a shortcut (a long press on the launcher icon).
+ */
+export function manifestFor(apps: readonly ToolsApp[] = listedApps()): Record<string, unknown> {
+  const svgIcon = (src: string) => ({ src, sizes: "any", type: "image/svg+xml", purpose: "any" });
   return {
-    name: app.name,
-    short_name: app.name,
-    description: app.blurb,
+    id: ".",
+    name: SITE.name,
+    short_name: SITE.name,
+    description: SITE.description,
     start_url: ".",
     scope: ".",
     display: "standalone",
     background_color: SITE.themeColor,
     theme_color: SITE.themeColor,
-    icons: [{ src: ICON, sizes: "any", type: "image/svg+xml", purpose: "any" }],
+    icons: [svgIcon(ICON)],
+    shortcuts: apps.map((a) => ({
+      name: a.name,
+      description: a.blurb,
+      url: `${a.slug}/`,
+      icons: [svgIcon(`${a.slug}/${ICON}`)],
+    })),
   };
 }
 
@@ -137,7 +243,8 @@ export function headTags(
     // Absolute: a page reached at a deeper path must still find the files beside its index.
     { tag: "link", attrs: { rel: "icon", href: `${base}${ICON}`, type: "image/svg+xml" } },
   ];
-  if (app) tags.push({ tag: "link", attrs: { rel: "manifest", href: `${base}${MANIFEST}` } });
+  // Every page names the one manifest, so installing from any of them installs the whole site.
+  tags.push({ tag: "link", attrs: { rel: "manifest", href: `${siteBase()}${MANIFEST}` } });
   const beacon = cfBeaconTag(env);
   if (beacon) tags.push(beacon);
   return tags.map((t) => ({ ...t, injectTo: "head" }));
@@ -158,13 +265,68 @@ function pageHead(app: ToolsApp | null): Plugin {
   };
 }
 
-function manifest(app: ToolsApp): Plugin {
-  const body = `${JSON.stringify(manifestFor(app), null, 2)}\n`;
+/** The attribute that marks an app's header, where its start is written from the catalog. */
+export const HEADER_ATTR = "data-tools-header";
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * How every app's header starts: back to the index, the app's name, and its status while it is
+ * not stable. Styled by `@tools/ui/header.css`. They are direct children of the header, so an
+ * app's own layout (a phone's floating buttons, say) can place each of them.
+ */
+export function headerStartHtml(app: ToolsApp): string {
+  const status =
+    app.status === "stable"
+      ? ""
+      : `<span class="ui-app-status ui-app-status--${app.status}">${app.status}</span>`;
+  return (
+    `<a class="ui-home" href="../" title="All ${escapeHtml(SITE.name.toLowerCase())}">` +
+    `<span class="ui-home-label">${escapeHtml(SITE.name)}</span></a>` +
+    `<h1 class="ui-app-name">${escapeHtml(app.name)}</h1>` +
+    status
+  );
+}
+
+/**
+ * Writes `headerStartHtml` at the start of the page's `<header data-tools-header>`. The app's
+ * markup brings only its own controls, so the name and badge cannot disagree with the catalog,
+ * and a change to how headers start is made once, here.
+ */
+export function withHeaderStart(html: string, app: ToolsApp): string {
+  if (/class="ui-home"|class="ui-app-name"/.test(html)) {
+    throw new Error(
+      `index.html must not write its own home link or name: ${HEADER_ATTR} adds them`
+    );
+  }
+  const match = /<header\b[^>]*\sdata-tools-header(?:="")?(?=[\s>/])[^>]*>/.exec(html);
+  if (!match) throw new Error(`index.html needs a <header ${HEADER_ATTR}> for the app's header`);
+  const at = match.index + match[0].length;
+  return html.slice(0, at) + headerStartHtml(app) + html.slice(at);
+}
+
+function appHeader(app: ToolsApp): Plugin {
+  return {
+    name: "tools-app-header",
+    // Before Vite's own HTML handling, on the markup as written.
+    transformIndexHtml: { order: "pre", handler: (html) => withHeaderStart(html, app) },
+  };
+}
+
+/** The site's manifest, emitted at the root by the index page's build and served there in dev. */
+function siteManifest(): Plugin {
+  const body = `${JSON.stringify(manifestFor(), null, 2)}\n`;
   return {
     name: "tools-manifest",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if ((req.url ?? "").split("?")[0] !== `${appBase(app.slug)}${MANIFEST}`) return next();
+        if ((req.url ?? "").split("?")[0] !== `${siteBase()}${MANIFEST}`) return next();
         res.setHeader("Content-Type", "application/manifest+json");
         res.end(body);
       });
@@ -175,15 +337,14 @@ function manifest(app: ToolsApp): Plugin {
   };
 }
 
-function serviceWorker(): Plugin {
-  let publicDir = "";
+/**
+ * Under the dev server any `sw.js` removes itself, so hot reload never sees a cache. An app's
+ * build puts the retired worker in its folder; the index's puts nothing, because the site build
+ * writes the real worker there once every app is built.
+ */
+function workers(app: ToolsApp | null): Plugin {
   return {
     name: "tools-service-worker",
-    // After Vite's own HTML plugin, so index.html is already in the bundle when this runs.
-    enforce: "post",
-    configResolved(config) {
-      publicDir = config.publicDir;
-    },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!(req.url ?? "").split("?")[0]!.endsWith("/sw.js")) return next();
@@ -191,29 +352,8 @@ function serviceWorker(): Plugin {
         res.end(DEV_SW);
       });
     },
-    generateBundle(_options, bundle) {
-      const hash = createHash("sha256");
-      const files: string[] = [];
-      for (const [name, chunk] of Object.entries(bundle)) {
-        files.push(name);
-        hash.update(name).update(chunk.type === "chunk" ? chunk.code : chunk.source);
-      }
-      for (const name of listFiles(publicDir)) {
-        files.push(name);
-        hash.update(name).update(readFileSync(join(publicDir, name)));
-      }
-      files.sort();
-      const head =
-        `const VERSION = ${JSON.stringify(hash.digest("hex").slice(0, 16))};\n` +
-        `const PRECACHE = ${JSON.stringify(files)};\n`;
-      this.emitFile({ type: "asset", fileName: "sw.js", source: head + SW_SOURCE });
+    generateBundle() {
+      if (app) this.emitFile({ type: "asset", fileName: "sw.js", source: RETIRED_WORKER });
     },
   };
-}
-
-function listFiles(dir: string): string[] {
-  if (!dir || !existsSync(dir)) return [];
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((d) => d.isFile())
-    .map((d) => relative(dir, join(d.parentPath, d.name)).replace(/\\/g, "/"));
 }

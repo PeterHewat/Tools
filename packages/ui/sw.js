@@ -1,20 +1,19 @@
 /**
- * Precaching service worker shared by every Tools app.
+ * The site's service worker: one, at the site root, for the index and every app.
  *
- * The `@tools/ui/vite` plugin prepends two constants when it emits this file into a build:
- * `VERSION`, a hash of the build, and `PRECACHE`, every file the build produced (relative to the
- * worker). A new deploy therefore ships a byte-different worker, the browser installs it, and it
- * drops the previous build's cache — so hashed assets from old deploys do not pile up forever.
+ * The site build (src/site-worker.ts) prepends two constants: `VERSION`, a hash of the whole
+ * build, and `PRECACHE`, every file in it (relative to the worker). A new deploy therefore ships
+ * a byte-different worker, the browser installs it, and it drops the previous build's cache — so
+ * hashed assets from old deploys do not pile up forever.
  *
- * Each worker only answers for its own files. The index page's worker sits at the site root and
- * so has every app inside its scope; it must not cache or fall back for them.
+ * Its caches are named `tools:<scope>:<version>`, as each app's own worker named its caches
+ * before the site shared this one; on activation it removes every `tools:` cache but its own,
+ * theirs included.
  */
 /* global VERSION, PRECACHE */
 
-const PREFIX = `tools:${self.registration.scope}:`;
-const CACHE = PREFIX + VERSION;
-const SHELL = new URL("./", self.registration.scope).href;
-const OWNED = new Set([SHELL, ...PRECACHE.map((p) => new URL(p, self.registration.scope).href)]);
+const CACHE = `tools:${self.registration.scope}:${VERSION}`;
+const OWNED = new Set(PRECACHE.map((p) => new URL(p, self.registration.scope).href));
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -33,19 +32,22 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))
+          keys.filter((k) => k.startsWith("tools:") && k !== CACHE).map((k) => caches.delete(k))
         )
       )
       .then(() => self.clients.claim())
   );
 });
 
-/** The URL without its query or hash: `./?x=1` and `./index.html` are both the shell. */
+/**
+ * The precached file a request is for, or null. A folder is its index.html, and the query and
+ * hash do not count: `svg/`, `svg/?x=1` and `svg/index.html` are one page.
+ */
 function ownKey(req) {
   const url = new URL(req.url);
   url.search = "";
   url.hash = "";
-  const href = url.href === `${SHELL}index.html` ? SHELL : url.href;
+  const href = url.href.endsWith("/") ? `${url.href}index.html` : url.href;
   return OWNED.has(href) ? href : null;
 }
 

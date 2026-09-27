@@ -21,33 +21,28 @@ body {
  * the tools, finding, the file. A rule separates neighbouring groups; the row wraps on a
  * narrow screen rather than hide anything.
  */
-.json-header {
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 12px;
-}
-
-/* Find, the file and the theme: kept together at the far end, and wrapping together. */
-.end {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.end .ui-theme-toggle {
-  margin-left: 0;
-}
-
-.json-header h1 {
-  margin-right: 4px;
-}
-
 .group {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--ui-group-gap);
+}
+
+/* Sized by the shared header (header.css), so the bar matches the SVG app's. */
+.json-header .ui-btn {
+  min-height: var(--ui-control);
+  padding-block: 0;
+  font-size: var(--ui-control-font);
+}
+
+.json-header .icon-btn {
+  width: var(--ui-control);
+  height: var(--ui-control);
+}
+
+.json-header .icon-btn svg {
+  width: var(--ui-glyph);
+  height: var(--ui-glyph);
 }
 
 /* Text buttons a little tighter than elsewhere, so the whole bar fits one row on a laptop. */
@@ -55,15 +50,30 @@ body {
   padding-inline: 9px;
 }
 
-/* Two buttons that always sit together (Expand all, Collapse all). */
-.pair {
-  display: inline-flex;
-  gap: 6px;
+/* "⋯": the file actions as a menu, on a phone only. */
+.more-btn {
+  display: none;
 }
 
-.group + .group {
-  padding-left: 8px;
-  border-left: 1px solid var(--border);
+.more-menu {
+  width: 240px;
+}
+
+.more-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.more-menu svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* A bar between the header, the editor and the window's edge. */
@@ -104,6 +114,35 @@ body {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
+/* The views as one dropdown, for a phone (see the media query below); drawn as a header button
+   with its own chevron, since the native arrow differs on every platform. */
+.view-select {
+  display: none;
+  min-height: var(--ui-control);
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-dim)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%239aa0ab' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 8px center / 12px;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--ui-control-font);
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Choices that read as one scale (2, 4, Tab) take the same width, that of the widest. */
+.seg.equal {
+  display: inline-grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+}
+
+.seg.equal .ui-btn {
+  justify-content: center;
+}
+
 .ui-btn.small {
   padding: 3px 9px;
   font-size: 0.85rem;
@@ -129,11 +168,10 @@ body {
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  /* Prefixed first: the minifier keeps only the last of the pair, and Chrome has no -webkit-
-     alias, so the standard property must win. */
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
+  background: var(--ui-frost-bg);
+  /* Prefixed first: the minifier keeps only the last of the pair. */
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
   color: var(--text);
   box-shadow: 0 8px 24px var(--shadow);
 }
@@ -202,13 +240,27 @@ body {
   scrollbar-color: var(--scroll) transparent;
   border: 0;
   border-left: 1px solid var(--border);
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
+  background: var(--ui-frost-bg);
+  /* Prefixed first: the minifier keeps only the last of the pair. */
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
   color: var(--text);
   box-shadow: 0 8px 24px var(--shadow);
   font-size: 12.5px;
   line-height: 1.5;
+}
+
+/* Help's title row: the title, and on a phone the theme switch at its end. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-head .panel-title {
+  margin: 0;
 }
 
 .panel-title {
@@ -229,6 +281,7 @@ body {
   letter-spacing: 0.04em;
 }
 
+.help .panel-head + h3,
 .help .panel-title + h3 {
   margin-top: 0;
 }
@@ -286,27 +339,28 @@ kbd {
   text-align: center;
 }
 
-/* Find: a bar under the header, and marks drawn in the coloured layer. */
+/* Find: a bar under the header, and marks drawn in the coloured layer. One line at any width:
+   the field gives way first, down to a few characters. */
 .findbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   border-top: 0;
   border-bottom: 1px solid var(--border);
 }
 
-/* "Aa": match case, the way code editors show it. */
-.case-toggle {
+/* "Aa": match case, the way code editors show it; the size of the icon buttons beside it. */
+.findbar .case-toggle {
   justify-content: center;
-  min-width: 36px;
-  padding: 0 8px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   font-weight: 600;
 }
 
 .find-input {
-  flex: 1 1 12rem;
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: 4rem;
 }
 
 .findbar > .ui-btn {
@@ -320,17 +374,43 @@ kbd {
 .find-count {
   flex: none;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.highlight mark {
+@media (max-width: 480px) {
+  .findbar {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+
+  .find-count {
+    font-size: 0.78rem;
+  }
+}
+
+/*
+ * Matches in a solid highlighter yellow, the way the SVG app marks its search: every match
+ * tinted, the current one filled, with dark text so it reads in either theme. The same marks
+ * in the text, the converted views and the tree.
+ */
+.highlight mark,
+.tree mark {
   border-radius: 2px;
-  background: color-mix(in srgb, var(--warn) 30%, transparent);
+  background: rgb(255 210 31 / 38%);
+  box-shadow: 0 0 0 1px rgb(255 210 31 / 70%);
   color: inherit;
 }
 
-.highlight mark.cur {
-  background: color-mix(in srgb, var(--warn) 60%, transparent);
-  outline: 1px solid var(--warn);
+.highlight mark.cur,
+.tree .row.sel mark {
+  background: #ffd21f;
+  box-shadow: 0 0 0 1px #ffd21f;
+}
+
+.highlight mark.cur,
+.highlight mark.cur *,
+.tree .row.sel mark {
+  color: #1d1f24;
 }
 
 /* A long document's pages: shown under the editor only when there is more than one. */
@@ -347,6 +427,46 @@ kbd {
 }
 
 /* ---------- Tree ---------- */
+
+/* The text and the tree, each with its own buttons: only there in its own view. */
+.text-area,
+.tree-area {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body:not([data-view="text"]) .text-area,
+body:not([data-view="tree"]) .tree-area {
+  display: none;
+}
+
+/* Format | Minify over the text, Expand all | Collapse all over the tree: joined like the
+   views, floating at the top right clear of the scrollbar, frosted like the SVG app's
+   floating controls. */
+.view-tools {
+  position: absolute;
+  top: 8px;
+  right: 20px;
+  z-index: 2;
+  border-radius: var(--radius);
+  background: var(--ui-frost-bg);
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+.view-tools .ui-btn {
+  background: transparent;
+}
+
+.view-tools .ui-btn:not(.icon-btn) {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
 
 /*
  * The tree has a gutter like the text: each row's cell holds the text line its value starts
@@ -703,17 +823,44 @@ kbd {
   font-weight: 700;
 }
 
+/* Only on a phone (below). */
+.status-toggle {
+  display: none;
+}
+
 @media (max-width: 640px) {
-  /* The groups' buttons flow straight into the header's rows, so "‹" shares its row with the
-     view switch instead of wrapping as whole groups and leaving gaps. */
+  /* The groups' buttons flow straight into the header's rows, so everything wraps as single
+     buttons rather than as whole groups leaving gaps. */
   .json-header .group {
     display: contents;
   }
 
-  /* Compact enough for "‹" and all six views on one row of a phone. */
-  .json-header .seg .ui-btn {
-    padding-inline: 6px;
-    font-size: 0.85rem;
+  /* One row: ‹, the views as a dropdown, Settings, Find, and "⋯" for the file actions;
+     the theme switch and Help at the far end. */
+  .json-header {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .json-header .seg.views,
+  .json-header .group.file {
+    display: none;
+  }
+
+  .json-header .ui-header-end {
+    display: contents;
+  }
+
+  .json-header .more-btn {
+    display: inline-flex;
+  }
+
+  .json-header .ui-theme-toggle {
+    margin-left: auto;
+  }
+
+  .view-select {
+    display: block;
   }
 
   /* "Valid JSON · … deep" on one line, the sizes on the next. */
@@ -724,10 +871,135 @@ kbd {
   .sizes .sep {
     display: none;
   }
+
+  /* The status bar folds away behind a round button at the bottom right, and opens over the
+     editor: its text changes as you type, and nothing under it may move when it does. */
+  .status-toggle {
+    position: fixed;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--ui-frost-bg);
+    -webkit-backdrop-filter: var(--ui-frost-filter);
+    backdrop-filter: var(--ui-frost-filter);
+    box-shadow: 0 4px 14px var(--shadow);
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .status-toggle.ok {
+    color: var(--ok);
+  }
+
+  .status-toggle.error {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .status-toggle svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.15s;
+  }
+
+  .status-open .status-toggle svg {
+    transform: rotate(180deg);
+  }
+
+  body:not(.status-open) .json-footer {
+    display: none;
+  }
+
+  .json-footer {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    box-shadow: 0 -4px 14px var(--shadow);
+  }
+
+  .json-footer .bar {
+    background: var(--ui-frost-bg);
+    -webkit-backdrop-filter: var(--ui-frost-filter);
+    backdrop-filter: var(--ui-frost-filter);
+  }
+
+  .statusbar {
+    min-height: calc(60px + env(safe-area-inset-bottom));
+    padding: 8px 64px calc(8px + env(safe-area-inset-bottom)) 12px;
+    align-content: center;
+  }
+
+  /* Clear of the button, which floats over the bars' right end. */
+  .pager {
+    padding-right: 64px;
+  }
 }
 
 /* Moved by transform as the textarea scrolls; a block, so the transform applies. */
 .highlight code {
   display: block;
   font: inherit;
+}
+
+/* CSV: what the tables are, above the view, and which one Copy and Export take. */
+.csvbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.csvbar.hidden {
+  display: none;
+}
+
+.csv-note {
+  min-width: 0;
+}
+
+/* Types and Schema: the places whose strings can be listed, each a toggle. */
+.exactbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.exactbar.hidden {
+  display: none;
+}
+
+.exactbar > .ui-label {
+  flex: none;
+}
+
+.exact-list {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.exact-list .ui-btn {
+  flex: none;
+  min-height: 28px;
+  padding: 0 9px;
+  font: 12.5px var(--mono);
 }

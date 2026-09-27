@@ -892,11 +892,9 @@
     </svg>
 
     <div id="app">
-      <header class="top-bar" role="toolbar" aria-label="Main toolbar">
-        <!-- Back to the index, then the app's name: how every Tools page starts. On a phone
-             both reduce to the "‹" button. -->
-        <a class="ui-home" href="../" title="All tools"><span class="ui-home-label">Tools</span></a>
-        <h1 class="app-name">SVG</h1>
+      <header class="ui-header top-bar" data-tools-header role="toolbar" aria-label="Main toolbar">
+        <!-- "‹ Tools" and the app's name are written in at build time, from the catalog: how every
+             Tools page starts (see @tools/ui/header.css). On a phone both reduce to "‹". -->
         <div class="menu" id="menu-document-wrap">
           <button
             type="button"
@@ -1316,8 +1314,8 @@
           <h3>About</h3>
           <ul>
             <li>
-              SVG is part of <a href="../">Tools</a>, a set of useful tools that run entirely in
-              your browser and keep working offline.
+              SVG is part of a set of <a href="../">Tools</a> that run entirely in your browser and
+              keep working offline.
             </li>
             <li>
               <b>What this is</b> — a drawing tool for people who want the SVG itself to be good: a

@@ -6,19 +6,22 @@ body {
 #app {
   max-width: 860px;
   margin: 0 auto;
-  padding: 0 16px 64px;
+  padding: 0 16px 16px;
 }
 
 .masthead {
   position: relative;
-  padding: 72px 0 40px;
+  padding: 28px 0 28px;
 }
 
-/* Top right on every width: the masthead has the room, and on a phone it is still in reach. */
+/* Pinned to the window's top right on every width, and there while the page scrolls: over a
+   card it keeps a shadow, so it never reads as part of one. */
 .masthead .ui-theme-toggle {
-  position: absolute;
+  position: fixed;
   top: 16px;
-  right: 0;
+  right: 16px;
+  z-index: 10;
+  box-shadow: 0 4px 14px var(--shadow);
 }
 
 .masthead h1 {
@@ -68,7 +71,7 @@ body {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 8 / 5;
+  aspect-ratio: 1;
   border-bottom: 1px solid var(--border);
 }
 
@@ -149,17 +152,47 @@ body {
   color: var(--muted);
 }
 
+/* The licence and the source, at the end of the line. */
 footer {
-  margin-top: 56px;
-  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 28px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 0.88rem;
 }
 
+footer p {
+  margin: 0;
+}
+
+.footer-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The GitHub mark, in the text colour until pointed at. */
+.repo-link {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.repo-link:hover,
+.repo-link:focus-visible {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
 @media (max-width: 520px) {
   .masthead {
-    padding: 48px 0 28px;
+    padding: 20px 0 20px;
   }
   .grid {
     grid-template-columns: 1fr;

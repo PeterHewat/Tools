@@ -19,13 +19,23 @@ import {
 } from "./lib/ast.js";
 import { createCodeView, type Lexer } from "./code-view.js";
 import { highlightLine } from "./lib/highlight.js";
-import { lexCsv, lexPlain, lexTypeScript, lexYaml } from "./lib/lexers.js";
-import { toCsv, toJsonSchema, toTypeScript, toYaml, type Converted } from "./lib/convert.js";
+import { lexCsvSheet, lexPlain, lexTypeScript, lexYaml } from "./lib/lexers.js";
+import {
+  exactCandidates,
+  toCsv,
+  toJsonSchema,
+  toTypeScript,
+  toYaml,
+  type Converted,
+} from "./lib/convert.js";
 import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { unwrapString, wrapAsString } from "./lib/nested.js";
 import { lineCount, lineOf, lineStarts, pageAt, pageOf } from "./lib/pages.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson, printedSize } from "./lib/print.js";
+import { SAMPLE } from "./lib/sample.js";
+import { csvToJson, looksLikeCsv } from "./lib/csv-read.js";
+import { csvSheet, tablesIn, type CsvSheet } from "./lib/tables.js";
 import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
@@ -39,17 +49,23 @@ const downloadBtn = byId<HTMLButtonElement>("download");
 const clearBtn = byId<HTMLButtonElement>("clear");
 const findOpenBtn = byId<HTMLButtonElement>("find-open");
 const status = byId("status");
+const statusToggle = byId<HTMLButtonElement>("status-toggle");
 const cursor = byId("cursor");
 const warning = byId("warning");
 const problem = byId("problem");
 const excerpt = byId("excerpt");
 const fixBtn = byId<HTMLButtonElement>("fix");
 const fixNote = byId("fix-note");
+const fromCsvBtn = byId<HTMLButtonElement>("from-csv");
 const codeEl = byId("code");
 const treeEl = byId("tree");
 const exportEl = byId("export");
 const exportText = byId<HTMLTextAreaElement>("export-text");
 const exportMessage = byId("export-message");
+const csvBar = byId("csvbar");
+const csvNote = byId("csv-note");
+const exactBar = byId("exactbar");
+const exactList = byId("exact-list");
 const coloursBtn = byId<HTMLButtonElement>("colours");
 const expandAllBtn = byId<HTMLButtonElement>("expand-all");
 const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
@@ -67,6 +83,7 @@ const findCase = byId<HTMLButtonElement>("find-case");
 const options = byId("options");
 const optionsBtn = byId<HTMLButtonElement>("options-btn");
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
+const viewSelect = byId<HTMLSelectElement>("view-select");
 const indentButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-indent]")];
 const pathStyleButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-path-style]")];
 const unwrapBtn = options.querySelector<HTMLButtonElement>('[data-action="unwrap"]')!;
@@ -150,7 +167,7 @@ function restore(): void {
       if (prefs.indent === "2" || prefs.indent === "4" || prefs.indent === "tab") {
         indentChoice = prefs.indent;
       }
-      setPressed(sortKeys, prefs.sortKeys === true);
+      setOn(sortKeys, prefs.sortKeys === true);
       if (prefs.view && VIEWS.includes(prefs.view)) mode = prefs.view;
       if (prefs.pathStyle === "pointer") pathStyle = "pointer";
       if (prefs.colours === false) colours = false;
@@ -159,10 +176,11 @@ function restore(): void {
     /* storage refused or holds something else: defaults */
   }
   try {
-    const draft = sessionStorage.getItem(DRAFT_KEY);
-    if (draft !== null) showDocument(draft);
+    // A tab with no draft yet opens on the sample. Cleared, the draft is "" and stays empty.
+    showDocument(sessionStorage.getItem(DRAFT_KEY) ?? SAMPLE);
   } catch {
-    /* storage refused: start empty */
+    /* storage refused: the sample, as for a new tab */
+    showDocument(SAMPLE);
   }
   showOptions();
 }
@@ -170,7 +188,7 @@ function restore(): void {
 function save(): void {
   const prefs: Prefs = {
     indent: indentChoice,
-    sortKeys: isPressed(sortKeys),
+    sortKeys: isOn(sortKeys),
     view: mode,
     pathStyle,
     colours,
@@ -192,6 +210,9 @@ function save(): void {
 const isPressed = (button: HTMLElement) => button.getAttribute("aria-pressed") === "true";
 const setPressed = (button: HTMLElement, on: boolean) =>
   button.setAttribute("aria-pressed", String(on));
+/** Switches (settings that are on or off) keep theirs in aria-checked, as role="switch" has it. */
+const isOn = (button: HTMLElement) => button.getAttribute("aria-checked") === "true";
+const setOn = (button: HTMLElement, on: boolean) => button.setAttribute("aria-checked", String(on));
 
 function indent(): number | "\t" {
   return indentChoice === "tab" ? "\t" : Number(indentChoice);
@@ -317,15 +338,97 @@ interface ExportSpec {
   make: (root: JsonNode) => Converted;
 }
 
-/** The first array in the document, nearest the root first: a document's main table. */
-function firstArray(root: JsonNode): JsonNode | undefined {
-  const queue = [root];
-  for (let k = 0; k < queue.length; k++) {
-    const node = queue[k];
-    if (node.kind === "array") return node;
-    if (node.kind === "object") for (const m of node.members) queue.push(m.value);
+// ---------- CSV: every array as a table ----------
+
+/** The CSV view's tables as last shown, for the gutter, Copy and Export. */
+let sheet: CsvSheet | null = null;
+/** The JSON line each line of the CSV view comes from (see `showExport`). */
+let sheetLabels: (number | null)[] | null = null;
+
+const rows = (n: number) => `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
+
+function makeCsv(root: JsonNode): Converted {
+  const tables = tablesIn(root);
+  sheet = tables.length
+    ? csvSheet(tables, (t) => `${formatPath(t.path)} · ${rows(t.node.items.length)}`)
+    : null;
+  sheetLabels = null;
+  if (!sheet) return { ok: false, message: "No arrays here: CSV makes a table of a list." };
+  // One line of JSON would number every row 1: then the rows keep their own numbers.
+  const text = documentText();
+  if (text.includes("\n")) {
+    const starts = lineStarts(text);
+    sheetLabels = sheet.sources.map((s) => (s < 0 ? null : lineOf(starts, s)));
   }
-  return undefined;
+  return { ok: true, text: sheet.text };
+}
+
+/** With several tables, the one the CSV view's cursor is in: Copy and Export take it. */
+function csvSection(): CsvSheet["sections"][number] | undefined {
+  if (mode !== "csv" || !sheet || sheet.sections.length < 2) return undefined;
+  const line = positionAt(exportText.value, exportText.selectionStart).line - 1;
+  return sheet.sections.find((s) => line <= s.lastLine) ?? sheet.sections.at(-1);
+}
+
+/** Says what the tables are, and which one Copy and Export take. */
+function showCsvNote(): void {
+  const shown = mode === "csv" && !!sheet && exported !== null;
+  csvBar.classList.toggle("hidden", !shown);
+  if (!shown) return;
+  const numbered = sheetLabels ? ", numbered by their line in the JSON" : "";
+  const [only] = sheet!.sections;
+  const section = csvSection();
+  if (!section) {
+    csvNote.textContent = `${formatPath(only.table.path)} · ${rows(only.table.node.items.length)}${numbered}`;
+    return;
+  }
+  const name = document.createElement("b");
+  name.textContent = formatPath(section.table.path);
+  csvNote.replaceChildren(
+    `${sheet!.sections.length} tables${numbered}. Copy and Export take the one at the cursor: `,
+    name
+  );
+}
+
+// ---------- Types and Schema: exact values ----------
+
+/** Places (as `apps[].id`) whose strings Types and Schema list rather than call "string". */
+const exactPlaces = new Set<string>();
+/** The places the bar shows, so it is only rebuilt when they change and focus stays put. */
+let exactShown = "";
+
+/** One toggle per place with a few strings, for Types and Schema. */
+function showExactBar(): void {
+  const candidates = (mode === "ts" || mode === "schema") && doc ? exactCandidates(doc.root) : [];
+  exactBar.classList.toggle("hidden", !candidates.length);
+  const key = JSON.stringify(candidates);
+  if (key !== exactShown) {
+    exactShown = key;
+    exactList.replaceChildren(
+      ...candidates.map(({ place, values }) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "ui-btn toggle";
+        b.dataset.place = place;
+        b.textContent = place || "(root)";
+        b.title = values.map((v) => JSON.stringify(v)).join(" | ");
+        b.addEventListener("click", () => {
+          if (!exactPlaces.delete(place)) exactPlaces.add(place);
+          showExport();
+        });
+        return b;
+      })
+    );
+  }
+  for (const b of exactList.querySelectorAll<HTMLButtonElement>("[data-place]")) {
+    setPressed(b, exactPlaces.has(b.dataset.place!));
+  }
+}
+
+/** A path as the status bar writes it, in the chosen style; the root has a name of its own. */
+function formatPath(path: readonly PathSegment[]): string {
+  if (!path.length) return "(root)";
+  return pathStyle === "pointer" ? jsonPointer(path) : jsPath(path);
 }
 
 const EXPORTS: Record<ExportKind, ExportSpec> = {
@@ -335,26 +438,24 @@ const EXPORTS: Record<ExportKind, ExportSpec> = {
     extension: ".yaml",
     make: (root) => ({ ok: true, text: toYaml(root) }),
   },
-  // The innermost array around the caret (or tree selection), so any table in a document can
-  // be exported; failing that, the document's first array.
+  // Every array, one table after another (see lib/tables.ts).
   csv: {
     label: "CSV",
-    lexer: lexCsv,
+    lexer: lexCsvSheet,
     extension: ".csv",
-    make: (root) =>
-      toCsv(contextChain().findLast((n) => n.kind === "array") ?? firstArray(root) ?? root),
+    make: makeCsv,
   },
   ts: {
     label: "TypeScript types",
     lexer: lexTypeScript,
     extension: ".d.ts",
-    make: (root) => ({ ok: true, text: toTypeScript(root) }),
+    make: (root) => ({ ok: true, text: toTypeScript(root, { exact: exactPlaces }) }),
   },
   schema: {
     label: "JSON Schema",
     lexer: highlightLine,
     extension: ".schema.json",
-    make: (root) => ({ ok: true, text: toJsonSchema(root) }),
+    make: (root) => ({ ok: true, text: toJsonSchema(root, { exact: exactPlaces }) }),
   },
 };
 
@@ -367,6 +468,8 @@ function showExport(): void {
   if (!isExport(mode)) {
     exportEl.classList.add("hidden");
     exportMessage.classList.add("hidden");
+    showCsvNote();
+    showExactBar();
     return;
   }
   let result: Converted;
@@ -389,8 +492,11 @@ function showExport(): void {
   exported = result.ok ? result.text : null;
   exportEl.classList.toggle("hidden", !result.ok);
   exportMessage.classList.toggle("hidden", result.ok);
+  showCsvNote();
+  showExactBar();
   if (result.ok) {
     exportView.setLexer(colours ? EXPORTS[mode].lexer : lexPlain);
+    exportView.setLineLabels(mode === "csv" ? sheetLabels : null);
     // Only when it changed: an edit elsewhere must not throw the reader back to the top.
     if (exportText.value !== result.text) exportText.value = result.text;
     exportView.refresh();
@@ -415,9 +521,7 @@ function showColours(): void {
  */
 function showOptions(): void {
   for (const b of indentButtons) setPressed(b, b.dataset.indent === indentChoice);
-  sortKeys.textContent = isPressed(sortKeys) ? "On" : "Off";
-  setPressed(coloursBtn, colours);
-  coloursBtn.textContent = colours ? "On" : "Off";
+  setOn(coloursBtn, colours);
   for (const b of pathStyleButtons) setPressed(b, b.dataset.pathStyle === pathStyle);
 
   const chain = contextChain();
@@ -456,14 +560,18 @@ function refreshFind(): void {
   if (key === findKey) return;
   findKey = key;
   const matchCase = { matchCase: isPressed(findCase) };
-  textMatches = mode === "text" ? findInText(documentText(), query, matchCase) : [];
+  textMatches = mode === "tree" ? [] : findInText(searchedText(), query, matchCase);
   treeMatches = mode === "tree" && doc && !stale ? findInTree(doc.root, query, matchCase) : [];
   findIndex = Math.min(findIndex, matchCount() - 1);
+  tree.setQuery(mode === "tree" ? query : "", matchCase.matchCase);
   showFindCount();
   showMarks();
 }
 
-const matchCount = () => (mode === "text" ? textMatches.length : treeMatches.length);
+/** What find searches outside the tree: the document, or the conversion on screen. */
+const searchedText = () => (isExport(mode) ? (exported ?? "") : documentText());
+
+const matchCount = () => (mode === "tree" ? treeMatches.length : textMatches.length);
 
 function showFindCount(): void {
   const n = matchCount();
@@ -480,6 +588,17 @@ function showFindCount(): void {
 
 /** Marks the matches on the page the editor shows; the current one stands out. */
 function showMarks(): void {
+  if (isExport(mode)) {
+    view.setMarks([]);
+    const size = findInput.value.length;
+    exportView.setMarks(
+      findOpen()
+        ? textMatches.map((m, k) => ({ start: m, end: m + size, current: k === findIndex }))
+        : []
+    );
+    return;
+  }
+  exportView.setMarks([]);
   if (!findOpen() || mode !== "text" || !textMatches.length) {
     view.setMarks([]);
     return;
@@ -507,11 +626,13 @@ function findStep(delta: number): void {
     return;
   }
   if (findIndex < 0 || delta === 0) {
-    const caret = aside.before.length + editor.selectionStart;
+    const caret = isExport(mode)
+      ? exportText.selectionStart
+      : aside.before.length + editor.selectionStart;
     const after =
-      mode === "text"
-        ? textMatches.findIndex((m) => m >= caret)
-        : treeMatches.findIndex((m) => m.node.start >= caret);
+      mode === "tree"
+        ? treeMatches.findIndex((m) => m.node.start >= caret)
+        : textMatches.findIndex((m) => m >= caret);
     findIndex = after < 0 ? 0 : after;
     if (delta < 0) findIndex = (findIndex - 1 + n) % n;
   } else {
@@ -520,16 +641,34 @@ function findStep(delta: number): void {
   if (mode === "text") {
     const start = textMatches[findIndex];
     selectInDocument(start, start + findInput.value.length, false);
-  } else {
+  } else if (mode === "tree") {
     tree.reveal(treeMatches[findIndex].indices);
+  } else {
+    const start = textMatches[findIndex];
+    selectInExport(start, start + findInput.value.length);
   }
   showFindCount();
   showMarks();
 }
 
+/** The search button: opens find, or closes it when it is already open. */
+function toggleFind(): void {
+  if (findOpen()) closeFind();
+  else openFind();
+}
+
+/** Selects a stretch of the converted text and scrolls it to the middle, as in the text. */
+function selectInExport(start: number, end: number): void {
+  exportText.setSelectionRange(start, end);
+  const line = positionAt(exportText.value, start).line;
+  const lineHeight = parseFloat(getComputedStyle(exportText).lineHeight) || 20;
+  exportText.scrollTop = Math.max(0, (line - 1) * lineHeight - exportText.clientHeight / 2);
+  exportView.refresh();
+}
+
 function openFind(): void {
-  if (mode !== "text" && mode !== "tree") return;
   findBar.classList.remove("hidden");
+  findOpenBtn.setAttribute("aria-expanded", "true");
   const selected = editor.value.slice(editor.selectionStart, editor.selectionEnd);
   if (mode === "text" && selected && selected.length < 200 && !selected.includes("\n")) {
     findInput.value = selected;
@@ -542,7 +681,10 @@ function openFind(): void {
 
 function closeFind(): void {
   findBar.classList.add("hidden");
+  findOpenBtn.setAttribute("aria-expanded", "false");
   view.setMarks([]);
+  exportView.setMarks([]);
+  tree.setQuery("", false);
   if (mode === "text") editor.focus();
   else if (mode === "tree") tree.focus();
 }
@@ -567,11 +709,12 @@ function validate(): void {
         : null;
   }
   minified = !!doc && !text.includes("\n");
-
-  formatBtn.disabled = minifyBtn.disabled = !doc;
+  showLayout(text);
   clearBtn.disabled = empty;
   status.classList.toggle("ui-status--error", !!fault);
   status.classList.toggle("ui-status--ok", !!doc);
+  statusToggle.classList.toggle("error", !!fault);
+  statusToggle.classList.toggle("ok", !!doc);
   problem.classList.toggle("hidden", !fault);
   warning.classList.add("hidden");
 
@@ -614,9 +757,16 @@ function validate(): void {
     caretEl.className = "caret";
     caretEl.textContent = caret;
     excerpt.replaceChildren(`${code}\n`, caretEl);
+    // Not JSON at all but a CSV table: offered as a conversion rather than a fix.
+    const csv = !fault.edits && looksLikeCsv(text);
     fixBtn.classList.toggle("hidden", !fault.edits);
-    fixNote.classList.toggle("hidden", !fault.edits);
-    fixNote.textContent = fault.edits ? `Almost JSON: ${describeEdits(fault.edits)}.` : "";
+    fromCsvBtn.classList.toggle("hidden", !csv);
+    fixNote.classList.toggle("hidden", !fault.edits && !csv);
+    fixNote.textContent = fault.edits
+      ? `Almost JSON: ${describeEdits(fault.edits)}.`
+      : csv
+        ? "This looks like CSV: each row can become an object."
+        : "";
   }
   view.setErrorLine(fault?.position.line ?? null);
   view.refresh();
@@ -687,17 +837,41 @@ function stepHistory(back: boolean): boolean {
   return true;
 }
 
+/**
+ * Format and Minify read as pressed while the text is exactly what they would make of it, so
+ * they say how the text is laid out until an edit changes that. One printing, of the layout
+ * the text has the shape of: several lines can only be formatted, one only minified.
+ */
+function showLayout(text: string): void {
+  formatBtn.disabled = minifyBtn.disabled = !doc;
+  const oneLine = !text.includes("\n");
+  const laidOut =
+    !!doc &&
+    text === printJson(doc.root, { indent: oneLine ? 0 : indent(), sortKeys: isOn(sortKeys) });
+  setPressed(formatBtn, laidOut && !oneLine);
+  setPressed(minifyBtn, laidOut && oneLine);
+}
+
 function rewrite(minify: boolean): void {
   if (!doc) return;
-  replaceText(
-    printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isPressed(sortKeys) })
-  );
+  replaceText(printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isOn(sortKeys) }));
 }
 
 /** Makes almost-JSON strict in place, keeping the layout: only the offending bits change. */
 function fix(): void {
   if (fault?.edits) replaceText(applyEdits(documentText(), fault.edits));
 }
+
+/** The text, read as CSV, replaced by the JSON array of its rows (Ctrl+Z takes it back). */
+function fromCsv(): void {
+  const json = csvToJson(documentText(), indent());
+  if (!json) return;
+  replaceText(json.text);
+  fileName = fileName.replace(/\.(csv|tsv|txt)$/i, "") + (/\.json$/i.test(fileName) ? "" : ".json");
+}
+
+/** A file of CSV (by its name or type) opens as JSON: a table is what it was opened to be. */
+const isCsvFile = (file: File) => /\.(csv|tsv)$/i.test(file.name) || file.type === "text/csv";
 
 // ---------- Where you are: caret, path ----------
 
@@ -707,7 +881,9 @@ function showCursor(): void {
   const line = page.firstLine + lineCount(before) - 1;
   const column = before.length - before.lastIndexOf("\n");
   cursor.textContent = `Ln ${line.toLocaleString()}, Col ${column}`;
-  showPath(atCursor()?.path ?? null);
+  // While typing, the parse is behind the text: the last path stays until it catches up,
+  // rather than vanishing and coming back and moving everything beside it.
+  if (!stale) showPath(atCursor()?.path ?? null);
 }
 
 let shownPath: PathSegment[] | null = null;
@@ -745,16 +921,16 @@ function setMode(next: ViewMode): void {
   codeEl.classList.toggle("hidden", mode !== "text");
   treeEl.classList.toggle("hidden", mode !== "tree");
   for (const b of viewButtons) setPressed(b, b.dataset.view === mode);
+  viewSelect.value = mode;
+  // The text's and the tree's own buttons float over them, shown only in their own view.
+  document.body.dataset.view = mode;
   cursor.classList.toggle("hidden", mode !== "text");
   showPager();
-  if (findOpen()) {
-    if (isExport(mode)) closeFind();
-    else {
-      findIndex = -1;
-      refreshFind();
-    }
-  }
   showExport();
+  if (findOpen()) {
+    findIndex = -1;
+    refreshFind();
+  }
   if (mode === "tree") {
     showTree();
     const at = atCursor();
@@ -777,17 +953,26 @@ function setMode(next: ViewMode): void {
 /** Controls that act on one view: disabled, not hidden, while another is shown. */
 function showViewControls(): void {
   expandAllBtn.disabled = collapseAllBtn.disabled = mode !== "tree" || !doc;
-  findOpenBtn.disabled = isExport(mode);
   showFileControls();
 }
 
-/** Copy and Download take what is on screen: the document, or the conversion shown. */
+/**
+ * Export and Copy take what is on screen: the document, or the conversion shown. Named as
+ * the SVG app names its own: Export SVG, Copy SVG to clipboard.
+ */
 function showFileControls(): void {
   const empty = !documentText().trim();
   copyBtn.disabled = downloadBtn.disabled = isExport(mode) ? exported === null : empty;
-  const what = isExport(mode) ? EXPORTS[mode].label : "the document";
-  copyBtn.title = `Copy ${what}`;
-  downloadBtn.title = `Download ${what}`;
+  const section = csvSection();
+  const what = section
+    ? `CSV of ${formatPath(section.table.path)}`
+    : isExport(mode)
+      ? EXPORTS[mode].label
+      : "JSON";
+  copyBtn.title = `Copy ${what} to clipboard`;
+  downloadBtn.title = `Export ${what}`;
+  copyBtn.setAttribute("aria-label", copyBtn.title);
+  downloadBtn.setAttribute("aria-label", downloadBtn.title);
 }
 
 /** Switches to the text with a value selected and scrolled to the middle. */
@@ -805,7 +990,11 @@ function goToError(): void {
 
 async function load(file: File): Promise<void> {
   fileName = file.name;
-  showDocument(await file.text());
+  exactPlaces.clear();
+  const text = await file.text();
+  const json = isCsvFile(file) ? csvToJson(text, indent()) : null;
+  if (json) fileName = file.name.replace(/\.(csv|tsv)$/i, ".json");
+  showDocument(json ? json.text : text);
   editor.setSelectionRange(0, 0);
   editor.scrollTop = 0;
   validate();
@@ -815,9 +1004,16 @@ async function load(file: File): Promise<void> {
 
 /** What Copy and Download hand over, and under which name. */
 function outgoing(): { text: string; name: string; mime: string } {
+  const base = fileName.replace(/\.json$/i, "");
+  const section = csvSection();
+  if (section) {
+    // One of several tables: its CSV alone, named after it ("data-apps.csv").
+    const csv = toCsv(section.table.node);
+    const path = section.table.path.join("-").replace(/[^\w.-]+/g, "_");
+    if (csv.ok) return { text: csv.text, name: `${base}-${path || "root"}.csv`, mime: "text/csv" };
+  }
   if (isExport(mode) && exported !== null) {
-    const name = fileName.replace(/\.json$/i, "") + EXPORTS[mode].extension;
-    return { text: exported, name, mime: "text/plain" };
+    return { text: exported, name: base + EXPORTS[mode].extension, mime: "text/plain" };
   }
   return { text: documentText(), name: fileName, mime: "application/json" };
 }
@@ -860,8 +1056,18 @@ formatBtn.addEventListener("click", () => rewrite(false));
 minifyBtn.addEventListener("click", () => rewrite(true));
 byId("goto").addEventListener("click", goToError);
 fixBtn.addEventListener("click", fix);
+fromCsvBtn.addEventListener("click", fromCsv);
 for (const b of viewButtons) {
   b.addEventListener("click", () => setMode(b.dataset.view as ViewMode));
+}
+viewSelect.addEventListener("change", () => setMode(viewSelect.value as ViewMode));
+// Where the cursor is in the CSV view decides which table Copy and Export take.
+for (const type of ["keyup", "click", "select", "focus"]) {
+  exportText.addEventListener(type, () => {
+    if (mode !== "csv") return;
+    showCsvNote();
+    showFileControls();
+  });
 }
 expandAllBtn.addEventListener("click", () => tree.expandAll());
 collapseAllBtn.addEventListener("click", () => tree.collapseAll());
@@ -878,8 +1084,9 @@ for (const b of indentButtons) {
   });
 }
 sortKeys.addEventListener("click", () => {
-  setPressed(sortKeys, !isPressed(sortKeys));
+  setOn(sortKeys, !isOn(sortKeys));
   if (doc) rewrite(minified);
+  showLayout(documentText());
   showOptions();
   save();
 });
@@ -918,6 +1125,36 @@ options.addEventListener("beforetoggle", (e) => {
 
 options.addEventListener("toggle", (e) => {
   optionsBtn.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open"));
+});
+
+// On a phone the file actions (Import, Export, Copy, Clear) fold into the "⋯" menu. Its
+// items are made from the bar's buttons each time it opens, so they carry the same names and
+// the same disabled state, and pressing one presses that button.
+const more = byId("more");
+const moreBtn = byId<HTMLButtonElement>("more-btn");
+const fileButtons = [byId("open"), downloadBtn, copyBtn, clearBtn] as HTMLButtonElement[];
+more.addEventListener("beforetoggle", (e) => {
+  if ((e as ToggleEvent).newState !== "open") return;
+  more.replaceChildren(
+    ...fileButtons.map((b) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "menu-item";
+      item.disabled = b.disabled;
+      item.append(b.querySelector("svg")!.cloneNode(true), b.title.replace(/ —.*/, ""));
+      item.addEventListener("click", () => {
+        more.hidePopover();
+        b.click();
+      });
+      return item;
+    })
+  );
+  const r = moreBtn.getBoundingClientRect();
+  more.style.top = `${r.bottom + 4}px`;
+  more.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 248))}px`;
+});
+more.addEventListener("toggle", (e) => {
+  moreBtn.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open"));
 });
 
 // Help docks under the header, which wraps to more rows on a narrow screen. It stays open until
@@ -970,14 +1207,14 @@ findCase.addEventListener("click", () => {
 byId("find-prev").addEventListener("click", () => findStep(-1));
 byId("find-next").addEventListener("click", () => findStep(1));
 byId("find-close").addEventListener("click", closeFind);
-findOpenBtn.addEventListener("click", openFind);
+findOpenBtn.addEventListener("click", toggleFind);
 // Ctrl+F opens this find rather than the browser's, which cannot see other pages of a long
 // document; F3 steps through matches like most editors.
 document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && !isExport(mode)) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
     e.preventDefault();
     openFind();
-  } else if (e.key === "F3" && !isExport(mode)) {
+  } else if (e.key === "F3") {
     e.preventDefault();
     if (!findOpen()) openFind();
     else findStep(e.shiftKey ? -1 : 1);
@@ -991,9 +1228,16 @@ pageInput.addEventListener("change", () => {
   showPager();
 });
 pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
+// A phone's status bar: folded away until this opens it over the editor (see styles.css).
+statusToggle.addEventListener("click", () => {
+  const open = document.body.classList.toggle("status-open");
+  statusToggle.setAttribute("aria-expanded", String(open));
+  statusToggle.title = open ? "Hide status" : "Show status";
+  statusToggle.setAttribute("aria-label", statusToggle.title);
+});
 
 byId("open").addEventListener("click", async () => {
-  const [file] = await pickFiles(".json,application/json,text/plain");
+  const [file] = await pickFiles(".json,.csv,.tsv,application/json,text/csv,text/plain");
   if (file) await load(file);
 });
 copyBtn.addEventListener("click", async () => {

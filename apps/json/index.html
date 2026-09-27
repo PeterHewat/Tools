@@ -7,12 +7,10 @@
   <body>
     <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.
          Controls that cannot apply are disabled, never hidden, so nothing moves. -->
-    <header class="ui-header json-header" id="header">
-      <a class="ui-home" href="../" title="All tools"><span class="ui-home-label">Tools</span></a>
-      <h1>JSON</h1>
-
+    <!-- "‹ Tools", the name and the beta badge are written in at build time, from the catalog. -->
+    <header class="ui-header json-header" id="header" data-tools-header>
       <div class="group" role="group" aria-label="View">
-        <div class="seg" role="group" aria-label="Show as">
+        <div class="seg views" role="group" aria-label="Show as">
           <button type="button" class="ui-btn" data-view="text" aria-pressed="true">Text</button>
           <button type="button" class="ui-btn" data-view="tree" aria-pressed="false">Tree</button>
           <button type="button" class="ui-btn" data-view="yaml" aria-pressed="false">YAML</button>
@@ -30,35 +28,18 @@
             Schema
           </button>
         </div>
-        <span class="pair">
-          <button
-            type="button"
-            class="ui-btn icon-btn"
-            id="expand-all"
-            title="Expand all"
-            aria-label="Expand all"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M17 16l-5 5-5-5M7 8l5-5 5 5" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="ui-btn icon-btn"
-            id="collapse-all"
-            title="Collapse all"
-            aria-label="Collapse all"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 20l5-5 5 5M17 4l-5 5-5-5" />
-            </svg>
-          </button>
-        </span>
+        <!-- The same choice on a phone, where six buttons would take a row of their own. -->
+        <select class="view-select" id="view-select" aria-label="Show as">
+          <option value="text">Text</option>
+          <option value="tree">Tree</option>
+          <option value="yaml">YAML</option>
+          <option value="csv">CSV</option>
+          <option value="ts">Types</option>
+          <option value="schema">Schema</option>
+        </select>
       </div>
 
-      <div class="group" role="group" aria-label="Layout">
-        <button type="button" class="ui-btn" id="format" title="Format (Ctrl+Enter)">Format</button>
-        <button type="button" class="ui-btn" id="minify">Minify</button>
+      <div class="group" role="group" aria-label="Settings">
         <button
           type="button"
           class="ui-btn icon-btn"
@@ -79,7 +60,7 @@
           <div class="menu-label first">Format with</div>
           <div class="menu-row">
             <span>Indent</span>
-            <div class="seg small" role="group" aria-label="Indent">
+            <div class="seg small equal" role="group" aria-label="Indent">
               <button type="button" class="ui-btn" data-indent="2" aria-pressed="true">2</button>
               <button type="button" class="ui-btn" data-indent="4" aria-pressed="false">4</button>
               <button type="button" class="ui-btn" data-indent="tab" aria-pressed="false">
@@ -91,31 +72,29 @@
             <span>Sort keys</span>
             <button
               type="button"
-              class="ui-btn toggle small"
+              class="ui-switch"
               id="sort-keys"
-              aria-pressed="false"
+              role="switch"
+              aria-checked="false"
               aria-label="Sort keys"
-            >
-              Off
-            </button>
+            ></button>
           </div>
           <div class="menu-label">Display</div>
           <div class="menu-row">
             <span>Colours</span>
             <button
               type="button"
-              class="ui-btn toggle small"
+              class="ui-switch"
               id="colours"
-              aria-pressed="true"
+              role="switch"
+              aria-checked="true"
               aria-label="Syntax colours"
-            >
-              On
-            </button>
+            ></button>
           </div>
           <div class="menu-label">Paths</div>
           <div class="menu-row">
             <span>Style</span>
-            <div class="seg small" role="group" aria-label="Path style">
+            <div class="seg small equal" role="group" aria-label="Path style">
               <button type="button" class="ui-btn" data-path-style="js" aria-pressed="true">
                 a.b[0]
               </button>
@@ -130,7 +109,7 @@
         </div>
       </div>
 
-      <div class="end">
+      <div class="ui-header-end">
         <div class="group">
           <button
             type="button"
@@ -145,33 +124,58 @@
           </button>
         </div>
 
-        <div class="group" role="group" aria-label="File">
+        <!-- On a phone the file actions fold into this menu, built from the buttons below. -->
+        <button
+          type="button"
+          class="ui-btn icon-btn more-btn"
+          id="more-btn"
+          popovertarget="more"
+          aria-haspopup="true"
+          aria-expanded="false"
+          title="Import, export, copy, clear"
+          aria-label="More"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5" cy="12" r="1.2" />
+            <circle cx="12" cy="12" r="1.2" />
+            <circle cx="19" cy="12" r="1.2" />
+          </svg>
+        </button>
+        <div class="menu more-menu" id="more" popover aria-label="File"></div>
+
+        <div class="group file" role="group" aria-label="File">
           <button
             type="button"
             class="ui-btn icon-btn"
             id="open"
-            title="Open a file"
-            aria-label="Open a file"
+            title="Import JSON — or a CSV file, which opens as JSON"
+            aria-label="Import JSON"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-            </svg>
-          </button>
-          <button type="button" class="ui-btn icon-btn" id="copy" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="9" y="9" width="11" height="11" rx="2" />
-              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
             </svg>
           </button>
           <button
             type="button"
             class="ui-btn icon-btn"
             id="download"
-            title="Download"
-            aria-label="Download"
+            title="Export JSON"
+            aria-label="Export JSON"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="copy"
+            title="Copy JSON to clipboard"
+            aria-label="Copy JSON to clipboard"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
             </svg>
           </button>
           <button type="button" class="ui-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
@@ -198,16 +202,22 @@
         </button>
         <!-- Docked right like the SVG app's: it stays open beside the work until its button closes it. -->
         <aside class="help" id="help" popover="manual" aria-label="Help">
-          <p class="panel-title">Help</p>
+          <div class="panel-head">
+            <p class="panel-title">Help</p>
+          </div>
           <h3>About</h3>
           <ul>
             <li>
-              JSON is part of <a href="../">Tools</a>, a set of tools that run entirely in your
-              browser and keep working offline.
+              JSON is part of a set of <a href="../">Tools</a> that run entirely in your browser and
+              keep working offline.
             </li>
             <li>
               Nothing you open or paste leaves this page: the draft is kept only for this tab, so a
               reload keeps it and closing the tab ends it.
+            </li>
+            <li>
+              A new tab opens on a small sample to try things on; <b>Clear</b> empties it, and it
+              does not come back in that tab.
             </li>
           </ul>
 
@@ -217,20 +227,43 @@
             <li>
               <b>Tree</b> — fold objects and arrays. The gutter shows the line each value starts on
               in the text (the column, when the text is one line). Double-click a row, or press
-              <kbd>Enter</kbd>, to show it in the text.
+              <kbd>Enter</kbd>, to show it in the text. Expand all and Collapse all are at its top
+              right.
             </li>
             <li>
-              <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Copy
-              and Download take whatever view is shown. CSV uses the array around the cursor (or
-              selected in the tree), else the document's first array.
+              <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Export
+              and Copy take whatever view is shown.
+            </li>
+            <li>
+              <b>Exact values</b>, above Types and Schema, lists the places that hold only a few
+              different strings. Turn one on and it is typed as those strings (<code
+                >"json" | "svg"</code
+              >, an <code>enum</code> in the schema) rather than any string.
+            </li>
+            <li>
+              <b>CSV</b> makes every array a table — a row per item, a column per key — one after
+              another under their names. The gutter gives each row's line in the JSON. With several
+              tables, Copy and Export take the one the cursor is in. An array inside a table is a
+              cell of it, written as JSON.
+            </li>
+            <li>
+              <b>CSV in</b> — import a <code>.csv</code> or <code>.tsv</code> file and it opens as
+              JSON, one object per row; paste CSV and <b>Convert CSV to JSON</b> offers the same.
+              Numbers, true, false and null become values; everything else stays text.
             </li>
           </ul>
 
           <h3>Editing</h3>
           <ul>
             <li>
-              <b>Format</b> and <b>Minify</b> keep numbers and strings exactly as written, so large
-              IDs are never rounded.
+              <b>Find</b> (the magnifying glass, or <kbd>Ctrl</kbd> + <kbd>F</kbd>) searches the
+              view shown: the text, the converted views, or the keys and values of the tree. Its
+              button closes it again.
+            </li>
+            <li>
+              <b>Format</b> and <b>Minify</b>, over the text's top right, keep numbers and strings
+              exactly as written, so large IDs are never rounded. The one that matches how the text
+              is laid out stays lit until an edit changes that.
             </li>
             <li>
               <b>Fix</b> appears when the text is almost JSON — comments, trailing commas, single
@@ -328,22 +361,76 @@
         </button>
       </div>
 
-      <div class="code" id="code">
-        <div class="gutter" aria-hidden="true"><div class="gutter-lines" id="gutter"></div></div>
-        <div class="code-body">
-          <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
-          <textarea
-            class="ui-code editor"
-            id="editor"
-            aria-label="JSON"
-            placeholder="Paste JSON here, or drop a .json file"
-            spellcheck="false"
-            autocomplete="off"
-            autocapitalize="off"
-          ></textarea>
+      <!-- The text, with its own buttons floating at its top right: they only apply to it. -->
+      <div class="text-area">
+        <div class="view-tools seg" role="group" aria-label="Layout">
+          <button
+            type="button"
+            class="ui-btn"
+            id="format"
+            aria-pressed="false"
+            title="Format (Ctrl+Enter)"
+          >
+            Format
+          </button>
+          <button type="button" class="ui-btn" id="minify" aria-pressed="false" title="Minify">
+            Minify
+          </button>
+        </div>
+        <div class="code" id="code">
+          <div class="gutter" aria-hidden="true"><div class="gutter-lines" id="gutter"></div></div>
+          <div class="code-body">
+            <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
+            <textarea
+              class="ui-code editor"
+              id="editor"
+              aria-label="JSON"
+              placeholder="Paste JSON here, or drop a .json file"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+            ></textarea>
+          </div>
         </div>
       </div>
-      <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
+      <!-- The tree, with its own buttons floating at its top right: they only apply to it. -->
+      <div class="tree-area">
+        <div class="view-tools seg" role="group" aria-label="Tree">
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="expand-all"
+            title="Expand all"
+            aria-label="Expand all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17 16l-5 5-5-5M7 8l5-5 5 5" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="collapse-all"
+            title="Collapse all"
+            aria-label="Collapse all"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 20l5-5 5 5M17 4l-5 5-5-5" />
+            </svg>
+          </button>
+        </div>
+        <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
+      </div>
+      <!-- CSV only: what the tables are, and which one Copy and Export take. -->
+      <div class="bar csvbar hidden" id="csvbar">
+        <span class="ui-label csv-note" id="csv-note" aria-live="polite"></span>
+      </div>
+      <!-- Types and Schema only: places with a few strings, which can be listed instead of
+           "string". Each is a toggle; the values show in its tooltip. -->
+      <div class="bar exactbar hidden" id="exactbar" role="group" aria-label="Exact values">
+        <span class="ui-label">Exact values</span>
+        <div class="exact-list" id="exact-list"></div>
+      </div>
       <!-- YAML, CSV, Types, Schema: the same view as the text, read-only. -->
       <div class="code hidden" id="export">
         <div class="gutter" aria-hidden="true">
@@ -395,21 +482,40 @@
         <span class="ui-label" id="page-lines"></span>
       </div>
 
-      <div class="bar problem hidden" id="problem">
-        <pre class="excerpt" id="excerpt"></pre>
-        <button type="button" class="ui-btn" id="goto">Go to error</button>
-        <span class="ui-label hidden" id="fix-note"></span>
-        <button type="button" class="ui-btn ui-btn--primary hidden" id="fix">Fix</button>
-      </div>
-      <p class="bar ui-status warning hidden" id="warning"></p>
+      <!-- Everything that reports on the text. On a phone it folds away behind the button below. -->
+      <footer class="json-footer" id="footer">
+        <div class="bar problem hidden" id="problem">
+          <pre class="excerpt" id="excerpt"></pre>
+          <button type="button" class="ui-btn" id="goto">Go to error</button>
+          <span class="ui-label hidden" id="fix-note"></span>
+          <button type="button" class="ui-btn ui-btn--primary hidden" id="fix">Fix</button>
+          <button type="button" class="ui-btn ui-btn--primary hidden" id="from-csv">
+            Convert CSV to JSON
+          </button>
+        </div>
+        <p class="bar ui-status warning hidden" id="warning"></p>
 
-      <div class="bar statusbar">
-        <p class="ui-status" id="status" role="status"></p>
-        <span class="where">
-          <button type="button" class="path ui-mono hidden" id="path" title="Copy path"></button>
-          <span class="ui-label ui-mono" id="cursor"></span>
-        </span>
-      </div>
+        <div class="bar statusbar" id="statusbar">
+          <p class="ui-status" id="status" role="status"></p>
+          <span class="where">
+            <button type="button" class="path ui-mono hidden" id="path" title="Copy path"></button>
+            <span class="ui-label ui-mono" id="cursor"></span>
+          </span>
+        </div>
+      </footer>
+      <!-- A phone folds the footer away behind this, coloured by whether the text is valid; it
+           opens over the editor, so nothing under it moves as the status changes. -->
+      <button
+        type="button"
+        class="status-toggle"
+        id="status-toggle"
+        aria-controls="footer"
+        aria-expanded="false"
+        title="Show status"
+        aria-label="Show status"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+      </button>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
