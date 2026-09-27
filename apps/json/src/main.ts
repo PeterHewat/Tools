@@ -161,8 +161,12 @@ function stepHistory(back: boolean): boolean {
   return true;
 }
 
+/** The layout last applied, so a new option re-applies it: sorting minified text keeps it minified. */
+let minified = false;
+
 function rewrite(minify: boolean): void {
   if (!result?.ok) return;
+  minified = minify;
   replaceText(
     formatJson(result.value, { indent: minify ? 0 : indent(), sortKeys: sortKeys.checked })
   );
@@ -215,9 +219,10 @@ editor.addEventListener("keydown", (e) => {
 
 formatBtn.addEventListener("click", () => rewrite(false));
 minifyBtn.addEventListener("click", () => rewrite(true));
-sortKeys.addEventListener("change", save);
-// The formatted size depends on the indent; validate() also saves.
-indentSel.addEventListener("change", validate);
+// Picking an option means "show it like this", so it applies at once (and Ctrl+Z takes it back).
+// With nothing valid to rewrite, validate() still refreshes the formatted size and saves.
+sortKeys.addEventListener("change", () => (result?.ok ? rewrite(minified) : save()));
+indentSel.addEventListener("change", () => (result?.ok ? rewrite(false) : validate()));
 byId("goto").addEventListener("click", goToError);
 
 byId("open").addEventListener("click", async () => {

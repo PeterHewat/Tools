@@ -1,9 +1,20 @@
 /* JSON's own layout. Tokens and controls come from @workbench/ui/base.css. */
 
-.json-main {
+/* The page is the editor: header on top, then the tool filling every pixel left. */
+body {
   display: flex;
   flex-direction: column;
+  height: 100dvh;
+}
+
+.json-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 10px;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
 }
 
 .toolbar-gap {
@@ -16,10 +27,28 @@
   gap: 6px;
 }
 
-/* The editor takes the height the page has left, but never gets too short to use. */
 .editor {
-  height: calc(100dvh - 230px);
-  min-height: 16rem;
+  flex: 1;
+  min-height: 8rem;
+  resize: none;
+}
+
+/* Open, Copy, Download, Clear: actions everyone knows by their picture. */
+.icon-btn {
+  justify-content: center;
+  width: 36px;
+  height: 34px;
+  padding: 0;
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .statusbar {
@@ -68,9 +97,5 @@
 @media (max-width: 640px) {
   .toolbar-gap {
     display: none;
-  }
-
-  .editor {
-    height: 50dvh;
   }
 }
