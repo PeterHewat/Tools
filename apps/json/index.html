@@ -209,7 +209,11 @@
 
         <h3>Views</h3>
         <ul>
-          <li><b>Text</b> — edit the JSON, with colours, line numbers and live checking.</li>
+          <li>
+            <b>Text</b> — edit the JSON, with colours, line numbers and live checking. The arrows in
+            the gutter fold objects and arrays; a folded one says how many keys or items it holds.
+            Unfold all and Fold all are at its top right.
+          </li>
           <li>
             <b>Tree</b> — fold objects and arrays. The gutter shows the line each value starts on in
             the text (the column, when the text is one line). Double-click (double-tap) a row<span
@@ -264,8 +268,8 @@
             real JSON, or back.
           </li>
           <li>
-            A long document is edited a page of 5,000 lines at a time; everything else works on the
-            whole of it.
+            An error is underlined where it is, and its line number shows red; hover it to read the
+            message.
           </li>
           <li class="phone-only">
             <b>Status</b> — on a phone the status bar folds away behind the round button at the
@@ -283,7 +287,7 @@
           </tr>
           <tr>
             <td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
-            <td>Undo / redo, Format and Minify included</td>
+            <td>Undo / redo, Format, Minify and Fix included</td>
           </tr>
           <tr>
             <td><kbd>Ctrl</kbd>+<kbd>F</kbd></td>
@@ -296,6 +300,30 @@
           <tr>
             <td><kbd>Esc</kbd></td>
             <td>Close find</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd>+<kbd>G</kbd></td>
+            <td>Go to line</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd> / <kbd>]</kbd></td>
+            <td>Fold / unfold at the cursor</td>
+          </tr>
+          <tr>
+            <td><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>→</kbd> / <kbd>←</kbd></td>
+            <td>Expand the selection to the enclosing value / shrink it back</td>
+          </tr>
+          <tr>
+            <td><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd></td>
+            <td>Indent / outdent the selected lines</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd>+<kbd>D</kbd></td>
+            <td>Add the next occurrence of the selection</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd>+click, <kbd>Alt</kbd>+drag</td>
+            <td>More cursors, a rectangular selection</td>
           </tr>
           <tr>
             <td>Arrows</td>
@@ -372,22 +400,27 @@
           <button type="button" class="ui-btn" id="minify" aria-pressed="false" title="Minify">
             Minify
           </button>
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="unfold-all"
+            title="Unfold all"
+            aria-label="Unfold all"
+          >
+            <svg data-ui-icon="expand-all" aria-hidden="true"></svg>
+          </button>
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="fold-all"
+            title="Fold all"
+            aria-label="Fold all"
+          >
+            <svg data-ui-icon="collapse-all" aria-hidden="true"></svg>
+          </button>
         </div>
-        <div class="code" id="code">
-          <div class="gutter" aria-hidden="true"><div class="gutter-lines" id="gutter"></div></div>
-          <div class="code-body">
-            <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
-            <textarea
-              class="ui-code editor"
-              id="editor"
-              aria-label="JSON"
-              placeholder="Paste JSON here, or drop a .json file"
-              spellcheck="false"
-              autocomplete="off"
-              autocapitalize="off"
-            ></textarea>
-          </div>
-        </div>
+        <!-- The editor (@tools/editor) is created in here. -->
+        <div class="code" id="code"></div>
       </div>
       <!-- The tree, with its own buttons floating at its top right: they only apply to it. -->
       <div class="tree-area">
@@ -424,55 +457,8 @@
         <div class="exact-list" id="exact-list"></div>
       </div>
       <!-- YAML, CSV, Types, Schema: the same view as the text, read-only. -->
-      <div class="code hidden" id="export">
-        <div class="gutter" aria-hidden="true">
-          <div class="gutter-lines" id="export-gutter"></div>
-        </div>
-        <div class="code-body">
-          <pre class="highlight" aria-hidden="true"><code id="export-highlight"></code></pre>
-          <textarea
-            class="ui-code editor"
-            id="export-text"
-            aria-label="Converted document"
-            readonly
-            spellcheck="false"
-          ></textarea>
-        </div>
-      </div>
+      <div class="code hidden" id="export"></div>
       <p class="export-message hidden" id="export-message"></p>
-
-      <div class="bar pager hidden" id="pager">
-        <button
-          type="button"
-          class="ui-btn icon-btn"
-          id="page-prev"
-          title="Previous page"
-          aria-label="Previous page"
-        >
-          <svg data-ui-icon="chevron-left" aria-hidden="true"></svg>
-        </button>
-        <label class="ui-label">
-          Page
-          <input
-            class="ui-input page-input"
-            id="page-input"
-            type="number"
-            min="1"
-            inputmode="numeric"
-          />
-          of <span id="page-count"></span>
-        </label>
-        <button
-          type="button"
-          class="ui-btn icon-btn"
-          id="page-next"
-          title="Next page"
-          aria-label="Next page"
-        >
-          <svg data-ui-icon="chevron-right" aria-hidden="true"></svg>
-        </button>
-        <span class="ui-label" id="page-lines"></span>
-      </div>
 
       <!-- Everything that reports on the text. On a phone it folds away behind the button below. -->
       <footer class="json-footer" id="footer">

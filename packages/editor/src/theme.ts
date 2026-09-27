@@ -44,8 +44,11 @@ export const siteTheme = EditorView.theme({
     opacity: "0.55",
   },
   ".cm-fold-marker:hover": { opacity: "1", color: "var(--text)" },
-  // Open markers show while the pointer is over the gutter, closed ones always.
-  ".cm-gutters:not(:hover) .cm-fold-marker.open": { opacity: "0" },
+  // Open markers show while the pointer is over the gutter, closed ones always; a touch
+  // screen, with nothing to hover, shows both.
+  "@media (hover: hover)": {
+    ".cm-gutters:not(:hover) .cm-fold-marker.open": { opacity: "0" },
+  },
   ".cm-foldPlaceholder": {
     margin: "0 2px",
     padding: "0 5px",

@@ -5,7 +5,7 @@
  * An app that has a lexer (the JSON app has one per view) keeps its colours identical in every
  * view that uses it, and in whatever else it draws with the same classes (the JSON tree).
  */
-import { RangeSetBuilder } from "@codemirror/state";
+import { RangeSetBuilder, type Line, type Text } from "@codemirror/state";
 import {
   Decoration,
   ViewPlugin,
@@ -22,8 +22,14 @@ export interface Token {
 
 export type LineLexer = (line: string) => readonly Token[];
 
-/** Lines longer than this keep their tokens between redraws, since lexing them is the cost. */
+/**
+ * Lines longer than this are lexed only up to a little past what is on screen (a lexer reads
+ * left to right, so the text after that cannot change the tokens before it), and keep their
+ * tokens between redraws.
+ */
 const LONG_LINE = 2_000;
+/** Characters lexed past the end of the visible stretch of a long line. */
+const LEX_AHEAD = 1_000;
 
 /** A token's place in its line: [start, end, kind], skipping plain text. */
 export function tokenSpans(tokens: readonly Token[]): [number, number, string][] {
@@ -49,7 +55,7 @@ export function lexerColours(lexer: LineLexer) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
-      /** Spans of the long lines on screen, by content, so scrolling along one does not re-lex it. */
+      /** Spans of the long lines on screen, by the text lexed, so scrolling back does not re-lex. */
       long = new Map<string, [number, number, string][]>();
 
       constructor(view: EditorView) {
@@ -60,13 +66,14 @@ export function lexerColours(lexer: LineLexer) {
         if (update.docChanged || update.viewportChanged) this.decorations = this.build(update.view);
       }
 
-      spansOf(line: string) {
-        if (line.length <= LONG_LINE) return tokenSpans(lexer(line));
-        let spans = this.long.get(line);
+      spansOf(doc: Text, line: Line, to: number) {
+        if (line.length <= LONG_LINE) return tokenSpans(lexer(line.text));
+        const text = doc.sliceString(line.from, Math.min(line.to, to + LEX_AHEAD));
+        let spans = this.long.get(text);
         if (!spans) {
           if (this.long.size > 8) this.long = new Map();
-          spans = tokenSpans(lexer(line));
-          this.long.set(line, spans);
+          spans = tokenSpans(lexer(text));
+          this.long.set(text, spans);
         }
         return spans;
       }
@@ -77,7 +84,7 @@ export function lexerColours(lexer: LineLexer) {
         for (const { from, to } of view.visibleRanges) {
           for (let pos = from; pos <= to;) {
             const line = doc.lineAt(pos);
-            for (const [start, end, kind] of this.spansOf(line.text)) {
+            for (const [start, end, kind] of this.spansOf(doc, line, to)) {
               const a = Math.max(line.from + start, from);
               const b = Math.min(line.from + end, to);
               if (a < b) builder.add(a, b, markFor(kind));
