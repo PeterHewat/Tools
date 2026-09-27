@@ -68,6 +68,7 @@ const findCase = byId<HTMLButtonElement>("find-case");
 const options = byId("options");
 const optionsBtn = byId<HTMLButtonElement>("options-btn");
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
+const viewSelect = byId<HTMLSelectElement>("view-select");
 const indentButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-indent]")];
 const pathStyleButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-path-style]")];
 const unwrapBtn = options.querySelector<HTMLButtonElement>('[data-action="unwrap"]')!;
@@ -746,6 +747,9 @@ function setMode(next: ViewMode): void {
   codeEl.classList.toggle("hidden", mode !== "text");
   treeEl.classList.toggle("hidden", mode !== "tree");
   for (const b of viewButtons) setPressed(b, b.dataset.view === mode);
+  viewSelect.value = mode;
+  // A phone shows the tree's own buttons (Expand all, Collapse all) only in the tree.
+  document.body.dataset.view = mode;
   cursor.classList.toggle("hidden", mode !== "text");
   showPager();
   if (findOpen()) {
@@ -869,6 +873,7 @@ fixBtn.addEventListener("click", fix);
 for (const b of viewButtons) {
   b.addEventListener("click", () => setMode(b.dataset.view as ViewMode));
 }
+viewSelect.addEventListener("change", () => setMode(viewSelect.value as ViewMode));
 expandAllBtn.addEventListener("click", () => tree.expandAll());
 collapseAllBtn.addEventListener("click", () => tree.collapseAll());
 

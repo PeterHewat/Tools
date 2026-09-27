@@ -94,6 +94,24 @@ body {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
+/* The views as one dropdown, for a phone (see the media query below); drawn as a header button
+   with its own chevron, since the native arrow differs on every platform. */
+.view-select {
+  display: none;
+  min-height: var(--ui-control);
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-dim)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%239aa0ab' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 8px center / 12px;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--ui-control-font);
+  appearance: none;
+  cursor: pointer;
+}
+
 /* Choices that read as one scale (2, 4, Tab) take the same width, that of the widest. */
 .seg.equal {
   display: inline-grid;
@@ -705,16 +723,24 @@ kbd {
 }
 
 @media (max-width: 640px) {
-  /* The groups' buttons flow straight into the header's rows, so "‹" shares its row with the
-     view switch instead of wrapping as whole groups and leaving gaps. */
+  /* The groups' buttons flow straight into the header's rows, so everything wraps as single
+     buttons rather than as whole groups leaving gaps. */
   .json-header .group {
     display: contents;
   }
 
-  /* Compact enough for "‹" and all six views on one row of a phone. */
-  .json-header .seg .ui-btn {
-    padding-inline: 6px;
-    font-size: 0.85rem;
+  /* One dropdown for the six views: with it, the bar is two rows instead of three. */
+  .json-header .seg {
+    display: none;
+  }
+
+  .view-select {
+    display: block;
+  }
+
+  /* Expand all and Collapse all do nothing outside the tree, so a phone spends no room on them. */
+  body:not([data-view="tree"]) .json-header .pair {
+    display: none;
   }
 
   /* "Valid JSON · … deep" on one line, the sizes on the next. */
