@@ -58,6 +58,12 @@ describe("page", () => {
     expect(html.match(/class="card"/g)).toHaveLength(2);
   });
 
+  test("the footer links the source by GitHub's mark, named for screen readers", () => {
+    const html = pageHtml([app], "/");
+    expect(html).toContain('aria-label="Source on GitHub"');
+    expect(html).toContain('<path fill="currentColor"');
+  });
+
   test("an empty catalog says so instead of rendering an empty grid", () => {
     const html = pageHtml([], "/");
     expect(html).toContain("Nothing here yet.");
