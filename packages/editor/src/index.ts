@@ -1,0 +1,617 @@
+/**
+ * The code editor the apps share: CodeMirror 6 behind the few calls the apps need
+ * (ADR 003). Apps import from here, never from `@codemirror/*` or `@lezer/*`.
+ *
+ * Offsets are UTF-16 offsets into the text, as `String` counts them; lines are 1-based.
+ * Files dropped on the editor are left to the app (`onFileDrop` from `@tools/ui` on `dom`).
+ */
+import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentLess,
+  indentMore,
+  isolateHistory,
+} from "@codemirror/commands";
+import { json } from "@codemirror/lang-json";
+import { xml } from "@codemirror/lang-xml";
+import {
+  bracketMatching,
+  codeFolding,
+  ensureSyntaxTree,
+  foldedRanges,
+  foldEffect,
+  foldGutter,
+  foldKeymap,
+  foldNodeProp,
+  indentOnInput,
+  indentUnit,
+  syntaxTree,
+  unfoldAll,
+  unfoldEffect,
+} from "@codemirror/language";
+import { gotoLine, highlightSelectionMatches, selectNextOccurrence } from "@codemirror/search";
+import {
+  Annotation,
+  Compartment,
+  EditorSelection,
+  EditorState,
+  Prec,
+  RangeSetBuilder,
+  StateEffect,
+  StateField,
+  Transaction,
+  type Extension,
+  type StateCommand,
+} from "@codemirror/state";
+import {
+  Decoration,
+  EditorView,
+  GutterMarker,
+  WidgetType,
+  drawSelection,
+  dropCursor,
+  gutterLineClass,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  keymap,
+  lineNumbers,
+  placeholder as placeholderText,
+  rectangularSelection,
+  type DecorationSet,
+  type KeyBinding,
+} from "@codemirror/view";
+import { iconSvg } from "@tools/ui";
+import { lexerColours, type LineLexer } from "./colour.js";
+import { expandExtension, expandSelection, shrinkSelection } from "./expand.js";
+import { foldSummary } from "./fold-summary.js";
+import { minimalChange } from "./text-diff.js";
+import { siteTheme, syntaxColours } from "./theme.js";
+
+export type { LineLexer, Token } from "./colour.js";
+export { minimalChange } from "./text-diff.js";
+
+/** Structure: folding, bracket matching and indentation follow the language's syntax. */
+export type Language = "json" | "xml" | null;
+
+/** How text is coloured: an app's line lexer, the language's own syntax colours, or not at all. */
+export type Colours = LineLexer | "syntax" | null;
+
+/** A stretch of text drawn with a class; `line` puts the class on each whole line it touches. */
+export interface Highlight {
+  from: number;
+  to: number;
+  class: string;
+  line?: boolean;
+}
+
+/** A find result; the current one is filled in. */
+export interface Mark {
+  start: number;
+  end: number;
+  current?: boolean;
+}
+
+export interface EditorError {
+  /** Where the problem is. */
+  from: number;
+  /** End of the underline; by default the end of the word or symbol at `from`. */
+  to?: number;
+  message: string;
+}
+
+export interface EditorKey {
+  /** CodeMirror's key names: "Mod-Enter", "Shift-Alt-ArrowRight", "F3"… */
+  key: string;
+  /** True when the key was handled. */
+  run: () => boolean;
+}
+
+export interface EditorOptions {
+  text?: string;
+  language?: Language;
+  colours?: Colours;
+  readOnly?: boolean;
+  /** Accessible name of the text. */
+  label?: string;
+  placeholder?: string;
+  lineWrapping?: boolean;
+  /** Indent unit: a number of spaces, or a tab. Two spaces by default. */
+  indent?: number | "\t";
+  /** Extra keys, tried before the editor's own. */
+  keys?: readonly EditorKey[];
+  /** The text changed; `user` when typed, pasted or undone rather than set with `setText`. */
+  onChange?: (user: boolean) => void;
+  /** The caret or selection moved (also after a change). */
+  onSelection?: () => void;
+  onFocus?: (focused: boolean) => void;
+}
+
+export interface Editor {
+  /** The editor's outermost element, for classes, file drops and layout. */
+  readonly dom: HTMLElement;
+  readonly text: string;
+  readonly length: number;
+  readonly lineCount: number;
+  /** The main selection, `from` ≤ `to`; `head` is where the caret is. */
+  readonly selection: { from: number; to: number; head: number };
+  readonly focused: boolean;
+  /**
+   * Replaces the text, changing only what differs, so the caret, scroll and folds stay put
+   * where the text did not change. `undoable` (default true) makes it one step of undo;
+   * false replaces all of it and starts a fresh history (a new file).
+   */
+  setText(text: string, options?: { undoable?: boolean }): void;
+  /**
+   * Selects a stretch, unfolding what hides it. `scroll`: "center" (default) brings it to the
+   * middle of the view, "top" to the top, "nearest" just into view, false leaves the scroll.
+   */
+  select(from: number, to?: number, options?: { scroll?: ScrollTo | false; focus?: boolean }): void;
+  /** 1-based line and column of an offset. */
+  position(offset: number): { line: number; column: number };
+  /** Text of a 1-based line. */
+  line(line: number): string;
+  focus(): void;
+  setMarks(marks: readonly Mark[]): void;
+  setHighlights(highlights: readonly Highlight[]): void;
+  setError(error: EditorError | null): void;
+  setLanguage(language: Language): void;
+  setColours(colours: Colours): void;
+  setIndent(indent: number | "\t"): void;
+  setReadOnly(readOnly: boolean): void;
+  /** Numbers the gutter from elsewhere, one entry per line (null leaves it blank); null numbers lines. */
+  setLineLabels(labels: readonly (number | string | null)[] | null): void;
+  /** Folds every object, array or element, except the one holding the whole document. */
+  foldAll(): void;
+  unfoldAll(): void;
+  /** Scrolls an offset into view without moving the selection. */
+  scrollTo(offset: number, where?: ScrollTo): void;
+  destroy(): void;
+}
+
+export type ScrollTo = "center" | "top" | "nearest";
+
+/** Past this many characters, a language's structure is not worth parsing: the text stays plain. */
+const MAX_STRUCTURED = 30_000_000;
+
+// ---------- Decorations set from outside: marks, highlights, the error ----------
+
+function decorationField<T>(build: (value: T, state: EditorState) => DecorationSet) {
+  const set = StateEffect.define<T>();
+  const field = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(deco, tr) {
+      for (const e of tr.effects) if (e.is(set)) return build(e.value, tr.state);
+      return tr.docChanged ? deco.map(tr.changes) : deco;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+  return { set, field };
+}
+
+const findMark = Decoration.mark({ class: "cm-find" });
+const findCurrent = Decoration.mark({ class: "cm-find cm-find-current" });
+
+const marks = decorationField<readonly Mark[]>((list, state) => {
+  const builder = new RangeSetBuilder<Decoration>();
+  const length = state.doc.length;
+  for (const m of list) {
+    const from = Math.min(m.start, length);
+    const to = Math.min(m.end, length);
+    if (from < to) builder.add(from, to, m.current ? findCurrent : findMark);
+  }
+  return builder.finish();
+});
+
+const highlights = decorationField<readonly Highlight[]>((list, state) => {
+  const length = state.doc.length;
+  const ranges = [];
+  for (const h of list) {
+    const from = Math.min(h.from, length);
+    const to = Math.min(h.to, length);
+    if (h.line) {
+      const deco = Decoration.line({ class: h.class });
+      const last = state.doc.lineAt(to).number;
+      for (let n = state.doc.lineAt(from).number; n <= last; n++) {
+        ranges.push(deco.range(state.doc.line(n).from));
+      }
+    } else if (from < to) {
+      ranges.push(Decoration.mark({ class: h.class }).range(from, to));
+    }
+  }
+  return Decoration.set(ranges, true);
+});
+
+interface PlacedError {
+  from: number;
+  to: number;
+  message: string;
+}
+
+/** An error where there is nothing to underline: the end of a line or of the text. */
+class ErrorPoint extends WidgetType {
+  constructor(readonly message: string) {
+    super();
+  }
+  override eq(other: ErrorPoint) {
+    return other.message === this.message;
+  }
+  toDOM() {
+    const span = document.createElement("span");
+    span.className = "cm-error-mark-empty";
+    span.title = this.message;
+    span.textContent = "​";
+    return span;
+  }
+}
+
+const errorLine = new (class extends GutterMarker {
+  override elementClass = "cm-error-line";
+})();
+
+const setErrorEffect = StateEffect.define<PlacedError | null>();
+const errorField = StateField.define<PlacedError | null>({
+  create: () => null,
+  update(value, tr) {
+    for (const e of tr.effects) if (e.is(setErrorEffect)) return e.value;
+    if (!value || !tr.docChanged) return value;
+    return { ...value, from: tr.changes.mapPos(value.from), to: tr.changes.mapPos(value.to, 1) };
+  },
+  provide: (f) => [
+    EditorView.decorations.from(f, (err) => {
+      if (!err) return Decoration.none;
+      if (err.from < err.to) {
+        const mark = Decoration.mark({
+          class: "cm-error-mark",
+          attributes: { title: err.message },
+        });
+        return Decoration.set(mark.range(err.from, err.to));
+      }
+      return Decoration.set(
+        Decoration.widget({ widget: new ErrorPoint(err.message), side: 1 }).range(err.from)
+      );
+    }),
+    gutterLineClass.compute([f], (state) => {
+      const err = state.field(f);
+      const builder = new RangeSetBuilder<GutterMarker>();
+      if (err) {
+        const start = state.doc.lineAt(Math.min(err.from, state.doc.length)).from;
+        builder.add(start, start, errorLine);
+      }
+      return builder.finish();
+    }),
+  ],
+});
+
+/** End of the word, number or string-ish run at `from`, or one symbol; `from` at a line end. */
+function errorEnd(state: EditorState, from: number): number {
+  const line = state.doc.lineAt(from);
+  const rest = line.text.slice(from - line.from);
+  if (!rest) return from;
+  const word = /^[\w$.+-]+/.exec(rest);
+  return from + (word ? word[0].length : 1);
+}
+
+// ---------- Keys ----------
+
+/** Tab: indent the selected lines, or insert one indent unit at the caret. */
+const indentOrInsert: StateCommand = ({ state, dispatch }) => {
+  if (state.readOnly) return false;
+  if (state.selection.ranges.some((r) => !r.empty)) return indentMore({ state, dispatch });
+  const unit = state.facet(indentUnit);
+  dispatch(
+    state.update(state.replaceSelection(unit), { scrollIntoView: true, userEvent: "input" })
+  );
+  return true;
+};
+
+const editorKeys: readonly KeyBinding[] = [
+  ...closeBracketsKeymap,
+  { key: "Mod-g", run: gotoLine, preventDefault: true },
+  { key: "Mod-d", run: selectNextOccurrence, preventDefault: true },
+  { key: "Shift-Alt-ArrowRight", run: expandSelection },
+  { key: "Shift-Alt-ArrowLeft", run: shrinkSelection },
+  ...defaultKeymap,
+  ...historyKeymap,
+  ...foldKeymap,
+  { key: "Tab", run: indentOrInsert, shift: indentLess },
+];
+
+// ---------- Folding ----------
+
+/** Every foldable range in the document, from the syntax tree, outermost first. */
+function foldableRanges(state: EditorState): { from: number; to: number }[] {
+  const tree = ensureSyntaxTree(state, state.doc.length, 2_000) ?? syntaxTree(state);
+  const out: { from: number; to: number }[] = [];
+  tree.iterate({
+    enter(node) {
+      const fold = node.type.prop(foldNodeProp);
+      if (!fold) return;
+      const range = fold(node.node, state);
+      if (!range || range.to <= range.from) return;
+      if (state.doc.lineAt(range.from).number === state.doc.lineAt(range.to).number) return;
+      out.push(range);
+    },
+  });
+  return out;
+}
+
+function markerDom(open: boolean): HTMLElement {
+  const span = document.createElement("span");
+  span.className = `cm-fold-marker${open ? " open" : ""}`;
+  span.title = open ? "Fold" : "Unfold";
+  span.append(iconSvg(open ? "chevron-down" : "chevron-right"));
+  return span;
+}
+
+const folding: Extension = [
+  codeFolding({
+    preparePlaceholder: foldSummary,
+    placeholderDOM(_view, onclick, prepared: unknown) {
+      const span = document.createElement("span");
+      span.className = "cm-foldPlaceholder";
+      span.textContent = typeof prepared === "string" && prepared ? `… ${prepared}` : "…";
+      span.title = "Unfold";
+      span.setAttribute("aria-label", "folded code");
+      span.onclick = onclick;
+      return span;
+    },
+  }),
+  foldGutter({ markerDOM: markerDom }),
+];
+
+// ---------- The editor ----------
+
+/** Marks transactions made by `setText`, so `onChange` can tell them from typing. */
+const fromCode = Annotation.define<boolean>();
+
+function languageExtension(language: Language, size: number): Extension {
+  if (size > MAX_STRUCTURED) return [];
+  if (language === "json") return json();
+  if (language === "xml") return xml();
+  return [];
+}
+
+function colourExtension(colours: Colours): Extension {
+  if (colours === "syntax") return syntaxColours;
+  return colours ? lexerColours(colours) : [];
+}
+
+const indentString = (indent: number | "\t") => (indent === "\t" ? "\t" : " ".repeat(indent));
+
+function numbers(labels: readonly (number | string | null)[] | null): Extension {
+  return lineNumbers(
+    labels
+      ? { formatNumber: (n) => (labels[n - 1] == null ? "" : String(labels[n - 1])) }
+      : undefined
+  );
+}
+
+export function createEditor(parent: HTMLElement, options: EditorOptions = {}): Editor {
+  const language = new Compartment();
+  const colours = new Compartment();
+  const indent = new Compartment();
+  const readOnly = new Compartment();
+  const gutter = new Compartment();
+  const undo = new Compartment();
+  let languageChoice: Language = options.language ?? null;
+  const text = options.text ?? "";
+
+  const extensions: Extension[] = [
+    Prec.highest(keymap.of((options.keys ?? []).map((k) => ({ key: k.key, run: () => k.run() })))),
+    gutter.of(numbers(null)),
+    folding,
+    highlightActiveLineGutter(),
+    highlightSpecialChars(),
+    undo.of(history()),
+    drawSelection(),
+    dropCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    EditorState.tabSize.of(2),
+    indentOnInput(),
+    bracketMatching(),
+    closeBrackets(),
+    rectangularSelection(),
+    highlightActiveLine(),
+    highlightSelectionMatches({ minSelectionLength: 2 }),
+    keymap.of(editorKeys),
+    expandExtension,
+    marks.field,
+    highlights.field,
+    errorField,
+    siteTheme,
+    language.of(languageExtension(languageChoice, text.length)),
+    colours.of(colourExtension(options.colours ?? null)),
+    indent.of(indentUnit.of(indentString(options.indent ?? 2))),
+    readOnly.of(EditorState.readOnly.of(options.readOnly ?? false)),
+    // Files dropped on the editor are the app's to open, not text to insert.
+    EditorView.domEventHandlers({
+      drop: (e) => e.dataTransfer?.types.includes("Files") ?? false,
+    }),
+    EditorView.updateListener.of((u) => {
+      if (u.docChanged) {
+        const user = u.transactions.some((tr) => tr.docChanged && !tr.annotation(fromCode));
+        options.onChange?.(user);
+      }
+      if (u.docChanged || u.selectionSet) options.onSelection?.();
+      if (u.focusChanged) options.onFocus?.(u.view.hasFocus);
+    }),
+  ];
+  if (options.lineWrapping) extensions.push(EditorView.lineWrapping);
+  if (options.placeholder) extensions.push(placeholderText(options.placeholder));
+  if (options.label) {
+    extensions.push(EditorView.contentAttributes.of({ "aria-label": options.label }));
+  }
+
+  const view = new EditorView({
+    parent,
+    state: EditorState.create({ doc: text, extensions }),
+  });
+
+  const scrollEffect = (from: number, to: number, where: ScrollTo) =>
+    EditorView.scrollIntoView(EditorSelection.range(from, to), {
+      y: where === "top" ? "start" : where,
+      yMargin: where === "top" ? 20 : 5,
+    });
+
+  const clamp = (n: number) => Math.max(0, Math.min(n, view.state.doc.length));
+
+  /** Structure depends on size: a text grown past the limit drops it, and back. */
+  const reconfigureLanguageFor = (size: number): StateEffect<unknown> | null => {
+    const was = view.state.doc.length > MAX_STRUCTURED;
+    const now = size > MAX_STRUCTURED;
+    return was === now ? null : language.reconfigure(languageExtension(languageChoice, size));
+  };
+
+  return {
+    dom: view.dom,
+    get text() {
+      return view.state.doc.toString();
+    },
+    get length() {
+      return view.state.doc.length;
+    },
+    get lineCount() {
+      return view.state.doc.lines;
+    },
+    get selection() {
+      const { from, to, head } = view.state.selection.main;
+      return { from, to, head };
+    },
+    get focused() {
+      return view.hasFocus;
+    },
+
+    setText(next, { undoable = true } = {}) {
+      const current = view.state.doc.toString();
+      const languageEffect = reconfigureLanguageFor(next.length);
+      if (!undoable) {
+        // Everything replaced, with the history dropped and started again.
+        view.dispatch({
+          changes: { from: 0, to: current.length, insert: next },
+          selection: EditorSelection.cursor(0),
+          effects: [undo.reconfigure([]), ...(languageEffect ? [languageEffect] : [])],
+          annotations: [fromCode.of(true), Transaction.addToHistory.of(false)],
+          scrollIntoView: true,
+        });
+        view.dispatch({ effects: undo.reconfigure(history()) });
+        return;
+      }
+      const change = minimalChange(current, next);
+      if (!change) return;
+      view.dispatch({
+        changes: change,
+        effects: languageEffect ? [languageEffect] : [],
+        annotations: [fromCode.of(true), isolateHistory.of("full")],
+        userEvent: "input.replace",
+      });
+    },
+
+    select(from, to = from, { scroll = "center", focus = false } = {}) {
+      from = clamp(from);
+      to = clamp(to);
+      const [a, b] = from <= to ? [from, to] : [to, from];
+      const hidden: StateEffect<unknown>[] = [];
+      foldedRanges(view.state).between(a, b, (f, t) => {
+        // Touching a fold at its edge does not hide the selection; overlapping it does.
+        if (f < b && t > a) hidden.push(unfoldEffect.of({ from: f, to: t }));
+        else if (a === b && f < a && t > a) hidden.push(unfoldEffect.of({ from: f, to: t }));
+      });
+      view.dispatch({
+        selection: EditorSelection.range(from, to),
+        effects: scroll ? [...hidden, scrollEffect(a, b, scroll)] : hidden,
+        userEvent: "select",
+      });
+      if (focus) view.focus();
+    },
+
+    position(offset) {
+      const line = view.state.doc.lineAt(clamp(offset));
+      return { line: line.number, column: clamp(offset) - line.from + 1 };
+    },
+
+    line(n) {
+      const doc = view.state.doc;
+      return n >= 1 && n <= doc.lines ? doc.line(n).text : "";
+    },
+
+    focus: () => view.focus(),
+
+    setMarks(list) {
+      view.dispatch({ effects: marks.set.of(list) });
+    },
+
+    setHighlights(list) {
+      view.dispatch({ effects: highlights.set.of(list) });
+    },
+
+    setError(error) {
+      const current = view.state.field(errorField);
+      if (!error) {
+        if (current) view.dispatch({ effects: setErrorEffect.of(null) });
+        return;
+      }
+      const from = clamp(error.from);
+      const to = clamp(error.to ?? errorEnd(view.state, from));
+      if (
+        current &&
+        current.from === from &&
+        current.to === to &&
+        current.message === error.message
+      )
+        return;
+      view.dispatch({ effects: setErrorEffect.of({ from, to, message: error.message }) });
+    },
+
+    setLanguage(next) {
+      if (next === languageChoice) return;
+      languageChoice = next;
+      view.dispatch({
+        effects: language.reconfigure(languageExtension(next, view.state.doc.length)),
+      });
+    },
+
+    setColours(next) {
+      view.dispatch({ effects: colours.reconfigure(colourExtension(next)) });
+    },
+
+    setIndent(next) {
+      view.dispatch({ effects: indent.reconfigure(indentUnit.of(indentString(next))) });
+    },
+
+    setReadOnly(next) {
+      view.dispatch({ effects: readOnly.reconfigure(EditorState.readOnly.of(next)) });
+    },
+
+    setLineLabels(labels) {
+      view.dispatch({ effects: gutter.reconfigure(numbers(labels)) });
+    },
+
+    foldAll() {
+      const { state } = view;
+      const ranges = foldableRanges(state);
+      const doc = state.doc.toString();
+      const first = doc.search(/\S/);
+      const last = doc.trimEnd().length - 1;
+      const folded = new Set<string>();
+      foldedRanges(state).between(0, state.doc.length, (f, t) => void folded.add(`${f}:${t}`));
+      const effects = ranges
+        // The value that holds the whole document stays open: folding it would show one line.
+        .filter((r) => !(r.from <= first + 1 && r.to >= last))
+        .filter((r) => !folded.has(`${r.from}:${r.to}`))
+        .map((r) => foldEffect.of(r));
+      if (effects.length) view.dispatch({ effects });
+    },
+
+    unfoldAll: () => void unfoldAll(view),
+
+    scrollTo(offset, where = "center") {
+      const at = clamp(offset);
+      view.dispatch({ effects: scrollEffect(at, at, where) });
+    },
+
+    destroy: () => view.destroy(),
+  };
+}
