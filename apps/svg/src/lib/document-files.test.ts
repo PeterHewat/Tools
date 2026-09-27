@@ -42,17 +42,17 @@ describe("document files", () => {
 
   test("anything else is refused with a reason", () => {
     expect(() => readDocumentFile("not json")).toThrow("not valid JSON");
-    expect(() => readDocumentFile(JSON.stringify({ tag: "other" }))).toThrow("not a Vellum");
+    expect(() => readDocumentFile(JSON.stringify({ tag: "other" }))).toThrow("not an SVG app");
     const newer = JSON.stringify(
       documentFile({ name: "x", data: { ...data, version: 99 as typeof data.version } })
     );
-    expect(() => readDocumentFile(newer)).toThrow("newer Vellum");
+    expect(() => readDocumentFile(newer)).toThrow("newer version");
   });
 
   test("file names are safe everywhere", () => {
-    expect(documentFileName('a/b:c*"d')).toBe("abcd.vellum.json");
+    expect(documentFileName('a/b:c*"d')).toBe("abcd.svg.json");
     expect(libraryFileName(new Date("2026-09-26T10:00:00Z"))).toBe(
-      "Vellum library 2026-09-26.vellum.json"
+      "SVG library 2026-09-26.svg.json"
     );
   });
 });

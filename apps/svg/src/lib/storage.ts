@@ -2,18 +2,14 @@
 // reference images are embedded). A light "meta" store lets the list load without the images.
 import type { ProjectFile } from "./types.js";
 
-const DB_NAME = "vellum";
+const DB_NAME = "svg";
 /**
  * The database's own version, for its stores rather than the documents in them (those carry
- * `ProjectFile.version`). 1 was the unreleased Vellum, whose documents are not kept; from 2 on,
- * an upgrade keeps everything.
+ * `ProjectFile.version`). An upgrade keeps everything.
  */
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 const META = "meta";
 const DATA = "data";
-
-/** True when this load found an unreleased library and started it again, empty. */
-export let libraryReset = false;
 
 export interface DocumentMeta {
   id: string;
@@ -42,16 +38,14 @@ function openDb(): Promise<IDBDatabase> {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = (e) => {
         const db = req.result;
-        if (e.oldVersion < 2) {
-          libraryReset = e.oldVersion > 0;
-          for (const name of Array.from(db.objectStoreNames)) db.deleteObjectStore(name);
+        if (e.oldVersion < 1) {
           db.createObjectStore(META, { keyPath: "id" });
           db.createObjectStore(DATA, { keyPath: "id" });
         }
       };
       req.onsuccess = () => {
         const db = req.result;
-        // A newer Vellum in another tab needs this connection gone before it can upgrade.
+        // A newer version of the app in another tab needs this connection gone before it can upgrade.
         db.onversionchange = () => {
           db.close();
           dbPromise = null;

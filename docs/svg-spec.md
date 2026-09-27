@@ -1,6 +1,6 @@
-# Vellum — Reference
+# SVG — Reference
 
-What Vellum does and how, as built. When this and the code disagree, the code is right and this
+What the SVG app does and how, as built. When this and the code disagree, the code is right and this
 is fixed.
 
 ## 1. Purpose
@@ -125,7 +125,7 @@ Every element carries a complete style, edited in its row of the Primitives list
   shows beside it.
 - Opacities of 1 are not exported. Markers and gradients go into `<defs>`, with ids derived from
   the element id.
-- A shape with no stroke and no fill paints nothing, as in any viewer; Vellum keeps it clickable
+- A shape with no stroke and no fill paints nothing, as in any viewer; the app keeps it clickable
   and shows its row dimmed so it can be found.
 
 ### 5.3 Hidden shapes
@@ -331,12 +331,12 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   tags. What matched is marked - in the name, from a copy laid over the field, and in the tags that
   matched, shown under a folded row, in solid yellow. ▲ ▼ are off while the list is filtered. Esc clears the field, and so do a new document and an import, which a filter would otherwise hide.
 - The last open document reopens at start. The first start, with an empty library, creates
-  **Workbench** from `public/art.svg` (512 × 320, Vellum's own export, also the index
-  page's card art), tagged isometric, desk and gradient; a `vellum.welcomed` flag keeps it from coming back once deleted.
+  **Workbench** from `public/art.svg` (512 × 320, the app's own export, also the index
+  page's card art), tagged isometric, desk and gradient; an `svg.welcomed` flag keeps it from coming back once deleted.
 - **Demos** (`demos.ts`): finished drawings in `public/demos/`, each named and tagged in one list,
   are added at the bottom of the list, in that order. A browser remembers the files it was given
-  (`vellum.demos`), so a deleted demo stays deleted and one added to the list later still arrives;
-  with no storage to remember by, none are added. Each file is written as Vellum exports it, which
+  (`svg.demos`), so a deleted demo stays deleted and one added to the list later still arrives;
+  with no storage to remember by, none are added. Each file is written as the app exports it, which
   a test holds it to. Each fills its artboard over a blue gradient `backdrop`, which the document
   gets locked.
 - Opening a document fits its artboard in view. Zoom, pan and open panels otherwise belong to the
@@ -347,7 +347,7 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
 
 `ProjectFile`, versioned by `PROJECT_VERSION` (`types.ts`). Every released version stays readable:
 `readProject` (`io.ts`) brings an older document up to date step by step, and refuses one from a
-newer Vellum with a message to reload. The database has its own `DB_VERSION` (`storage.ts`) for
+newer version of the app with a message to reload. The database has its own `DB_VERSION` (`storage.ts`) for
 its stores.
 
 ```json
@@ -388,11 +388,11 @@ its stores.
 
 Documents move between browsers as files (`document-files.ts`):
 
-- A row's export writes `Name.vellum.json`:
-  `{ "tag": "vellum/document", "version": 1, "exported", "name", "tags"?, "data" }`,
+- A row's export writes `Name.svg.json`:
+  `{ "tag": "svg/document", "version": 1, "exported", "name", "tags"?, "data" }`,
   with `tags` only when there are some.
 - The header's export writes every document, in list order, as one library file:
-  `{ "tag": "vellum/library", "version": 1, "exported", "documents": [{ "name", "tags"?, "data" }] }`.
+  `{ "tag": "svg/library", "version": 1, "exported", "documents": [{ "name", "tags"?, "data" }] }`.
 - Import takes any number of files of either kind. Every document in them is read by `readProject`
   and added at the top of the list, in the order the file gives, with a fresh id, a free name and
   its tags, cleaned as if typed:
@@ -419,7 +419,7 @@ Documents move between browsers as files (`document-files.ts`):
 
 - **Undo** keeps 100 steps of every document change — geometry, style, order, artboard, grid,
   images. A drag, or a session of typing in one field, is one step. Ctrl+Z; Ctrl+Y or Ctrl+Shift+Z.
-- **Clipboard:** copy writes `{ "tag": "vellum/elements", "elements", "groupNames" }` as text —
+- **Clipboard:** copy writes `{ "tag": "svg/elements", "elements", "groupNames" }` as text —
   exactly the selection, a member picked inside a group included. Paste takes that, offset by the
   grid step (at least 10) per paste, or SVG markup from anywhere, placed where it says.
 - Shortcuts are ignored while typing in a text or number field, a select or the SVG source.

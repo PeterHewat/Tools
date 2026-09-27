@@ -10,10 +10,10 @@ import { readProject } from "./io.js";
 import { cleanTags } from "./doc-list.js";
 import type { ProjectFile } from "./types.js";
 
-const DOC_TAG = "vellum/document";
-const LIBRARY_TAG = "vellum/library";
+const DOC_TAG = "svg/document";
+const LIBRARY_TAG = "svg/library";
 
-/** One document, as `Name.vellum.json`. */
+/** One document, as `Name.svg.json`. */
 export interface DocumentFile {
   tag: typeof DOC_TAG;
   version: 1;
@@ -62,12 +62,12 @@ export function fileBase(name: string): string {
 }
 
 export function documentFileName(name: string): string {
-  return `${fileBase(name)}.vellum.json`;
+  return `${fileBase(name)}.svg.json`;
 }
 
 export function libraryFileName(now = new Date()): string {
   const day = now.toISOString().slice(0, 10);
-  return `Vellum library ${day}.vellum.json`;
+  return `SVG library ${day}.svg.json`;
 }
 
 /**
@@ -88,7 +88,7 @@ export function readDocumentFile(text: string): ImportedDocument[] {
       : file.tag === LIBRARY_TAG && Array.isArray(file.documents)
         ? file.documents
         : null;
-  if (!entries) throw new Error("It is not a Vellum document file.");
+  if (!entries) throw new Error("It is not an SVG app document file.");
   return entries.map((doc) =>
     entry({
       name: typeof doc?.name === "string" && doc.name.trim() ? doc.name.trim() : "Untitled",

@@ -34,7 +34,7 @@ describe("the welcome drawing", () => {
     expect(backdrop?.gradStops.every((s) => s.opacity < 0.5)).toBe(true);
   });
 
-  test("is already in Vellum's own format: exporting it gives the file back", () => {
+  test("is already in the app's own format: exporting it gives the file back", () => {
     const back = importSvgFile(ART, { keepIds: true });
     const again = formatExportSvg(
       {

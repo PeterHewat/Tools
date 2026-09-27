@@ -8,9 +8,9 @@
       "port": 5170
     },
     {
-      "name": "vellum-dev",
+      "name": "svg-dev",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev", "vellum", "--port", "5173", "--strictPort"],
+      "runtimeArgs": ["run", "dev", "svg", "--port", "5173", "--strictPort"],
       "port": 5173
     },
     {

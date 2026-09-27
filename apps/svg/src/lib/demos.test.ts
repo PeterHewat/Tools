@@ -22,7 +22,7 @@ describe("the demos", () => {
 
   for (const demo of DEMOS) {
     describe(demo.name, () => {
-      test("is already in Vellum's own format: exporting it gives the file back", async () => {
+      test("is already in SVG's own format: exporting it gives the file back", async () => {
         const svg = await read(demo.file);
         const back = importSvgFile(svg, { keepIds: true });
         const again = formatExportSvg(

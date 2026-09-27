@@ -1972,7 +1972,7 @@ body {
     flex: 0 0 auto;
   }
 
-  /* "‹ Workbench  Vellum" reduces to "‹": a floating button like Help, its words kept for
+  /* "‹ Workbench  SVG" reduces to "‹": a floating button like Help, its words kept for
      screen readers. */
   .top-bar > .wb-home {
     flex: 0 0 auto;

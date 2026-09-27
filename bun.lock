@@ -40,8 +40,8 @@
         "vite": "^8.3.0",
       },
     },
-    "apps/vellum": {
-      "name": "@workbench/vellum",
+    "apps/svg": {
+      "name": "@workbench/svg",
       "version": "0.0.0",
       "devDependencies": {
         "@happy-dom/global-registrator": "^20.14.5",
@@ -199,7 +199,7 @@
 
     "@workbench/ui": ["@workbench/ui@workspace:packages/ui"],
 
-    "@workbench/vellum": ["@workbench/vellum@workspace:apps/vellum"],
+    "@workbench/svg": ["@workbench/svg@workspace:apps/svg"],
 
     "acorn": ["acorn@8.18.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ=="],
 

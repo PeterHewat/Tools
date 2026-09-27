@@ -1,8 +1,8 @@
 /**
  * The drawing a first visit opens on, instead of an empty artboard.
  *
- * It is `public/art.svg`: the same file the index page shows across the top of Vellum's card,
- * so there is one picture to keep, not two. An isometric workbench, written as Vellum exports
+ * It is `public/art.svg`: the same file the index page shows across the top of the SVG app's card,
+ * so there is one picture to keep, not two. An isometric workbench, written as the app exports
  * it, whose named groups (desk, laptop, ruler, pencil, mug, plant) read like a layers list. It
  * shows polygons, arcs and Béziers, ellipses that stay ellipses when rotated, gradients, and a
  * translucent backdrop that takes on whatever is behind it, light or dark.

@@ -921,7 +921,7 @@ options.addEventListener("toggle", (e) => {
 });
 
 // Help docks under the header, which wraps to more rows on a narrow screen. It stays open until
-// its button closes it, and a reload of the tab keeps it open, as in Vellum.
+// its button closes it, and a reload of the tab keeps it open, as in the SVG app.
 const help = byId("help");
 const helpBtn = byId("help-btn");
 const HELP_KEY = "workbench.json.help";

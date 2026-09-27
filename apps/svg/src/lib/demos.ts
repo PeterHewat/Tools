@@ -1,6 +1,6 @@
 /**
  * Demo drawings: a few finished pieces added to the Documents list beside the welcome drawing, to
- * show what Vellum draws and to take apart. Each is a file in `public/demos/`, written as Vellum
+ * show what the app draws and to take apart. Each is a file in `public/demos/`, written as the app
  * exports it, so it opens exactly as drawn: smooth curves on few points, shapes cut and joined
  * with Combine, gradients that fade out.
  *

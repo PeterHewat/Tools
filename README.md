@@ -6,10 +6,10 @@ send anonymous page-view analytics to Cloudflare when you are online.
 
 **[peterhewat.github.io/Workbench](https://peterhewat.github.io/Workbench/)**
 
-| Tool                     | What it does                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------ |
-| [Vellum](./apps/vellum/) | Trace reference images and export clean, pure SVG.                             |
-| [JSON](./apps/json/)     | Format, minify and validate JSON, with errors pinned to their line and column. |
+| Tool                 | What it does                                                                   |
+| -------------------- | ------------------------------------------------------------------------------ |
+| [SVG](./apps/svg/)   | Trace reference images and export clean, pure SVG.                             |
+| [JSON](./apps/json/) | Format, minify and validate JSON, with errors pinned to their line and column. |
 
 ## Running it
 
@@ -17,12 +17,12 @@ Requires [Bun](https://bun.sh).
 
 ```bash
 bun install
-bun run dev vellum
+bun run dev svg
 ```
 
 `bun run dev <slug>` serves one app with hot reload; `bun run dev home` serves the index page.
 Each app is its own Vite root on its own port, and the index's links point at built paths like
-`/Workbench/vellum/` that only resolve in a built site — use the build-and-serve below to see
+`/Workbench/svg/` that only resolve in a built site — use the build-and-serve below to see
 them joined up.
 
 To build and preview the whole site, including the index page:

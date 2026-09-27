@@ -503,9 +503,9 @@ describe("project file", () => {
     expect(readProject(saved)).toEqual(saved);
   });
 
-  test("a document from a newer Vellum is refused, not half-read", () => {
+  test("a document from a newer version of SVG is refused, not half-read", () => {
     const saved = { ...serializeProject(createInitialState()), version: 99 };
-    expect(() => readProject(saved)).toThrow(/newer Vellum/);
+    expect(() => readProject(saved)).toThrow(/newer version/);
   });
 
   test("a document with markup hidden in a colour or an id is refused", () => {
@@ -535,8 +535,8 @@ describe("project file", () => {
   });
 
   test("something that is not a document is refused", () => {
-    expect(() => readProject(null)).toThrow(/not a Vellum document/);
-    expect(() => readProject({ artboard: {}, grid: {} })).toThrow(/not a Vellum document/);
+    expect(() => readProject(null)).toThrow(/not an SVG app document/);
+    expect(() => readProject({ artboard: {}, grid: {} })).toThrow(/not an SVG app document/);
   });
 });
 

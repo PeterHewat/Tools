@@ -25,7 +25,7 @@ function lossless(lexer: (line: string) => Token[], text: string) {
 }
 
 const SAMPLE =
-  '{"name": "Vellum", "id": 12, "on": true, "note": null, "tags": ["yes", "a: b"], "items": [{"sku": "A1", "qty": 2, "x y": "say \\"hi\\""}]}';
+  '{"name": "SVG", "id": 12, "on": true, "note": null, "tags": ["yes", "a: b"], "items": [{"sku": "A1", "qty": 2, "x y": "say \\"hi\\""}]}';
 
 describe("lexYaml", () => {
   test("colours keys, sequence dashes and scalars", () => {

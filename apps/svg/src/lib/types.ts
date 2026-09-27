@@ -1,4 +1,4 @@
-/** The shape of a Vellum document: scene elements, reference images and editor state. */
+/** The shape of an SVG app document: scene elements, reference images and editor state. */
 
 export const ELEMENT_TYPES = [
   "path",
@@ -344,7 +344,7 @@ export type StyleCarrier = Partial<StyleProps> & {
 };
 
 /**
- * The format of a stored document. Vellum is released: a change to `ProjectFile` bumps this and
+ * The format of a stored document. The app is released: a change to `ProjectFile` bumps this and
  * teaches `readProject` (io.ts) to bring the previous version up to date, so nobody's work stops
  * opening.
  */

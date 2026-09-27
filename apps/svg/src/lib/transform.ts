@@ -1,7 +1,7 @@
 /**
  * SVG transform matrices, used to bake an imported `transform` into plain coordinates.
  *
- * Vellum's scene graph has no transform of its own: an element is its coordinates, which is what
+ * The app's scene graph has no transform of its own: an element is its coordinates, which is what
  * keeps the exported file readable and the editing model simple. So a `transform` on an imported
  * element or on a `<g>` around it is applied to the geometry once, at import, and then forgotten.
  */

@@ -7,7 +7,7 @@
 - No `git add` / `commit` / `push` unless the user asks
 - Branch or PR work follows [Git](#git)
 - Run the [format gate](#format-gate) after editing, and the [verify gate](#verify-gate) before finishing
-- **Saved formats:** Vellum is released. A change to its IndexedDB documents (`ProjectFile`) or exported SVG keeps existing files opening: bump `PROJECT_VERSION` (`types.ts`) and add the step up from the previous version in `readProject` (`io.ts`); the database's own `DB_VERSION` (`storage.ts`) is for its stores. Exported SVG carries no marker, so an SVG change must still import files written before it. An app that is not released yet has no migration — when its stored format changes, fail closed and tell the person to clear that app's storage.
+- **Saved formats:** the SVG app is released. A change to its IndexedDB documents (`ProjectFile`) or exported SVG keeps existing files opening: bump `PROJECT_VERSION` (`types.ts`) and add the step up from the previous version in `readProject` (`io.ts`); the database's own `DB_VERSION` (`storage.ts`) is for its stores. Exported SVG carries no marker, so an SVG change must still import files written before it. An app that is not released yet has no migration — when its stored format changes, fail closed and tell the person to clear that app's storage.
 
 ## Project conventions
 
@@ -31,7 +31,7 @@ Before changing code — on any branch, not only `main` — and whenever the use
 
 1. **Inspect first** — `git fetch origin`, then the current branch, clean or dirty tree, upstream tracking, and ahead/behind vs upstream and vs `origin/main`. Say what you found if it affects the plan.
 2. **Check the branch is still open** — on a feature branch, ask GitHub whether its PR was already merged (`gh pr list --head <branch> --state all`). A squash-merged branch is finished: its commits reach `main` as one new commit with a different hash, so git no longer recognises them. Never add work to it or merge `origin/main` into it — both replay the merged changes as conflicts. Start a new branch from refreshed `main` instead, and carry over only commits made after the merge (`git rebase --onto origin/main <last-merged-commit>`, or `git cherry-pick`).
-3. **Use a feature branch** — if the checkout is `main`, propose a concrete branch name (kebab-case, short and descriptive — e.g. `agents-git-sync`, `vellum-export-fix`) and create/check it out before edits or commits unless the user already named a branch.
+3. **Use a feature branch** — if the checkout is `main`, propose a concrete branch name (kebab-case, short and descriptive — e.g. `agents-git-sync`, `svg-export-fix`) and create/check it out before edits or commits unless the user already named a branch.
 4. **Refresh `main`** — do not assume local `main` matches GitHub. Fast-forward it from `origin/main` (`git pull --ff-only origin main` while on `main`) before branching off it. Refreshing `main` never adds commits to it.
 5. **Base the feature branch on current `main`** — before the first push, put work on top of `origin/main` (rebase while the branch is local-only; once it is on the remote, merge `origin/main`, or rebase only if the user accepts the force-push). Do not open a PR against a stale base and patch it up later with a merge commit.
 6. **PR diffs use remote `main`** — compare against `origin/main` (`git log origin/main..HEAD`, `git diff origin/main...HEAD`), never a local `main` that may be stale. Before pushing, check that list holds only this branch's commits.
@@ -61,9 +61,9 @@ Pass explicit paths for the files you changed, not a blind repo-wide format.
 
 ## Tests
 
-- `bun test`, with happy-dom registered for apps that touch the DOM (see `apps/vellum/bunfig.toml`).
-- Pure logic over plain data is where the tests belong — `model.ts` and `io.ts` in Vellum are the model for this.
-- **`apps/vellum/src/lib/io.test.ts` guards one invariant worth understanding:** export → import → export must be byte-for-byte stable. Vellum's live SVG panel re-imports its own output whenever typing pauses, so any instability there makes shapes drift or duplicate as the user types. Do not weaken that test.
+- `bun test`, with happy-dom registered for apps that touch the DOM (see `apps/svg/bunfig.toml`).
+- Pure logic over plain data is where the tests belong — `model.ts` and `io.ts` in the SVG app are the model for this.
+- **`apps/svg/src/lib/io.test.ts` guards one invariant worth understanding:** export → import → export must be byte-for-byte stable. The SVG app's live SVG panel re-imports its own output whenever typing pauses, so any instability there makes shapes drift or duplicate as the user types. Do not weaken that test.
 
 ## Running it
 
