@@ -65,3 +65,22 @@ export function pageAt(text: string, offset: number, size = PAGE_LINES): number 
   for (let i = text.indexOf("\n"); i >= 0 && i < offset; i = text.indexOf("\n", i + 1)) line++;
   return Math.floor(line / size);
 }
+
+/** Offset where each line starts: with {@link lineOf}, line numbers for many offsets cheaply. */
+export function lineStarts(text: string): number[] {
+  const starts = [0];
+  for (let i = text.indexOf("\n"); i >= 0; i = text.indexOf("\n", i + 1)) starts.push(i + 1);
+  return starts;
+}
+
+/** The 1-based line holding an offset, by binary search over {@link lineStarts}. */
+export function lineOf(starts: readonly number[], offset: number): number {
+  let lo = 0;
+  let hi = starts.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (starts[mid] <= offset) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo + 1;
+}

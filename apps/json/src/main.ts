@@ -20,7 +20,7 @@ import {
 import { createCodeView } from "./code-view.js";
 import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
-import { lineCount, pageAt, pageOf } from "./lib/pages.js";
+import { lineCount, lineOf, lineStarts, pageAt, pageOf } from "./lib/pages.js";
 import { printJson, printedSize } from "./lib/print.js";
 import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
 import { toCsv, toJsonSchema, toTypeScript, toYaml, type Converted } from "./lib/convert.js";
@@ -31,7 +31,7 @@ import "./styles.css";
 const editor = byId<HTMLTextAreaElement>("editor");
 const formatBtn = byId<HTMLButtonElement>("format");
 const minifyBtn = byId<HTMLButtonElement>("minify");
-const sortKeys = byId<HTMLInputElement>("sort-keys");
+const sortKeys = byId<HTMLButtonElement>("sort-keys");
 const indentSel = byId<HTMLSelectElement>("indent");
 const copyBtn = byId<HTMLButtonElement>("copy");
 const downloadBtn = byId<HTMLButtonElement>("download");
@@ -60,7 +60,7 @@ const pageNext = byId<HTMLButtonElement>("page-next");
 const findBar = byId("findbar");
 const findInput = byId<HTMLInputElement>("find-input");
 const findCount = byId("find-count");
-const findCase = byId<HTMLInputElement>("find-case");
+const findCase = byId<HTMLButtonElement>("find-case");
 const toolsMenu = byId("tools-menu");
 const toolsBtn = byId<HTMLButtonElement>("tools-btn");
 const output = byId<HTMLDialogElement>("output");
@@ -106,6 +106,8 @@ let aside = { before: "", after: "" };
 let page = { index: 0, count: 1, firstLine: 1 };
 /** Child positions of the row selected in the tree. */
 let treeSelection: number[] = [];
+/** Valid and on one line: sorting keeps it minified, and there is no indent to choose. */
+let minified = false;
 let mode: ViewMode = "text";
 let pathStyle: PathStyle = "js";
 /** The tree shows an older document until it is next opened. */
@@ -121,7 +123,7 @@ function restore(): void {
     if (saved.indent && [...indentSel.options].some((o) => o.value === saved.indent)) {
       indentSel.value = saved.indent;
     }
-    sortKeys.checked = saved.sortKeys === true;
+    setPressed(sortKeys, saved.sortKeys === true);
     if (saved.view === "tree") mode = "tree";
     if (saved.pathStyle === "pointer") pathStyle = "pointer";
   } catch {
@@ -135,7 +137,7 @@ function save(): void {
   const saved: Saved = {
     text,
     indent: indentSel.value,
-    sortKeys: sortKeys.checked,
+    sortKeys: isPressed(sortKeys),
     view: mode,
     pathStyle,
   };
@@ -145,6 +147,11 @@ function save(): void {
     /* storage refused or full */
   }
 }
+
+/** Toggle buttons keep their state in aria-pressed, which is also what they are styled by. */
+const isPressed = (button: HTMLElement) => button.getAttribute("aria-pressed") === "true";
+const setPressed = (button: HTMLElement, on: boolean) =>
+  button.setAttribute("aria-pressed", String(on));
 
 function indent(): number | "\t" {
   return indentSel.value === "tab" ? "\t" : Number(indentSel.value);
@@ -343,10 +350,10 @@ const findOpen = () => !findBar.classList.contains("hidden");
 /** Searches again when the query, the options, the view or the text changed. */
 function refreshFind(): void {
   const query = findInput.value;
-  const key = [query, findCase.checked, mode, findVersion].join("\u0000");
+  const key = [query, isPressed(findCase), mode, findVersion].join("\u0000");
   if (key === findKey) return;
   findKey = key;
-  const options = { matchCase: findCase.checked };
+  const options = { matchCase: isPressed(findCase) };
   textMatches = mode === "text" ? findInText(documentText(), query, options) : [];
   treeMatches = mode === "tree" && doc && !stale ? findInTree(doc.root, query, options) : [];
   findIndex = Math.min(findIndex, matchCount() - 1);
@@ -456,7 +463,11 @@ function validate(): void {
   }
 
   for (const b of [copyBtn, downloadBtn, clearBtn]) b.disabled = empty;
-  formatBtn.disabled = minifyBtn.disabled = !doc;
+  formatBtn.disabled = minifyBtn.disabled = sortKeys.disabled = !doc;
+  // Minified text has no indent to change, so the choice waits, disabled, until Format.
+  minified = !!doc && !text.includes("\n");
+  indentSel.disabled = !doc || minified;
+  showViewControls();
   status.classList.toggle("wb-status--error", !!fault);
   status.classList.toggle("wb-status--ok", !!doc);
   problem.classList.toggle("hidden", !fault);
@@ -468,10 +479,18 @@ function validate(): void {
     // Sizes of both forms, not of the text as it stands, so Format and Minify leave the line
     // unchanged: it describes the document, and only an edit or a new file changes that.
     const formatted = printedSize(doc.root, { indent: indent() });
-    const minified = printedSize(doc.root, { indent: 0 });
-    status.textContent =
-      `Valid JSON · ${plural(doc.values, "value")} · ${plural(doc.depth, "level")} deep` +
-      ` · ${formatBytes(formatted)} Formatted · ${formatBytes(minified)} Minified`;
+    const minifiedSize = printedSize(doc.root, { indent: 0 });
+    // Two halves, so a narrow screen can break the line between them (see styles.css).
+    const sizes = document.createElement("span");
+    sizes.className = "sizes";
+    sizes.append(
+      Object.assign(document.createElement("span"), { className: "sep", textContent: " · " }),
+      `${formatBytes(formatted)} Formatted · ${formatBytes(minifiedSize)} Minified`
+    );
+    status.replaceChildren(
+      `Valid JSON · ${plural(doc.values, "value")} · ${plural(doc.depth, "level")} deep`,
+      sizes
+    );
     const [first, ...more] = doc.duplicates;
     if (first) {
       warning.textContent =
@@ -561,13 +580,12 @@ function stepHistory(back: boolean): boolean {
   return true;
 }
 
-/** The layout last applied, so a new option re-applies it: sorting minified text keeps it minified. */
-let minified = false;
-
 function rewrite(minify: boolean): void {
   if (!doc) return;
   minified = minify;
-  replaceText(printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: sortKeys.checked }));
+  replaceText(
+    printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isPressed(sortKeys) })
+  );
 }
 
 /** Makes almost-JSON strict in place, keeping the layout: only the offending bits change. */
@@ -604,9 +622,11 @@ function showPath(path: PathSegment[] | null): void {
 
 function showTree(): void {
   if (!treeStale) return;
+  const starts = lineStarts(documentText());
   tree.show(
     doc?.root ?? null,
-    fault ? "Not valid JSON: switch to Text to fix it." : "Nothing to show yet."
+    fault ? "Not valid JSON: switch to Text to fix it." : "Nothing to show yet.",
+    (offset) => lineOf(starts, offset)
   );
   treeStale = false;
 }
@@ -616,8 +636,7 @@ function setMode(next: ViewMode): void {
   const inTree = mode === "tree";
   codeEl.classList.toggle("hidden", inTree);
   treeEl.classList.toggle("hidden", !inTree);
-  expandAllBtn.classList.toggle("hidden", !inTree);
-  collapseAllBtn.classList.toggle("hidden", !inTree);
+  showViewControls();
   cursor.classList.toggle("hidden", inTree);
   showPager();
   if (findOpen()) {
@@ -638,6 +657,11 @@ function setMode(next: ViewMode): void {
     showCursor();
   }
   save();
+}
+
+/** Expand and collapse act on the tree: disabled, not hidden, while it is not shown. */
+function showViewControls(): void {
+  expandAllBtn.disabled = collapseAllBtn.disabled = mode !== "tree" || !doc;
 }
 
 /** Switches to the text with a value selected and scrolled to the middle. */
@@ -697,7 +721,11 @@ formatBtn.addEventListener("click", () => rewrite(false));
 minifyBtn.addEventListener("click", () => rewrite(true));
 // Picking an option means "show it like this", so it applies at once (and Ctrl+Z takes it back).
 // With nothing valid to rewrite, validate() still refreshes the formatted size and saves.
-sortKeys.addEventListener("change", () => (doc ? rewrite(minified) : save()));
+sortKeys.addEventListener("click", () => {
+  setPressed(sortKeys, !isPressed(sortKeys));
+  if (doc) rewrite(minified);
+  else save();
+});
 indentSel.addEventListener("change", () => (doc ? rewrite(false) : validate()));
 byId("goto").addEventListener("click", goToError);
 fixBtn.addEventListener("click", fix);
@@ -755,7 +783,10 @@ findInput.addEventListener("keydown", (e) => {
     closeFind();
   }
 });
-findCase.addEventListener("change", () => findStep(0));
+findCase.addEventListener("click", () => {
+  setPressed(findCase, !isPressed(findCase));
+  findStep(0);
+});
 byId("find-prev").addEventListener("click", () => findStep(-1));
 byId("find-next").addEventListener("click", () => findStep(1));
 byId("find-close").addEventListener("click", closeFind);

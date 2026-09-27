@@ -5,17 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
   <body>
-    <header class="wb-header">
+    <!-- One row, grouped by what the controls act on: the view, the layout, the tools, finding,
+         the file. Controls that cannot apply are disabled, never hidden, so nothing moves. -->
+    <header class="wb-header json-header">
       <a class="wb-home" href="../">← Workbench</a>
       <h1>JSON</h1>
-      <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
-    </header>
-    <main class="wb-main json-main">
-      <div class="wb-row toolbar">
-        <div class="seg" role="group" aria-label="View">
+
+      <div class="group" role="group" aria-label="View">
+        <div class="seg" role="group" aria-label="Show as">
           <button type="button" class="wb-btn" id="view-text" aria-pressed="true">Text</button>
           <button type="button" class="wb-btn" id="view-tree" aria-pressed="false">Tree</button>
         </div>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="expand-all"
+          title="Expand all"
+          aria-label="Expand all"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 16l-5 5-5-5M7 8l5-5 5 5" /></svg>
+        </button>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="collapse-all"
+          title="Collapse all"
+          aria-label="Collapse all"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20l5-5 5 5M17 4l-5 5-5-5" /></svg>
+        </button>
+      </div>
+
+      <div class="group" role="group" aria-label="Layout">
         <button
           type="button"
           class="wb-btn wb-btn--primary"
@@ -25,20 +46,17 @@
           Format
         </button>
         <button type="button" class="wb-btn" id="minify">Minify</button>
-        <label class="wb-label option">
-          <input type="checkbox" id="sort-keys" />
+        <select class="wb-select" id="indent" title="Indent" aria-label="Indent">
+          <option value="2">2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tabs</option>
+        </select>
+        <button type="button" class="wb-btn toggle" id="sort-keys" aria-pressed="false">
           Sort keys
-        </label>
-        <label class="wb-label option">
-          Indent
-          <select class="wb-select" id="indent">
-            <option value="2">2 spaces</option>
-            <option value="4">4 spaces</option>
-            <option value="tab">Tab</option>
-          </select>
-        </label>
-        <button type="button" class="wb-btn hidden" id="expand-all">Expand all</button>
-        <button type="button" class="wb-btn hidden" id="collapse-all">Collapse all</button>
+        </button>
+      </div>
+
+      <div class="group">
         <button
           type="button"
           class="wb-btn"
@@ -60,53 +78,65 @@
           <button type="button" role="menuitem" data-export="ts">TypeScript types</button>
           <button type="button" role="menuitem" data-export="schema">JSON Schema</button>
         </div>
-        <span class="toolbar-gap"></span>
-        <button
-          type="button"
-          class="wb-btn icon-btn"
-          id="find-open"
-          title="Find (Ctrl+F)"
-          aria-label="Find (Ctrl+F)"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class="wb-btn icon-btn"
-          id="open"
-          title="Open a file"
-          aria-label="Open a file"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          </svg>
-        </button>
-        <button type="button" class="wb-btn icon-btn" id="copy" title="Copy" aria-label="Copy">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="9" y="9" width="11" height="11" rx="2" />
-            <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class="wb-btn icon-btn"
-          id="download"
-          title="Download"
-          aria-label="Download"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-          </svg>
-        </button>
-        <button type="button" class="wb-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
-          </svg>
-        </button>
       </div>
-      <div class="findbar hidden" id="findbar" role="search">
+
+      <div class="end">
+        <div class="group">
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="find-open"
+            title="Find (Ctrl+F)"
+            aria-label="Find (Ctrl+F)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="group" role="group" aria-label="File">
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="open"
+            title="Open a file"
+            aria-label="Open a file"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </svg>
+          </button>
+          <button type="button" class="wb-btn icon-btn" id="copy" title="Copy" aria-label="Copy">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="download"
+            title="Download"
+            aria-label="Download"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+            </svg>
+          </button>
+          <button type="button" class="wb-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+            </svg>
+          </button>
+        </div>
+
+        <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
+      </div>
+    </header>
+
+    <main class="json-main">
+      <div class="bar findbar hidden" id="findbar" role="search">
         <input
           class="wb-input find-input"
           id="find-input"
@@ -115,6 +145,16 @@
           aria-label="Find"
           spellcheck="false"
         />
+        <button
+          type="button"
+          class="wb-btn toggle case-toggle"
+          id="find-case"
+          aria-pressed="false"
+          title="Match case"
+          aria-label="Match case"
+        >
+          Aa
+        </button>
         <span class="wb-label find-count" id="find-count" aria-live="polite"></span>
         <button
           type="button"
@@ -134,10 +174,6 @@
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
         </button>
-        <label class="wb-label option">
-          <input type="checkbox" id="find-case" />
-          Match case
-        </label>
         <span class="toolbar-gap"></span>
         <button
           type="button"
@@ -166,7 +202,8 @@
         </div>
       </div>
       <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
-      <div class="pager hidden" id="pager">
+
+      <div class="bar pager hidden" id="pager">
         <button
           type="button"
           class="wb-btn icon-btn"
@@ -199,7 +236,15 @@
         <span class="wb-label" id="page-lines"></span>
       </div>
 
-      <div class="statusbar">
+      <div class="bar problem hidden" id="problem">
+        <pre class="excerpt" id="excerpt"></pre>
+        <button type="button" class="wb-btn" id="goto">Go to error</button>
+        <span class="wb-label hidden" id="fix-note"></span>
+        <button type="button" class="wb-btn wb-btn--primary hidden" id="fix">Fix</button>
+      </div>
+      <p class="bar wb-status warning hidden" id="warning"></p>
+
+      <div class="bar statusbar">
         <p class="wb-status" id="status" role="status"></p>
         <span class="where">
           <button type="button" class="path wb-mono hidden" id="path" title="Copy path"></button>
@@ -212,13 +257,7 @@
           <span class="wb-label wb-mono" id="cursor"></span>
         </span>
       </div>
-      <p class="wb-status warning hidden" id="warning"></p>
-      <div class="problem hidden" id="problem">
-        <pre class="excerpt" id="excerpt"></pre>
-        <button type="button" class="wb-btn" id="goto">Go to error</button>
-        <span class="wb-label hidden" id="fix-note"></span>
-        <button type="button" class="wb-btn wb-btn--primary hidden" id="fix">Fix</button>
-      </div>
+
       <dialog class="output" id="output" aria-labelledby="output-title">
         <div class="output-head">
           <h2 id="output-title"></h2>

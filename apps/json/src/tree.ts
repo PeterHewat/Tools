@@ -20,8 +20,11 @@ export interface TreeHandlers {
 }
 
 export interface TreeView {
-  /** Shows a document, or a message when there is none. Keeps open rows and the selection. */
-  show(root: JsonNode | null, message: string): void;
+  /**
+   * Shows a document, or a message when there is none. Keeps open rows and the selection.
+   * `lineAt` numbers each row with the text line its value (or key) starts on.
+   */
+  show(root: JsonNode | null, message: string, lineAt?: (offset: number) => number): void;
   /** Opens the rows down to a value, by child positions, and selects it. */
   reveal(indices: readonly number[]): void;
   expandAll(): void;
@@ -78,6 +81,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
   let selectedKey: string | null = null;
   let root: Item | null = null;
   let selected: Item | null = null;
+  let lineAt: (offset: number) => number = () => 0;
 
   const keyOf = (item: Item) => item.indices.join("/");
 
@@ -85,7 +89,8 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
     node: JsonNode,
     seg: PathSegment | null,
     parent: Item | null,
-    index: number
+    index: number,
+    at: number
   ): Item {
     const el = document.createElement("div");
     el.className = "ti";
@@ -100,7 +105,9 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
     const count = countOf(node);
     const fold = span(count ? "tw can-fold" : "tw", "");
     fold.setAttribute("aria-hidden", "true"); // the row's aria-expanded says it already
-    row.append(fold);
+    const line = span("ln", String(lineAt(at)));
+    line.setAttribute("aria-hidden", "true");
+    row.append(line, fold);
     if (seg !== null) {
       row.append(
         typeof seg === "number" ? span("t-index", String(seg)) : span("t-key", JSON.stringify(seg)),
@@ -146,7 +153,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
     const to = Math.min(all.length, Math.max(from + CHUNK, upTo + 1));
     const fragment = document.createDocumentFragment();
     for (let k = from; k < to; k++) {
-      const child = makeItem(all[k].node, all[k].seg, item, k);
+      const child = makeItem(all[k].node, all[k].seg, item, k, all[k].at);
       item.children.push(child);
       fragment.append(child.el);
     }
@@ -157,7 +164,10 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
       more.type = "button";
       more.className = "more";
       more.style.setProperty("--level", String(item.indices.length + 1));
-      more.textContent = `Show ${Math.min(CHUNK, all.length - to).toLocaleString()} more (${(all.length - to).toLocaleString()} hidden)`;
+      const next = Math.min(CHUNK, all.length - to).toLocaleString();
+      const hidden = (all.length - to).toLocaleString();
+      // An empty line-number cell keeps the gutter continuous past this row.
+      more.append(span("ln", ""), span("more-text", `Show ${next} more (${hidden} hidden)`));
       more.addEventListener("click", () => renderMore(item));
       item.more = more;
       fragment.append(more);
@@ -267,15 +277,20 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
   });
 
   return {
-    show(node, message) {
+    show(node, message, lines) {
       selected = null;
+      lineAt = lines ?? (() => 0);
+      if (node) {
+        const digits = String(lineAt(node.end)).length;
+        container.style.setProperty("--ln-digits", String(Math.max(2, digits)));
+      }
       container.replaceChildren();
       if (!node) {
         root = null;
         container.append(span("tree-empty", message));
         return;
       }
-      root = makeItem(node, null, null, 0);
+      root = makeItem(node, null, null, 0, node.start);
       expand(root);
       container.append(root.el);
       if (!selected) select(root, false);

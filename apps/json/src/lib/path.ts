@@ -6,10 +6,15 @@ import type { JsonNode } from "./ast.js";
 
 export type PathSegment = string | number;
 
-/** A container's children with the path segment that reaches each: key or index. */
-export function childrenOf(node: JsonNode): { seg: PathSegment; node: JsonNode }[] {
-  if (node.kind === "object") return node.members.map((m) => ({ seg: m.key, node: m.value }));
-  if (node.kind === "array") return node.items.map((v, k) => ({ seg: k, node: v }));
+/**
+ * A container's children with the path segment that reaches each (key or index), and where
+ * each starts in the text: a member at its key, an item at its value.
+ */
+export function childrenOf(node: JsonNode): { seg: PathSegment; node: JsonNode; at: number }[] {
+  if (node.kind === "object") {
+    return node.members.map((m) => ({ seg: m.key, node: m.value, at: m.keyStart }));
+  }
+  if (node.kind === "array") return node.items.map((v, k) => ({ seg: k, node: v, at: v.start }));
   return [];
 }
 

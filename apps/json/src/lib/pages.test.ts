@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { lineCount, pageAt, pageOf } from "./pages.js";
+import { lineCount, lineOf, lineStarts, pageAt, pageOf } from "./pages.js";
 
 const text = Array.from({ length: 10 }, (_, k) => `line ${k + 1}`).join("\n");
 
@@ -48,4 +48,11 @@ test("pageAt finds the page holding an offset", () => {
   expect(pageAt(text, text.indexOf("line 3") + 5, 3)).toBe(0);
   expect(pageAt(text, text.length, 3)).toBe(3);
   expect(lineCount(text)).toBe(10);
+});
+
+test("lineOf finds the line of any offset from lineStarts", () => {
+  const t = "ab\n\ncd\n";
+  const starts = lineStarts(t);
+  expect(starts).toEqual([0, 3, 4, 7]);
+  expect([0, 2, 3, 4, 6, 7].map((o) => lineOf(starts, o))).toEqual([1, 1, 2, 3, 3, 4]);
 });

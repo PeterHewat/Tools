@@ -7,24 +7,63 @@ body {
   height: 100dvh;
 }
 
+/* Edge to edge: the editor meets the header and the window, bars sit between with rules. */
 .json-main {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 10px;
   width: 100%;
-  max-width: none;
   min-height: 0;
+}
+
+/*
+ * Every control lives in the header, in groups by what they act on: the view, the layout,
+ * the tools, finding, the file. A rule separates neighbouring groups; the row wraps on a
+ * narrow screen rather than hide anything.
+ */
+.json-header {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+/* Find, the file and the theme: kept together at the far end, and wrapping together. */
+.end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.end .wb-theme-toggle {
+  margin-left: 0;
+}
+
+.json-header h1 {
+  margin-right: 4px;
+}
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group + .group {
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
 }
 
 .toolbar-gap {
   flex: 1;
 }
 
-.option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* A bar between the header, the editor and the window's edge. */
+.bar {
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
 }
 
 /* Text | Tree: two buttons joined into one switch. */
@@ -43,8 +82,9 @@ body {
   border-bottom-left-radius: 0;
 }
 
-/* Pressed reads as "you are here", quieter than the primary action beside it. */
-.seg .wb-btn[aria-pressed="true"] {
+/* Pressed reads as "on" or "you are here", quieter than the primary action beside it. */
+.seg .wb-btn[aria-pressed="true"],
+.wb-btn.toggle[aria-pressed="true"] {
   position: relative;
   border-color: var(--accent);
   background: var(--bg);
@@ -155,12 +195,22 @@ body {
   white-space: normal;
 }
 
-/* Find: a bar under the toolbar, and marks drawn in the coloured layer. */
+/* Find: a bar under the header, and marks drawn in the coloured layer. */
 .findbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* "Aa": match case, the way code editors show it. */
+.case-toggle {
+  justify-content: center;
+  width: 36px;
+  padding: 0;
+  font-weight: 600;
 }
 
 .find-input {
@@ -202,21 +252,44 @@ body {
 
 /* ---------- Tree ---------- */
 
+/*
+ * The tree has a gutter like the text: each row's cell holds the text line its value starts
+ * on, and the background draws the gutter on down past the last row.
+ */
 .tree {
+  --ln-width: calc(var(--ln-digits, 2) * 1ch + 20px);
+
   flex: 1;
   min-height: 8rem;
-  padding: 6px 0;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
+  background: linear-gradient(
+    to right,
+    var(--panel) calc(var(--ln-width) - 1px),
+    var(--border) calc(var(--ln-width) - 1px) var(--ln-width),
+    var(--bg) var(--ln-width)
+  );
   font: 13px / 1.6 var(--mono);
 }
 
 .tree .row {
-  padding: 0 12px 0 calc(var(--level) * 18px + 8px);
+  padding-right: 12px;
   white-space: pre;
   cursor: default;
+}
+
+/* Stays put when the tree scrolls sideways; its right margin indents the row by depth. */
+.tree .ln {
+  position: sticky;
+  left: 0;
+  display: inline-block;
+  width: var(--ln-width);
+  margin-right: calc(var(--level) * 18px + 8px);
+  padding: 0 8px 0 12px;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  text-align: right;
+  user-select: none;
 }
 
 .tree .row:hover {
@@ -276,16 +349,24 @@ body {
 }
 
 .tree .more {
-  margin: 2px 0;
-  padding: 0 0 0 calc(var(--level) * 18px + 26px);
+  display: block;
+  width: 100%;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--accent);
   font: inherit;
+  text-align: left;
+  white-space: pre;
   cursor: pointer;
 }
 
-.tree .more:hover {
+/* Lines up with the rows' text, past where their fold arrow sits. */
+.more-text {
+  padding-left: 18px;
+}
+
+.tree .more:hover .more-text {
   text-decoration: underline;
 }
 
@@ -366,13 +447,7 @@ body {
   flex: 1;
   min-height: 8rem;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   background: var(--bg);
-}
-
-.code:focus-within {
-  border-color: var(--accent);
 }
 
 .gutter {
@@ -504,7 +579,6 @@ body {
 }
 
 .warning {
-  margin: 0;
   color: var(--warn);
 }
 
@@ -537,6 +611,15 @@ body {
 
 @media (max-width: 640px) {
   .toolbar-gap {
+    display: none;
+  }
+
+  /* "Valid JSON · … deep" on one line, the sizes on the next. */
+  .sizes {
+    display: block;
+  }
+
+  .sizes .sep {
     display: none;
   }
 }
