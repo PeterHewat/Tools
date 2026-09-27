@@ -38,7 +38,7 @@ export const APPS: readonly ToolsApp[] = [
       "Trace images with a Bézier pen and shapes; combine, align, group and fill with gradients. A searchable library of drawings, exported as clean SVG or PNG.",
     description:
       "A single-page SVG tracing editor. Place reference images, draw over them with a Bézier pen and standard shapes, then export pure SVG with no raster embedded.",
-    icon: "M4 19c3-10 6-13 8-13s2 3 0 6-5 4-7 4 8 1 11-4",
+    icon: "M6 18.5c3-10 6-13 8-13s2 3 0 6-5 4-7 4 8 1 11-4",
     tags: ["svg", "vector", "drawing", "tracing"],
     art: true,
     status: "stable",
