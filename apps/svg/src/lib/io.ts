@@ -200,7 +200,7 @@ export function groupExportId(gid: string, names: Readonly<Record<string, string
   return name ? `${gid}_${name}` : gid;
 }
 
-/** A group id as Vellum writes it, optionally followed by "_" and the group's name. */
+/** A group id as the app writes it, optionally followed by "_" and the group's name. */
 const GROUP_ID = /^(group-[A-Za-z0-9-]+)(?:_(.+))?$/;
 
 /** The group id in an exported `<g id>` (`group-57cc1c37_top_view` -> `group-57cc1c37`). */
@@ -321,7 +321,7 @@ const MARKUP = /[<>"&]/;
 /**
  * Whether data read from outside - a document file, pasted shapes - holds only plain values.
  * Colours, ids and numbers are written into markup in more places than it is sensible to escape
- * each of them, and a file Vellum wrote never has markup characters in them; one that does was
+ * each of them, and a file this app wrote never has markup characters in them; one that does was
  * made to break out of an attribute. Free text may hold anything: it is always escaped.
  */
 export function isInert(value: unknown, key = ""): boolean {
@@ -339,17 +339,17 @@ export function isInert(value: unknown, key = ""): boolean {
  * A stored document brought up to the current format. Every released format stays readable: when
  * `PROJECT_VERSION` goes up, the step from the previous one is added here, and older documents
  * pass through each step in turn. Throws on something that is not a document, or on one written
- * by a newer Vellum than this one.
+ * by a newer version of the app than this one.
  */
 export function readProject(raw: unknown): ProjectFile {
   const json = raw as Partial<ProjectFile> | null;
   const version = json?.version;
   if (typeof version !== "number" || version < 1 || !json?.artboard || !json.grid) {
-    throw new Error("This is not a Vellum document.");
+    throw new Error("This is not an SVG app document.");
   }
   if (version > PROJECT_VERSION) {
     throw new Error(
-      "This document was saved by a newer Vellum. Reload the page to update, then open it again."
+      "This document was saved by a newer version of this app. Reload the page to update, then open it again."
     );
   }
   if (!isInert(json)) throw new Error("This document is damaged and cannot be opened.");

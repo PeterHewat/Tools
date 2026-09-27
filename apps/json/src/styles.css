@@ -110,7 +110,7 @@ body {
 }
 
 /* Pressed reads as "on" or "you are here", and a button whose panel is open reads as pressed
-   while it is: filled, as in Vellum. */
+   while it is: filled, as in the SVG app. */
 .seg .wb-btn[aria-pressed="true"],
 .wb-btn.toggle[aria-pressed="true"],
 .wb-btn[aria-expanded="true"] {
@@ -120,7 +120,7 @@ body {
 }
 
 /* Settings: a panel under its button, with rows of settings and the nested-JSON actions.
-   Frosted like Vellum's menus: the page shows through, blurred. */
+   Frosted like the SVG app's menus: the page shows through, blurred. */
 .menu {
   position: fixed;
   inset: auto;
@@ -186,7 +186,7 @@ body {
   border-top: 0;
 }
 
-/* Help: docked against the right edge under the header, full height, frosted — Vellum's. */
+/* Help: docked against the right edge under the header, full height, frosted — the SVG app's. */
 .help {
   position: fixed;
   inset: auto 0 0 auto;
@@ -642,7 +642,7 @@ kbd {
 }
 
 /* Open, Copy, Download, Clear: actions everyone knows by their picture. */
-/* The same size and weight as Vellum's tool buttons. */
+/* The same size and weight as the SVG app's tool buttons. */
 .icon-btn {
   justify-content: center;
   width: 34px;

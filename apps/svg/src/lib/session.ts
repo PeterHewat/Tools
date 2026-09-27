@@ -10,7 +10,7 @@
 
 import type { Viewport } from "./types.js";
 
-const KEY = "vellum.view";
+const KEY = "svg.view";
 
 export interface SessionView {
   /** The document the viewport belongs to: another document deserves its own fitted view. */

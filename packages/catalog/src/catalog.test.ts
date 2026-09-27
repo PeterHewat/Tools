@@ -30,7 +30,7 @@ describe("catalog", () => {
   });
 
   test("findApp resolves by slug", () => {
-    expect(findApp("vellum")?.name).toBe("Vellum");
+    expect(findApp("svg")?.name).toBe("SVG");
     expect(findApp("nope")).toBeUndefined();
   });
 
@@ -61,8 +61,8 @@ describe("deploy paths", () => {
   });
 
   test("an app sits under the site base", () => {
-    expect(appBase("vellum", {})).toBe("/Workbench/vellum/");
-    expect(appBase("vellum", { WORKBENCH_BASE: "/" })).toBe("/vellum/");
+    expect(appBase("svg", {})).toBe("/Workbench/svg/");
+    expect(appBase("svg", { WORKBENCH_BASE: "/" })).toBe("/svg/");
   });
 
   test("the Pages action's empty base_path resolves to the site root", () => {

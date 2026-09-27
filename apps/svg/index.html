@@ -77,7 +77,7 @@
             d="M12 10v7M9 14l3 3 3-3"
           />
         </symbol>
-        <!-- A shape's corner caught in the ring Vellum draws on a snapped point: snap to shapes. -->
+        <!-- A shape's corner caught in the ring the app draws on a snapped point: snap to shapes. -->
         <symbol id="icon-snap-shapes" viewBox="0 0 24 24">
           <path
             fill="none"
@@ -898,7 +898,7 @@
         <a class="wb-home" href="../" title="All tools"
           ><span class="wb-home-label">Workbench</span></a
         >
-        <h1 class="app-name">Vellum</h1>
+        <h1 class="app-name">SVG</h1>
         <div class="menu" id="menu-document-wrap">
           <button
             type="button"
@@ -938,7 +938,7 @@
                       type="button"
                       id="btn-doc-import"
                       class="icon-btn"
-                      title="Import Vellum documents — single files or a whole library; nothing already here is replaced"
+                      title="Import documents — single files or a whole library; nothing already here is replaced"
                       aria-label="Import documents"
                     >
                       <svg class="ui-icon" aria-hidden="true"><use href="#icon-import" /></svg>
@@ -1318,23 +1318,14 @@
           <h3>About</h3>
           <ul>
             <li>
-              Vellum is part of <a href="../">Workbench</a>, a set of useful tools that run entirely
-              in your browser and keep working offline.
+              SVG is part of <a href="../">Workbench</a>, a set of useful tools that run entirely in
+              your browser and keep working offline.
             </li>
             <li>
               <b>What this is</b> — a drawing tool for people who want the SVG itself to be good: a
               small set of primitives, a live view of the markup, and an export with no editor
               leftovers in it. It runs entirely in your browser, works offline once loaded, and
               keeps your documents in this browser rather than on anyone's server.
-            </li>
-            <li>
-              <b>Why "Vellum"</b> — vellum is prepared calfskin, the surface manuscripts were
-              written and painted on for a thousand years, chosen because it was fine, stable and
-              lasted. It was also thin enough to see through, so a scribe could lay it over an
-              exemplar and trace: our tracing paper is its descendant. That is what this app does —
-              a reference image underneath, your drawing on the sheet above it — and it is the other
-              half of the name too, because SVG, like vellum, is meant to still be readable long
-              after the thing that made it is gone.
             </li>
           </ul>
 
@@ -1722,7 +1713,7 @@
               <code>display="none"</code> so the file still holds it.
             </li>
             <li>
-              The first time Vellum opens it shows <b>Workbench</b>, a workbench drawn in isometric
+              The first time SVG opens it shows <b>Workbench</b>, a workbench drawn in isometric
               view — a desk, a laptop, a mug, a plant. Each is a named group, so the Primitives list
               reads like layers; open one up and pull it apart. Its backdrop is see-through, which
               is why the checkerboard shows. Delete it when you are done; it does not come back.
@@ -1751,8 +1742,8 @@
             </li>
             <li>
               Documents live in this browser only, so move them out as files: the ⬆ on a row saves
-              that document (reference images included) as <code>Name.vellum.json</code>, and the ⬆
-              in the <b>Documents</b> header saves every document in one library file — a backup, or
+              that document (reference images included) as <code>Name.svg.json</code>, and the ⬆ in
+              the <b>Documents</b> header saves every document in one library file — a backup, or
               everything at once for another browser. The ⬇ beside it opens files of either kind,
               several at a time: each document in them is added beside what you already have, under
               a free name, and never overwrites anything.<span data-help="mouse">
@@ -1799,7 +1790,7 @@
             </li>
             <li>
               <b>Light / dark</b> — the sun or moon beside Help switches the theme. Until you use
-              it, Vellum follows your system's setting; once you have, it keeps your choice, and so
+              it, the app follows your system's setting; once you have, it keeps your choice, and so
               does every other Workbench tool.
             </li>
             <li>

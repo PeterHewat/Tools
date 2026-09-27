@@ -4,7 +4,7 @@ import { type SceneElement } from "./types.js";
 import { commit } from "./ops.js";
 import { deleteSelection, copyElements } from "./selection-commands.js";
 
-const CLIP_TAG = "vellum/elements";
+const CLIP_TAG = "svg/elements";
 
 let pasteCount = 0;
 

@@ -9,7 +9,6 @@ import {
   duplicateDocument,
   reorderDocuments,
   setDocumentTags,
-  libraryReset,
   type DocumentMeta,
 } from "./storage.js";
 import { serializeProject, loadProject, formatExportSvg, type ExportDoc } from "./io.js";
@@ -47,11 +46,11 @@ import {
 export let currentDoc: { id: string | null; name: string } = { id: null, name: "" };
 
 /* ---------- Documents: autosaved to browser storage, macOS-style ---------- */
-const LAST_DOC_KEY = "vellum.lastDoc";
+const LAST_DOC_KEY = "svg.lastDoc";
 /** Set once the welcome drawing has been added: deleting it must not bring it back. */
-const WELCOMED_KEY = "vellum.welcomed";
+const WELCOMED_KEY = "svg.welcomed";
 /** The demo files this browser has been given, so a deleted one is not given again. */
-const DEMOS_KEY = "vellum.demos";
+const DEMOS_KEY = "svg.demos";
 const docDirtyEl = byId("doc-dirty");
 const docListEl = byId("doc-list");
 let docsCache: DocumentMeta[] = [];
@@ -673,7 +672,6 @@ window.addEventListener("beforeunload", (e) => {
 
 /** True until the drawing has been added once: an empty library on a later visit gets an empty document. */
 function firstVisit(): boolean {
-  if (libraryReset) return true;
   try {
     return !localStorage.getItem(WELCOMED_KEY);
   } catch {

@@ -22,12 +22,12 @@ Workbench fit: client-only, offline, static output. No "save online", no fetchin
 | 3   | `digests`    | Digests    | Hash text and files with Web Crypto.                         | SHA-256/384/512 and SHA-1 (flagged as legacy); hex and base64; file drop hashes in the browser. HMAC with a key lives here, not in JWT.                                                           |
 | 4   | `icon-check` | Icon Check | See an SVG icon at the sizes it will actually be used at.    | Paste or drop an SVG; render at 16/24/32/48/64 px on light and dark, with a pixel grid option to catch half-pixel strokes. Later: PNG / favicon export via canvas.                                |
 | 5   | `codes`      | Codes      | QR codes as clean SVG.                                       | Text, URL, Wi-Fi presets; EC level and margin; SVG and PNG export. Write the encoder in-repo (the spec is fixed and it is testable) rather than bundling one. Code 128 later if needed.           |
-| 6   | `diff`       | Diff       | Compare two texts, or two JSON documents structurally.       | Line diff side-by-side or unified; JSON mode compares parsed values (key order ignored). Handy for two Vellum SVG exports too.                                                                    |
+| 6   | `diff`       | Diff       | Compare two texts, or two JSON documents structurally.       | Line diff side-by-side or unified; JSON mode compares parsed values (key order ignored). Handy for two SVG exports too.                                                                           |
 | 7   | `time`       | Time       | Unix timestamps ⇄ dates, across time zones.                  | Seconds or milliseconds auto-detected; ISO 8601; relative ("in 3 h"). Small, and pairs with JWT's claims.                                                                                         |
 
 ## Out of scope
 
-- **Separate SVG tools around Vellum.** What drawing needs belongs in Vellum itself. Tools for
+- **Separate SVG tools around the SVG app.** What drawing needs belongs in that app itself. Tools for
   cutting and plotting (nesting parts on a sheet, stroke-to-outline, toolpath previews) serve a
   different workflow.
 - **Design utilities** (palettes, gradients, sprite slicing) until a real need shows up.
@@ -35,5 +35,5 @@ Workbench fit: client-only, offline, static output. No "save online", no fetchin
 ## Naming
 
 - Slugs are lowercase kebab-case and match the folder under `apps/`.
-- Short, tool-like names (`json`, `jwt`, `codes`) or evocative ones (`vellum`); no repeated suffix.
+- Short, tool-like names (`json`, `jwt`, `codes`, `svg`); no repeated suffix.
 - Shared code moves into `packages/` only once two apps need it.

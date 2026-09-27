@@ -11,7 +11,7 @@ function root(text: string): JsonNode {
 describe("toYaml", () => {
   test("writes block style, quoting only strings that need it", () => {
     const text = JSON.stringify({
-      name: "Vellum",
+      name: "SVG",
       id: 12,
       tags: ["svg", "yes", "a: b", "12", ""],
       size: { w: 640, h: 1040 },
@@ -22,7 +22,7 @@ describe("toYaml", () => {
     });
     expect(toYaml(root(text))).toBe(
       [
-        "name: Vellum",
+        "name: SVG",
         "id: 12",
         "tags:",
         "  - svg",

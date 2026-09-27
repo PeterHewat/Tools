@@ -4,7 +4,7 @@ import { SITE, appBase } from "@workbench/catalog/site";
 import { THEME_BOOT_SCRIPT, THEME_KEY } from "./theme.js";
 import { cfBeaconTag, headTags, manifestFor, workbenchApp } from "./vite.js";
 
-const vellum = findApp("vellum")!;
+const svg = findApp("svg")!;
 
 describe("workbenchApp", () => {
   test("refuses an app the catalog does not list", () => {
@@ -12,9 +12,9 @@ describe("workbenchApp", () => {
   });
 
   test("builds into the app's folder under the site", () => {
-    const config = workbenchApp("vellum");
-    expect(config.build?.outDir).toBe("../../dist/vellum");
-    expect(config.base).toEndWith("/vellum/");
+    const config = workbenchApp("svg");
+    expect(config.build?.outDir).toBe("../../dist/svg");
+    expect(config.base).toEndWith("/svg/");
   });
 });
 
@@ -23,22 +23,22 @@ describe("page head", () => {
     tags.find((t) => t.attrs?.[key] === value);
 
   test("an app's title and description come from the catalog", () => {
-    const tags = headTags(vellum);
-    expect(tags.find((t) => t.tag === "title")?.children).toBe("Vellum — Workbench");
-    expect(attr(tags, "name", "description")?.attrs?.content).toBe(vellum.description!);
+    const tags = headTags(svg);
+    expect(tags.find((t) => t.tag === "title")?.children).toBe("SVG — Workbench");
+    expect(attr(tags, "name", "description")?.attrs?.content).toBe(svg.description!);
     expect(attr(tags, "rel", "manifest")).toBeDefined();
   });
 
   test("the icon and manifest are addressed from the app's base, not from the page", () => {
-    const tags = headTags(vellum);
-    expect(attr(tags, "rel", "icon")?.attrs?.href).toBe(`${appBase("vellum")}icon.svg`);
+    const tags = headTags(svg);
+    expect(attr(tags, "rel", "icon")?.attrs?.href).toBe(`${appBase("svg")}icon.svg`);
     expect(attr(tags, "rel", "manifest")?.attrs?.href).toBe(
-      `${appBase("vellum")}manifest.webmanifest`
+      `${appBase("svg")}manifest.webmanifest`
     );
   });
 
   test("an unknown path is a 404, not the app served somewhere it does not live", () => {
-    expect(workbenchApp("vellum").appType).toBe("mpa");
+    expect(workbenchApp("svg").appType).toBe("mpa");
   });
 
   test("the index page has no manifest", () => {
@@ -50,7 +50,7 @@ describe("page head", () => {
     expect(cfBeaconTag(env)).toBeUndefined();
     const hasBeacon = (tags: ReturnType<typeof headTags>) =>
       tags.some((t) => String(t.attrs?.src ?? "").includes("cloudflareinsights"));
-    expect(hasBeacon(headTags(vellum, env))).toBe(false);
+    expect(hasBeacon(headTags(svg, env))).toBe(false);
     const withToken = { WORKBENCH_CF_BEACON_TOKEN: "test-token" };
     const beacon = cfBeaconTag(withToken)!;
     expect(String(beacon.attrs?.src)).toContain("cloudflareinsights");
@@ -63,7 +63,7 @@ describe("page head", () => {
   });
 
   test("every page applies a stored theme from the head, before it paints", () => {
-    for (const tags of [headTags(vellum), headTags(null)]) {
+    for (const tags of [headTags(svg), headTags(null)]) {
       expect(tags.find((t) => t.tag === "script")?.children).toBe(THEME_BOOT_SCRIPT);
       expect(attr(tags, "name", "color-scheme")?.attrs?.content).toBe("dark light");
     }
@@ -73,8 +73,8 @@ describe("page head", () => {
 
 describe("manifest", () => {
   test("names the app and stays inside its folder", () => {
-    const m = manifestFor(vellum);
-    expect(m.name).toBe("Vellum");
+    const m = manifestFor(svg);
+    expect(m.name).toBe("SVG");
     expect(m.start_url).toBe(".");
     expect(m.scope).toBe(".");
   });

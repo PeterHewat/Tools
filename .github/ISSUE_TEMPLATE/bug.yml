@@ -7,7 +7,7 @@ body:
     attributes:
       label: Where
       options:
-        - Vellum
+        - SVG
         - The index page
         - The site as a whole
     validations:
@@ -16,7 +16,7 @@ body:
     id: steps
     attributes:
       label: What you did
-      description: The steps that lead to it. A file that shows it (an SVG, a `.vellum.json`) helps most.
+      description: The steps that lead to it. A file that shows it (an SVG, a `.svg.json`) helps most.
     validations:
       required: true
   - type: textarea

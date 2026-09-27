@@ -101,7 +101,7 @@ document.querySelectorAll<HTMLElement>("[data-help-mode]").forEach((btn) => {
 setHelpMode(isCoarsePointer() ? "touch" : "mouse");
 
 /* Collapsible sections (remembered). */
-const SECTIONS_KEY = "vellum.sections";
+const SECTIONS_KEY = "svg.sections";
 const sectionOpen: Record<string, boolean> = {
   documents: true,
   images: false,

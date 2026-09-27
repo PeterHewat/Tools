@@ -9,7 +9,7 @@ function root(text: string): JsonNode {
 }
 
 const SAMPLE =
-  '{"name":"Vellum","size":{"w":640,"h":1040},"tags":[],"meta":{},"shapes":[{"id":"a","d":"M1 2","on":true,"n":null},[1,[2,[3]]]]}';
+  '{"name":"SVG","size":{"w":640,"h":1040},"tags":[],"meta":{},"shapes":[{"id":"a","d":"M1 2","on":true,"n":null},[1,[2,[3]]]]}';
 
 describe("printJson", () => {
   test("lays out like JSON.stringify at every indent", () => {

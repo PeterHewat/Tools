@@ -32,8 +32,8 @@ export interface WorkbenchApp {
 
 export const APPS: readonly WorkbenchApp[] = [
   {
-    slug: "vellum",
-    name: "Vellum",
+    slug: "svg",
+    name: "SVG",
     blurb: "Trace reference images and export clean, pure SVG.",
     description:
       "A single-page SVG tracing editor. Place reference images, draw over them with a Bézier pen and standard shapes, then export pure SVG with no raster embedded.",

@@ -24,7 +24,7 @@ export function siteBase(env: Record<string, string | undefined> = process.env):
   return withLead.endsWith("/") ? withLead : `${withLead}/`;
 }
 
-/** Base path for one app's bundle, e.g. `/Workbench/vellum/`. */
+/** Base path for one app's bundle, e.g. `/Workbench/svg/`. */
 export function appBase(slug: string, env?: Record<string, string | undefined>): string {
   return `${siteBase(env)}${slug}/`;
 }

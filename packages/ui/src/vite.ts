@@ -1,7 +1,7 @@
 /**
  * Build-time wiring every Workbench page shares, so an app's `vite.config.ts` is one line:
  *
- *     export default workbenchApp("vellum");
+ *     export default workbenchApp("svg");
  *
  * From the catalog it sets the base path and output folder, writes the document `<title>`,
  * description and manifest, and emits the offline service worker with the build's file list.
