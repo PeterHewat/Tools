@@ -11,12 +11,12 @@ test("the sample is valid JSON", () => {
 test("the index card shows the sample, line for line", () => {
   // Each code line of the art is a <text xml:space="preserve"> of coloured spans; the
   // indentation is its x, so compare the lines without their leading spaces.
+  // A line's text is what lies between its tags, with entities decoded in one pass.
+  const ENTITIES: Record<string, string> = { quot: '"', lt: "<", gt: ">", amp: "&" };
   const lines = [...ART.matchAll(/<text [^>]*xml:space="preserve">(.*?)<\/text>/g)].map((m) =>
-    m[1]!
-      .replace(/<[^>]+>/g, "")
-      .replace(/&quot;/g, '"')
-      .replace(/&lt;/g, "<")
-      .replace(/&amp;/g, "&")
+    [...`>${m[1]!}<`.matchAll(/>([^<]*)</g)]
+      .map((t) => t[1]!.replace(/&(quot|lt|gt|amp);/g, (_, e: string) => ENTITIES[e]!))
+      .join("")
   );
   expect(lines).toEqual(
     SAMPLE.trimEnd()
