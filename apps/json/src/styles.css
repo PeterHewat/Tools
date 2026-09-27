@@ -51,6 +51,19 @@ body {
   color: var(--accent);
 }
 
+/* A long document's pages: shown under the editor only when there is more than one. */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-input {
+  width: 5.5em;
+  margin: 0 4px;
+  padding: 3px 6px;
+}
+
 /* ---------- Tree ---------- */
 
 .tree {

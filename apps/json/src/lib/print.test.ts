@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parse, type JsonNode } from "./ast.js";
-import { printJson } from "./print.js";
+import { printJson, printedSize } from "./print.js";
 
 function root(text: string): JsonNode {
   const r = parse(text);
@@ -45,4 +45,13 @@ describe("printJson", () => {
     const deep = "[".repeat(50_000) + "]".repeat(50_000);
     expect(printJson(root(deep), { indent: 0 })).toBe(deep);
   });
+});
+
+test("printedSize matches the bytes printJson writes, without printing", () => {
+  const text = '{"é": ["ü", 1.0, {}, [], {"k": "😀", "n": null}], "z": "\ud800", "t": true}';
+  for (const indent of [0, 2, 4, "\t"] as const) {
+    const bytes = new TextEncoder().encode(printJson(root(text), { indent })).length;
+    expect(printedSize(root(text), { indent })).toBe(bytes);
+  }
+  expect(printedSize(root("1"), { indent: 2 })).toBe(1);
 });

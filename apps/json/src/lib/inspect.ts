@@ -1,6 +1,6 @@
 /**
  * What the JSON tool says about a document beyond "valid": where an error sits on its line,
- * and how big the text is.
+ * and how big it is.
  *
  * Plain functions over strings and parsed values, so they are tested without a DOM.
  */
@@ -28,11 +28,6 @@ export function excerptAt(text: string, position: JsonPosition, width = 80): Exc
     col = col - from + head.length;
   }
   return { line: line.replace(/\t/g, " "), caret: " ".repeat(Math.max(0, col)) + "^" };
-}
-
-/** UTF-8 size, the number a file on disk would have. */
-export function byteSize(text: string): number {
-  return new TextEncoder().encode(text).length;
 }
 
 export function formatBytes(n: number): string {

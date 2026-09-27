@@ -91,6 +91,38 @@
         </div>
       </div>
       <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
+      <div class="pager hidden" id="pager">
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="page-prev"
+          title="Previous page"
+          aria-label="Previous page"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+        <label class="wb-label">
+          Page
+          <input
+            class="wb-input page-input"
+            id="page-input"
+            type="number"
+            min="1"
+            inputmode="numeric"
+          />
+          of <span id="page-count"></span>
+        </label>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="page-next"
+          title="Next page"
+          aria-label="Next page"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        </button>
+        <span class="wb-label" id="page-lines"></span>
+      </div>
 
       <div class="statusbar">
         <p class="wb-status" id="status" role="status"></p>

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { positionAt } from "@workbench/codec";
-import { byteSize, excerptAt, formatBytes } from "./inspect.js";
+import { excerptAt, formatBytes } from "./inspect.js";
 
 describe("excerptAt", () => {
   test("puts the caret under the error's column", () => {
@@ -24,8 +24,7 @@ describe("excerptAt", () => {
   });
 });
 
-test("byteSize counts UTF-8 bytes, and formatBytes reads them", () => {
-  expect(byteSize("é")).toBe(2);
+test("formatBytes reads sizes", () => {
   expect(formatBytes(512)).toBe("512 B");
   expect(formatBytes(1536)).toBe("1.5 KB");
   expect(formatBytes(3 * 1024 * 1024)).toBe("3.0 MB");

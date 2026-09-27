@@ -18,9 +18,10 @@ import {
   type RepairKind,
 } from "./lib/ast.js";
 import { createCodeView } from "./code-view.js";
-import { byteSize, excerptAt, formatBytes } from "./lib/inspect.js";
+import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
-import { printJson } from "./lib/print.js";
+import { lineCount, pageAt, pageOf } from "./lib/pages.js";
+import { printJson, printedSize } from "./lib/print.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
 
@@ -47,6 +48,12 @@ const expandAllBtn = byId<HTMLButtonElement>("expand-all");
 const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
 const pathBtn = byId<HTMLButtonElement>("path");
 const pathStyleBtn = byId<HTMLButtonElement>("path-style");
+const pager = byId("pager");
+const pageInput = byId<HTMLInputElement>("page-input");
+const pageCountEl = byId("page-count");
+const pageLines = byId("page-lines");
+const pagePrev = byId<HTMLButtonElement>("page-prev");
+const pageNext = byId<HTMLButtonElement>("page-next");
 const view = createCodeView(codeEl, editor, byId("highlight"), byId("gutter"));
 const tree = createTree(treeEl, {
   select: (path) => showPath(path),
@@ -73,8 +80,14 @@ let fileName = "data.json";
 type Doc = Extract<ParseResult, { ok: true }>;
 /** The parsed document while the text is strict JSON; null otherwise. */
 let doc: Doc | null = null;
-/** The text `doc` was parsed from: positions in it are only good while the text still matches. */
-let docText = "";
+/** Typed since the last parse: `doc`'s positions may be off until it is parsed again. */
+let stale = false;
+/**
+ * A long document is edited a page at a time (see lib/pages.ts). The document is always
+ * `aside.before + editor.value + aside.after`; for a short one both are empty.
+ */
+let aside = { before: "", after: "" };
+let page = { index: 0, count: 1, firstLine: 1 };
 let mode: ViewMode = "text";
 let pathStyle: PathStyle = "js";
 /** The tree shows an older document until it is next opened. */
@@ -86,7 +99,7 @@ function restore(): void {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<Saved> | null;
     if (!saved) return;
-    if (typeof saved.text === "string") editor.value = saved.text;
+    if (typeof saved.text === "string") showDocument(saved.text);
     if (saved.indent && [...indentSel.options].some((o) => o.value === saved.indent)) {
       indentSel.value = saved.indent;
     }
@@ -99,7 +112,8 @@ function restore(): void {
 }
 
 function save(): void {
-  const text = editor.value.length > MAX_SAVED ? "" : editor.value;
+  const full = documentText();
+  const text = full.length > MAX_SAVED ? "" : full;
   const saved: Saved = {
     text,
     indent: indentSel.value,
@@ -142,12 +156,70 @@ function describeEdits(edits: readonly Edit[]): string {
     .join(", ");
 }
 
+/** The whole document, whichever page the editor shows. */
+function documentText(): string {
+  return aside.before + editor.value + aside.after;
+}
+
+/** Puts a document in the editor, showing one of its pages. */
+function showDocument(text: string, index = 0): void {
+  const p = pageOf(text, index);
+  aside = { before: p.before, after: p.after };
+  page = { index: p.index, count: p.count, firstLine: p.firstLine };
+  editor.value = p.body;
+  view.setFirstLine(p.firstLine);
+  showPager();
+}
+
+function showPager(): void {
+  const paged = page.count > 1 && mode === "text";
+  pager.classList.toggle("hidden", !paged);
+  if (!paged) return;
+  const last = page.firstLine + lineCount(editor.value) - 1;
+  const total = last + lineCount(aside.after) - 1;
+  pageInput.value = String(page.index + 1);
+  pageInput.max = String(page.count);
+  pageCountEl.textContent = page.count.toLocaleString();
+  pageLines.textContent = `lines ${page.firstLine.toLocaleString()}–${last.toLocaleString()} of ${total.toLocaleString()}`;
+  pagePrev.disabled = page.index === 0;
+  pageNext.disabled = page.index === page.count - 1;
+}
+
+/** Turns to another page. The document does not change, so nothing is parsed again. */
+function turnPage(index: number): void {
+  if (index === page.index || index < 0 || index >= page.count) return;
+  showDocument(documentText(), index);
+  editor.setSelectionRange(0, 0);
+  editor.scrollTop = 0;
+  view.refresh();
+  showCursor();
+}
+
+/** Selects a stretch of the document, turning to its page, and scrolls it to the middle. */
+function selectInDocument(start: number, end: number): void {
+  const text = documentText();
+  const index = pageAt(text, start);
+  if (index !== page.index) showDocument(text, index);
+  const offset = aside.before.length;
+  const length = editor.value.length;
+  editor.focus();
+  editor.setSelectionRange(
+    Math.min(Math.max(0, start - offset), length),
+    Math.min(Math.max(0, end - offset), length)
+  );
+  const line = positionAt(editor.value, editor.selectionStart).line;
+  const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 20;
+  editor.scrollTop = Math.max(0, (line - 1) * lineHeight - editor.clientHeight / 2);
+  view.refresh();
+  showCursor();
+}
+
 function validate(): void {
-  const text = editor.value;
+  const text = documentText();
   const empty = !text.trim();
   const parsed = empty ? null : parse(text);
   doc = parsed?.ok && !parsed.edits.length ? parsed : null;
-  docText = text;
+  stale = false;
   fault = null;
   if (parsed && !doc) {
     // The strict parser words errors best; the lenient one knows whether a Fix exists.
@@ -172,8 +244,8 @@ function validate(): void {
   } else if (doc) {
     // Sizes of both forms, not of the text as it stands, so Format and Minify leave the line
     // unchanged: it describes the document, and only an edit or a new file changes that.
-    const formatted = byteSize(printJson(doc.root, { indent: indent() }));
-    const minified = byteSize(printJson(doc.root, { indent: 0 }));
+    const formatted = printedSize(doc.root, { indent: indent() });
+    const minified = printedSize(doc.root, { indent: 0 });
     status.textContent =
       `Valid JSON · ${plural(doc.values, "value")} · ${plural(doc.depth, "level")} deep` +
       ` · ${formatBytes(formatted)} Formatted · ${formatBytes(minified)} Minified`;
@@ -183,6 +255,11 @@ function validate(): void {
         `Duplicate key "${first.key}" on line ${positionAt(text, first.offset).line}` +
         (more.length ? `, and ${plural(more.length, "more")}` : "") +
         ". Formatting keeps every copy; JSON.parse would keep only the last.";
+      warning.classList.remove("hidden");
+    } else if (text.length > LONG_TEXT && lineCount(text) < 100) {
+      // Pages split lines, not characters: a minified megabyte is one line nothing can split.
+      warning.textContent =
+        "This is a few very long lines, which is slow to edit. Format it to edit it page by page.";
       warning.classList.remove("hidden");
     }
   } else if (fault) {
@@ -199,6 +276,7 @@ function validate(): void {
   }
   view.setErrorLine(fault?.position.line ?? null);
   view.refresh();
+  showPager();
   treeStale = true;
   if (mode === "tree") showTree();
   showCursor();
@@ -210,6 +288,9 @@ function validateSoon(): void {
   clearTimeout(pending);
   pending = window.setTimeout(validate, 150);
 }
+
+/** Past this, a document with hardly any line breaks gets a nudge to format it. */
+const LONG_TEXT = 1_000_000;
 
 /**
  * Whole-text rewrites (Format, Minify, Clear), undone by the app rather than the browser.
@@ -228,7 +309,7 @@ const redoStack: Rewrite[] = [];
 const MAX_UNDO = 20;
 
 function setText(text: string): void {
-  editor.value = text;
+  showDocument(text);
   if (mode === "text") editor.focus();
   editor.setSelectionRange(0, 0);
   editor.scrollTop = 0;
@@ -236,8 +317,9 @@ function setText(text: string): void {
 }
 
 function replaceText(text: string): void {
-  if (text === editor.value) return;
-  undoStack.push({ before: editor.value, after: text });
+  const current = documentText();
+  if (text === current) return;
+  undoStack.push({ before: current, after: text });
   if (undoStack.length > MAX_UNDO) undoStack.shift();
   redoStack.length = 0;
   setText(text);
@@ -247,7 +329,7 @@ function replaceText(text: string): void {
 function stepHistory(back: boolean): boolean {
   const [from, to] = back ? [undoStack, redoStack] : [redoStack, undoStack];
   const step = from.at(-1);
-  if (!step || editor.value !== (back ? step.after : step.before)) return false;
+  if (!step || documentText() !== (back ? step.after : step.before)) return false;
   from.pop();
   to.push(step);
   setText(back ? step.before : step.after);
@@ -265,20 +347,20 @@ function rewrite(minify: boolean): void {
 
 /** Makes almost-JSON strict in place, keeping the layout: only the offending bits change. */
 function fix(): void {
-  if (fault?.edits) replaceText(applyEdits(editor.value, fault.edits));
+  if (fault?.edits) replaceText(applyEdits(documentText(), fault.edits));
 }
 
 /** The value under the caret, while the document is valid and parsed from the text as it is. */
 function atCursor(): ReturnType<typeof nodeAt> | null {
-  return doc && docText === editor.value ? nodeAt(doc.root, editor.selectionStart) : null;
+  return doc && !stale ? nodeAt(doc.root, aside.before.length + editor.selectionStart) : null;
 }
 
 function showCursor(): void {
   if (mode !== "text") return;
   const before = editor.value.slice(0, editor.selectionStart);
-  const line = before.split("\n").length;
+  const line = page.firstLine + lineCount(before) - 1;
   const column = before.length - before.lastIndexOf("\n");
-  cursor.textContent = `Ln ${line}, Col ${column}`;
+  cursor.textContent = `Ln ${line.toLocaleString()}, Col ${column}`;
   showPath(atCursor()?.path ?? null);
 }
 
@@ -312,6 +394,7 @@ function setMode(next: ViewMode): void {
   expandAllBtn.classList.toggle("hidden", !inTree);
   collapseAllBtn.classList.toggle("hidden", !inTree);
   cursor.classList.toggle("hidden", inTree);
+  showPager();
   viewTextBtn.setAttribute("aria-pressed", String(!inTree));
   viewTreeBtn.setAttribute("aria-pressed", String(inTree));
   if (inTree) {
@@ -331,33 +414,28 @@ function setMode(next: ViewMode): void {
 /** Switches to the text with a value selected and scrolled to the middle. */
 function showInText(node: JsonNode): void {
   setMode("text");
-  editor.setSelectionRange(node.start, node.end);
-  const line = positionAt(editor.value, node.start).line;
-  const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 20;
-  editor.scrollTop = Math.max(0, (line - 1) * lineHeight - editor.clientHeight / 2);
-  showCursor();
+  selectInDocument(node.start, node.end);
 }
 
 function goToError(): void {
   if (!fault) return;
-  const { offset, line } = fault.position;
-  editor.focus();
-  editor.setSelectionRange(offset, Math.min(offset + 1, editor.value.length));
-  const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 20;
-  editor.scrollTop = Math.max(0, (line - 3) * lineHeight);
-  showCursor();
+  const { offset } = fault.position;
+  selectInDocument(offset, offset + 1);
 }
 
 async function load(file: File): Promise<void> {
   fileName = file.name;
-  editor.value = await file.text();
+  showDocument(await file.text());
   editor.setSelectionRange(0, 0);
   editor.scrollTop = 0;
   validate();
   showCursor();
 }
 
-editor.addEventListener("input", validateSoon);
+editor.addEventListener("input", () => {
+  stale = true;
+  validateSoon();
+});
 for (const type of ["keyup", "click", "select", "focus"]) {
   editor.addEventListener(type, showCursor);
 }
@@ -388,6 +466,13 @@ viewTextBtn.addEventListener("click", () => setMode("text"));
 viewTreeBtn.addEventListener("click", () => setMode("tree"));
 expandAllBtn.addEventListener("click", () => tree.expandAll());
 collapseAllBtn.addEventListener("click", () => tree.collapseAll());
+pagePrev.addEventListener("click", () => turnPage(page.index - 1));
+pageNext.addEventListener("click", () => turnPage(page.index + 1));
+pageInput.addEventListener("change", () => {
+  const wanted = Math.round(Number(pageInput.value)) - 1;
+  if (Number.isFinite(wanted)) turnPage(Math.min(Math.max(0, wanted), page.count - 1));
+  showPager();
+});
 pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
 pathStyleBtn.addEventListener("click", () => {
   pathStyle = pathStyle === "js" ? "pointer" : "js";
@@ -400,11 +485,11 @@ byId("open").addEventListener("click", async () => {
   if (file) await load(file);
 });
 copyBtn.addEventListener("click", async () => {
-  if (!(await copyText(editor.value, copyBtn)))
-    downloadText(fileName, editor.value, "application/json");
+  const text = documentText();
+  if (!(await copyText(text, copyBtn))) downloadText(fileName, text, "application/json");
 });
 downloadBtn.addEventListener("click", () =>
-  downloadText(fileName, editor.value, "application/json")
+  downloadText(fileName, documentText(), "application/json")
 );
 clearBtn.addEventListener("click", () => {
   fileName = "data.json";

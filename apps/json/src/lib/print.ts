@@ -65,3 +65,52 @@ export function printJson(
   }
   return out.join("");
 }
+
+/** UTF-8 length without encoding: what `TextEncoder` would produce, lone surrogates as U+FFFD. */
+function utf8Length(s: string): number {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c < 0xdc00 && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) {
+      n += 4;
+      i++;
+    } else n += 3;
+  }
+  return n;
+}
+
+/**
+ * The size in bytes `printJson` would produce, counted without building the text. The status
+ * line shows both sizes after every pause in typing; on a document of megabytes, printing it
+ * twice to measure it would stall the page.
+ */
+export function printedSize(root: JsonNode, { indent = 2 }: PrintOptions = {}): number {
+  const unit = typeof indent === "string" ? indent.length : indent;
+  let size = 0;
+  const stack: [JsonNode, number][] = [[root, 0]];
+  while (stack.length) {
+    const [node, level] = stack.pop()!;
+    if (node.kind !== "object" && node.kind !== "array") {
+      size += utf8Length(node.raw);
+      continue;
+    }
+    const n = node.kind === "object" ? node.members.length : node.items.length;
+    size += 2; // brackets
+    if (!n) continue;
+    size += n - 1; // commas
+    if (node.kind === "object") {
+      for (const m of node.members) {
+        size += utf8Length(m.keyRaw) + (unit ? 2 : 1); // key, then ": " or ":"
+        stack.push([m.value, level + 1]);
+      }
+    } else {
+      for (const v of node.items) stack.push([v, level + 1]);
+    }
+    // A line break after the opening bracket and after each child, each child's indent, and
+    // the closing bracket's indent.
+    if (unit) size += 1 + n * (unit * (level + 1) + 1) + unit * level;
+  }
+  return size;
+}
