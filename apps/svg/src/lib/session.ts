@@ -1,6 +1,6 @@
 /**
- * What belongs to this tab rather than to the document: where you were looking, and which
- * panels were open.
+ * What belongs to this tab rather than to the document: where you were looking. (Which panels
+ * were open is kept the same way, by @tools/ui's bindDock.)
  *
  * Reloading the page used to drop all of it - the artboard jumped back to a fitted view and the
  * panels closed - because none of it is part of the drawing. It is not part of the drawing here
@@ -16,11 +16,9 @@ export interface SessionView {
   /** The document the viewport belongs to: another document deserves its own fitted view. */
   docId: string | null;
   viewport: Viewport | null;
-  docPanel: boolean;
-  help: boolean;
 }
 
-const EMPTY: SessionView = { docId: null, viewport: null, docPanel: false, help: false };
+const EMPTY: SessionView = { docId: null, viewport: null };
 
 function isViewport(v: unknown): v is Viewport {
   const p = v as Viewport | null;
@@ -43,8 +41,6 @@ export function readSessionView(): SessionView {
     return {
       docId: typeof parsed.docId === "string" ? parsed.docId : null,
       viewport: isViewport(parsed.viewport) ? parsed.viewport : null,
-      docPanel: parsed.docPanel === true,
-      help: parsed.help === true,
     };
   } catch {
     // Private windows and blocked site data both throw here; a lost view is not worth a failure.

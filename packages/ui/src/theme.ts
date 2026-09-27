@@ -11,6 +11,9 @@
  * that attribute or, when it is absent, off the media query.
  */
 
+// By package name, not "./icons.js": the Vite config loads this file too (see vite.ts).
+import { ICONS } from "@tools/ui/icons";
+
 export type Theme = "light" | "dark";
 
 export const THEME_KEY = "tools.theme";
@@ -23,11 +26,6 @@ export const THEME_EVENT = "tools:theme";
  * first paint rather than flashing the other one while the module loads.
  */
 export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
-
-const SUN =
-  '<circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>';
-const MOON =
-  '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>';
 
 function darkQuery(): MediaQueryList | null {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
@@ -108,7 +106,7 @@ export function bindThemeToggle(button: HTMLElement, iconClass = "ui-theme-icon"
     svg.setAttribute("class", iconClass);
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.setAttribute("aria-hidden", "true");
-    svg.innerHTML = next === "light" ? SUN : MOON;
+    svg.innerHTML = ICONS[next === "light" ? "sun" : "moon"];
     button.replaceChildren(svg);
     button.title = label;
     button.setAttribute("aria-label", label);

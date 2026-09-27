@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="src/css/styles.css" />
   </head>
   <body>
+    <!-- The app's own icons. Those every Tools app shares (help, search, copy, …) are empty here:
+         the build draws them in from @tools/ui, so they match the other apps'. -->
     <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="icon-defs" focusable="false">
       <defs>
         <symbol id="icon-select" viewBox="0 0 24 24">
@@ -192,17 +194,7 @@
             stroke-width="2"
           />
         </symbol>
-        <symbol id="icon-help" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M8.6 8.8a3.5 3.5 0 1 1 4.7 3.3c-.9.4-1.3 1-1.3 1.9v.6"
-          />
-          <circle cx="12" cy="18.4" r="1.5" fill="currentColor" />
-        </symbol>
+        <symbol id="icon-help" viewBox="0 0 24 24" data-ui-icon="help"></symbol>
         <symbol id="icon-split" viewBox="0 0 24 24">
           <path
             fill="none"
@@ -405,76 +397,14 @@
           <circle cx="16" cy="16" r="3.4" fill="none" stroke="currentColor" stroke-width="2" />
           <circle cx="16" cy="16" r="1" fill="currentColor" />
         </symbol>
-        <symbol id="icon-trash" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M3 6h18M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"
-          />
-        </symbol>
-        <symbol id="icon-import" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 3v12M7 10l5 5 5-5M5 21h14"
-          />
-        </symbol>
-        <symbol id="icon-export" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 15V3M7 8l5-5 5 5M5 21h14"
-          />
-        </symbol>
+        <symbol id="icon-trash" viewBox="0 0 24 24" data-ui-icon="trash"></symbol>
+        <symbol id="icon-import" viewBox="0 0 24 24" data-ui-icon="import"></symbol>
+        <symbol id="icon-export" viewBox="0 0 24 24" data-ui-icon="export"></symbol>
         <!-- A cross: clear. -->
-        <symbol id="icon-clear" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M7 7l10 10M17 7L7 17"
-          />
-        </symbol>
+        <symbol id="icon-clear" viewBox="0 0 24 24" data-ui-icon="close"></symbol>
         <!-- A magnifying glass: search. -->
-        <symbol id="icon-search" viewBox="0 0 24 24">
-          <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M15.5 15.5L20 20"
-          />
-        </symbol>
-        <symbol id="icon-copy" viewBox="0 0 24 24">
-          <rect
-            x="9"
-            y="9"
-            width="12"
-            height="12"
-            rx="2"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"
-          />
-        </symbol>
+        <symbol id="icon-search" viewBox="0 0 24 24" data-ui-icon="search"></symbol>
+        <symbol id="icon-copy" viewBox="0 0 24 24" data-ui-icon="copy"></symbol>
         <!-- Two overlapping squares: combine shapes into one. -->
         <symbol id="icon-combine" viewBox="0 0 24 24">
           <path
@@ -900,7 +830,6 @@
             type="button"
             class="menu-trigger menu-trigger--icon"
             id="menu-document-btn"
-            aria-haspopup="true"
             aria-expanded="false"
             title="Document"
             aria-label="Document"
@@ -908,10 +837,11 @@
             <svg class="glyph" aria-hidden="true"><use href="#icon-document" /></svg>
           </button>
           <div
-            class="menu-dropdown menu-dropdown--panel menu-dropdown--docked hidden"
+            class="ui-dock ui-dock--left doc-panel"
             id="menu-document"
             role="dialog"
             aria-label="Document"
+            hidden
           >
             <div class="doc-top">
               <section class="doc-section" data-section="documents">
@@ -1153,7 +1083,8 @@
           </div>
         </div>
 
-        <div class="tool-group" role="group" aria-label="History">
+        <!-- Buttons that belong together are joined into one control (@tools/ui .ui-seg). -->
+        <div class="ui-seg" id="group-history" role="group" aria-label="History">
           <button
             type="button"
             class="tool-btn"
@@ -1176,90 +1107,99 @@
           </button>
         </div>
         <div class="tool-slot" id="tool-slot"></div>
-        <div class="tool-group" id="tool-group-tools" role="group" aria-label="Tools">
-          <button
-            type="button"
-            class="tool-btn active"
-            data-tool="select"
-            title="Select (S) — also pans: Space or middle-drag, or one finger on empty canvas"
-            aria-label="Select"
-          >
-            <svg class="glyph" aria-hidden="true"><use href="#icon-select" /></svg>
-          </button>
-          <button
-            type="button"
-            class="tool-btn"
-            data-tool="pen"
-            title="Pen (P) — click for corners, drag for curves, double-click/Enter to finish, click the start point to close"
-            aria-label="Pen"
-          >
-            <svg class="glyph" aria-hidden="true"><use href="#icon-pen" /></svg>
-          </button>
-          <button
-            type="button"
-            class="tool-btn"
-            data-tool="rect"
-            title="Rectangle (R) — hold Shift for a square"
-            aria-label="Rectangle"
-          >
-            <svg class="glyph" aria-hidden="true"><use href="#icon-rect" /></svg>
-          </button>
-          <button
-            type="button"
-            class="tool-btn"
-            data-tool="ellipse"
-            title="Ellipse (E) — hold Shift for a circle"
-            aria-label="Ellipse"
-          >
-            <svg class="glyph" aria-hidden="true"><use href="#icon-ellipse" /></svg>
-          </button>
-          <button
-            type="button"
-            class="tool-btn"
-            data-tool="text"
-            title="Text (T) — click to place"
-            aria-label="Text"
-          >
-            <svg class="glyph" aria-hidden="true"><use href="#icon-text" /></svg>
-          </button>
-          <button
-            type="button"
-            class="tool-btn"
-            id="btn-snap"
-            title="Snap to grid (G) — turns snap to shapes off"
-            aria-label="Snap to grid"
-            aria-pressed="false"
-          >
-            <svg class="glyph" aria-hidden="true"><use href="#icon-snap-grid" /></svg>
-          </button>
-          <!-- Alt, as a switch: a finger has no key to hold. -->
-          <button
-            type="button"
-            class="tool-btn"
-            id="btn-align"
-            title="Snap to other shapes' points (or hold Alt) — turns grid snap off"
-            aria-label="Snap to other shapes"
-            aria-pressed="false"
-          >
-            <svg class="glyph" aria-hidden="true"><use href="#icon-snap-shapes" /></svg>
-          </button>
+        <!-- The drawing tools and the snap switches: one element, which a phone moves into the
+             bar at the bottom (layout.ts). -->
+        <div class="tool-group" id="tool-group-tools">
+          <div class="ui-seg" role="group" aria-label="Tools">
+            <button
+              type="button"
+              class="tool-btn active"
+              data-tool="select"
+              title="Select (S) — also pans: Space or middle-drag, or one finger on empty canvas"
+              aria-label="Select"
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-select" /></svg>
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="pen"
+              title="Pen (P) — click for corners, drag for curves, double-click/Enter to finish, click the start point to close"
+              aria-label="Pen"
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-pen" /></svg>
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="rect"
+              title="Rectangle (R) — hold Shift for a square"
+              aria-label="Rectangle"
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-rect" /></svg>
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="ellipse"
+              title="Ellipse (E) — hold Shift for a circle"
+              aria-label="Ellipse"
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-ellipse" /></svg>
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="text"
+              title="Text (T) — click to place"
+              aria-label="Text"
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-text" /></svg>
+            </button>
+          </div>
+          <div class="ui-seg" role="group" aria-label="Snap">
+            <button
+              type="button"
+              class="tool-btn"
+              id="btn-snap"
+              title="Snap to grid (G) — turns snap to shapes off"
+              aria-label="Snap to grid"
+              aria-pressed="false"
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-snap-grid" /></svg>
+            </button>
+            <!-- Alt, as a switch: a finger has no key to hold. -->
+            <button
+              type="button"
+              class="tool-btn"
+              id="btn-align"
+              title="Snap to other shapes' points (or hold Alt) — turns grid snap off"
+              aria-label="Snap to other shapes"
+              aria-pressed="false"
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-snap-shapes" /></svg>
+            </button>
+          </div>
         </div>
 
-        <div class="tool-group" id="group-view" role="group" aria-label="View">
+        <div class="ui-seg" id="group-view" role="group" aria-label="View">
           <!-- One control, not three: it reads the zoom out loud and sets it from a list. -->
           <div class="zoom-wrap" id="zoom-wrap">
             <button
               type="button"
               class="tool-btn tool-btn--text zoom-level"
               id="btn-zoom-level"
-              aria-haspopup="listbox"
-              aria-expanded="false"
               title="Zoom — pick a level, or pinch and scroll to set your own"
               aria-label="Zoom level"
             >
               100%
             </button>
-            <ul class="zoom-menu hidden" id="zoom-menu" role="listbox" aria-label="Zoom level"></ul>
+            <ul
+              class="ui-menu zoom-menu"
+              id="zoom-menu"
+              role="listbox"
+              aria-label="Zoom level"
+            ></ul>
           </div>
           <button
             type="button"
@@ -1290,27 +1230,19 @@
         </button>
       </header>
 
-      <aside
-        class="menu-dropdown menu-dropdown--docked help-panel hidden"
-        id="help-panel"
-        role="dialog"
-        aria-label="Help"
-      >
-        <div class="menu-panel-toolbar">
-          <p class="menu-panel-title">Help</p>
+      <aside class="ui-dock help-panel" id="help-panel" role="dialog" aria-label="Help" hidden>
+        <div class="ui-dock-head">
+          <p class="ui-dock-title">Help</p>
           <div class="help-mode" role="group" aria-label="Show help for">
             <button type="button" class="help-mode-btn" data-help-mode="mouse">
               Mouse &amp; keyboard
             </button>
             <button type="button" class="help-mode-btn" data-help-mode="touch">Touch</button>
           </div>
-          <button
-            type="button"
-            class="tool-btn theme-btn theme-btn--panel"
-            data-theme-toggle
-          ></button>
+          <!-- The phone's theme switch: its bar has no room for one. -->
+          <button type="button" class="ui-theme-toggle" data-theme-toggle></button>
         </div>
-        <div class="help-body help--mouse" id="help-body">
+        <div class="ui-dock-body ui-help help-body help--mouse" id="help-body">
           <h3>About</h3>
           <ul>
             <li>
@@ -1781,8 +1713,9 @@
             </li>
             <li data-help="touch">
               Nothing in the bar is behind a menu: Document, undo, redo, zoom, Final SVG and Help
-              all fit across the top, and the tools and the snap switches sit at the bottom where
-              your thumb is. On a phone the light / dark switch is here, at the top of this panel.
+              all fit across the top, and the tools and the snap switches float over the bottom of
+              the canvas, where your thumb is. On a phone the light / dark switch is here, at the
+              top of this panel.
             </li>
             <li>
               <b>Light / dark</b> — the sun or moon beside Help switches the theme. Until you use
@@ -1795,9 +1728,9 @@
               restored with it. A new tab starts fresh.
             </li>
             <li data-help="touch">
-              On a phone both bars float over the canvas rather than taking a strip of it, so the
-              artboard keeps the screen. They start below the ruler, and the canvas between the
-              buttons still pans — only the buttons themselves take the touch.
+              On a phone the bottom bar floats over the canvas rather than taking a strip of it, so
+              the artboard keeps the screen, and the canvas beside it still pans — only the buttons
+              themselves take the touch.
             </li>
           </ul>
 
@@ -1846,7 +1779,7 @@
           </ul>
 
           <h3 data-help="mouse">Keyboard summary</h3>
-          <table class="help-keys" data-help="mouse">
+          <table class="ui-keys help-keys" data-help="mouse">
             <tr>
               <td>G</td>
               <td>Toggle snap to grid (a marker shows where the point will land)</td>

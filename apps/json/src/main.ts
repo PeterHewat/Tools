@@ -1,5 +1,7 @@
 import { parseJson, positionAt, type JsonPosition } from "@tools/codec";
 import {
+  bindDock,
+  bindMenu,
   bindThemeToggle,
   byId,
   copyText,
@@ -70,6 +72,7 @@ const coloursBtn = byId<HTMLButtonElement>("colours");
 const expandAllBtn = byId<HTMLButtonElement>("expand-all");
 const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
 const pathBtn = byId<HTMLButtonElement>("path");
+const whereEl = pathBtn.parentElement!;
 const pager = byId("pager");
 const pageInput = byId<HTMLInputElement>("page-input");
 const pageCountEl = byId("page-count");
@@ -80,6 +83,8 @@ const findBar = byId("findbar");
 const findInput = byId<HTMLInputElement>("find-input");
 const findCount = byId("find-count");
 const findCase = byId<HTMLButtonElement>("find-case");
+const findPrev = byId<HTMLButtonElement>("find-prev");
+const findNext = byId<HTMLButtonElement>("find-next");
 const options = byId("options");
 const optionsBtn = byId<HTMLButtonElement>("options-btn");
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
@@ -147,6 +152,8 @@ let fault: { message: string; position: JsonPosition; edits: Edit[] | null } | n
  */
 const PREFS_KEY = "tools.json.prefs";
 const DRAFT_KEY = "tools.json.draft";
+/** The Exact values turned on, kept beside the draft they were chosen for. */
+const EXACT_KEY = "tools.json.exact";
 /** Past this, a draft is not worth the storage quota it would eat. */
 const MAX_SAVED = 2_000_000;
 
@@ -182,6 +189,15 @@ function restore(): void {
     /* storage refused: the sample, as for a new tab */
     showDocument(SAMPLE);
   }
+  // On its own: exact values that cannot be read are dropped, never the draft with them.
+  try {
+    const exact = JSON.parse(sessionStorage.getItem(EXACT_KEY) ?? "[]") as unknown;
+    if (Array.isArray(exact)) {
+      for (const place of exact) if (typeof place === "string") exactPlaces.add(place);
+    }
+  } catch {
+    /* storage refused or unreadable: none turned on */
+  }
   showOptions();
 }
 
@@ -201,6 +217,7 @@ function save(): void {
   try {
     const text = documentText();
     sessionStorage.setItem(DRAFT_KEY, text.length > MAX_SAVED ? "" : text);
+    sessionStorage.setItem(EXACT_KEY, JSON.stringify([...exactPlaces]));
   } catch {
     /* storage refused or full */
   }
@@ -415,6 +432,7 @@ function showExactBar(): void {
         b.addEventListener("click", () => {
           if (!exactPlaces.delete(place)) exactPlaces.add(place);
           showExport();
+          save();
         });
         return b;
       })
@@ -584,6 +602,8 @@ function showFindCount(): void {
         ? `${n.toLocaleString()}${capped} matches`
         : `${(findIndex + 1).toLocaleString()} of ${n.toLocaleString()}${capped}`;
   findBar.classList.toggle("no-match", !!findInput.value && !n);
+  // Nothing to step to: the arrows say so rather than doing nothing.
+  findPrev.disabled = findNext.disabled = !n;
 }
 
 /** Marks the matches on the page the editor shows; the current one stands out. */
@@ -884,6 +904,7 @@ function showCursor(): void {
   // While typing, the parse is behind the text: the last path stays until it catches up,
   // rather than vanishing and coming back and moving everything beside it.
   if (!stale) showPath(atCursor()?.path ?? null);
+  else fitPath();
 }
 
 let shownPath: PathSegment[] | null = null;
@@ -893,8 +914,24 @@ function showPath(path: PathSegment[] | null): void {
   shownPath = path;
   const text = path && (pathStyle === "js" ? jsPath(path) : jsonPointer(path));
   pathBtn.classList.toggle("hidden", !path || isExport(mode));
-  pathBtn.textContent = text || "root";
+  // In a span: see .path in styles.css for why.
+  const label = document.createElement("span");
+  label.textContent = text || "root";
+  pathBtn.replaceChildren(label);
   pathBtn.disabled = !text;
+  fitPath();
+}
+
+/**
+ * The path sits against the end of its block and grows leftwards; when it would run into the
+ * line and column, it covers them: the path is the longer and rarer thing to read.
+ */
+function fitPath(): void {
+  const room = whereEl.clientWidth - cursor.offsetWidth - 12;
+  whereEl.classList.toggle(
+    "covered",
+    !pathBtn.classList.contains("hidden") && pathBtn.scrollWidth > room
+  );
 }
 
 // ---------- Views ----------
@@ -924,7 +961,8 @@ function setMode(next: ViewMode): void {
   viewSelect.value = mode;
   // The text's and the tree's own buttons float over them, shown only in their own view.
   document.body.dataset.view = mode;
-  cursor.classList.toggle("hidden", mode !== "text");
+  // Hidden but still holding its place, so the path does not move when the view changes.
+  cursor.classList.toggle("invisible", mode !== "text");
   showPager();
   showExport();
   if (findOpen()) {
@@ -1104,27 +1142,20 @@ for (const b of pathStyleButtons) {
     save();
   });
 }
+const settingsMenu = bindMenu(optionsBtn, options, {
+  onOpen: () => {
+    clearTimeout(pending);
+    if (stale) validate();
+    showOptions();
+  },
+});
 unwrapBtn.addEventListener("click", () => {
-  options.hidePopover();
+  settingsMenu.close();
   runNested("unwrap");
 });
 wrapBtn.addEventListener("click", () => {
-  options.hidePopover();
+  settingsMenu.close();
   runNested("wrap");
-});
-options.addEventListener("beforetoggle", (e) => {
-  if ((e as ToggleEvent).newState !== "open") return;
-  clearTimeout(pending);
-  if (stale) validate();
-  showOptions();
-  // Popovers open in the top layer; place this one under its button, inside the window.
-  const r = optionsBtn.getBoundingClientRect();
-  options.style.top = `${r.bottom + 4}px`;
-  options.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 288))}px`;
-});
-
-options.addEventListener("toggle", (e) => {
-  optionsBtn.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open"));
 });
 
 // On a phone the file actions (Import, Export, Copy, Clear) fold into the "⋯" menu. Its
@@ -1133,57 +1164,27 @@ options.addEventListener("toggle", (e) => {
 const more = byId("more");
 const moreBtn = byId<HTMLButtonElement>("more-btn");
 const fileButtons = [byId("open"), downloadBtn, copyBtn, clearBtn] as HTMLButtonElement[];
-more.addEventListener("beforetoggle", (e) => {
-  if ((e as ToggleEvent).newState !== "open") return;
-  more.replaceChildren(
-    ...fileButtons.map((b) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "menu-item";
-      item.disabled = b.disabled;
-      item.append(b.querySelector("svg")!.cloneNode(true), b.title.replace(/ —.*/, ""));
-      item.addEventListener("click", () => {
-        more.hidePopover();
-        b.click();
-      });
-      return item;
-    })
-  );
-  const r = moreBtn.getBoundingClientRect();
-  more.style.top = `${r.bottom + 4}px`;
-  more.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 248))}px`;
-});
-more.addEventListener("toggle", (e) => {
-  moreBtn.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open"));
+const moreMenu = bindMenu(moreBtn, more, {
+  onOpen: () =>
+    more.replaceChildren(
+      ...fileButtons.map((b) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "ui-menu-item";
+        item.disabled = b.disabled;
+        item.append(b.querySelector("svg")!.cloneNode(true), b.title.replace(/ —.*/, ""));
+        item.addEventListener("click", () => {
+          moreMenu.close();
+          b.click();
+        });
+        return item;
+      })
+    ),
 });
 
-// Help docks under the header, which wraps to more rows on a narrow screen. It stays open until
-// its button closes it, and a reload of the tab keeps it open, as in the SVG app.
-const help = byId("help");
-const helpBtn = byId("help-btn");
-const HELP_KEY = "tools.json.help";
-function placeHelp(): void {
-  help.style.top = `${byId("header").getBoundingClientRect().bottom}px`;
-}
-help.addEventListener("beforetoggle", (e) => {
-  if ((e as ToggleEvent).newState === "open") placeHelp();
-});
-help.addEventListener("toggle", (e) => {
-  const open = (e as ToggleEvent).newState === "open";
-  helpBtn.setAttribute("aria-expanded", String(open));
-  try {
-    if (open) sessionStorage.setItem(HELP_KEY, "1");
-    else sessionStorage.removeItem(HELP_KEY);
-  } catch {
-    // Storage blocked: it just will not reopen.
-  }
-});
-window.addEventListener("resize", placeHelp);
-try {
-  if (sessionStorage.getItem(HELP_KEY)) help.showPopover();
-} catch {
-  // Storage blocked: start closed.
-}
+// Help docks under the header and stays open until its button closes it; a reload of the tab
+// keeps it open.
+bindDock(byId("help"), byId("help-btn"), { key: "tools.json.help" }).restore();
 
 let findTimer = 0;
 findInput.addEventListener("input", () => {
@@ -1204,8 +1205,8 @@ findCase.addEventListener("click", () => {
   setPressed(findCase, !isPressed(findCase));
   findStep(0);
 });
-byId("find-prev").addEventListener("click", () => findStep(-1));
-byId("find-next").addEventListener("click", () => findStep(1));
+findPrev.addEventListener("click", () => findStep(-1));
+findNext.addEventListener("click", () => findStep(1));
 byId("find-close").addEventListener("click", closeFind);
 findOpenBtn.addEventListener("click", toggleFind);
 // Ctrl+F opens this find rather than the browser's, which cannot see other pages of a long
@@ -1234,7 +1235,10 @@ statusToggle.addEventListener("click", () => {
   statusToggle.setAttribute("aria-expanded", String(open));
   statusToggle.title = open ? "Hide status" : "Show status";
   statusToggle.setAttribute("aria-label", statusToggle.title);
+  // Folded away, the footer had no size to measure the path against.
+  if (open) fitPath();
 });
+window.addEventListener("resize", fitPath);
 
 byId("open").addEventListener("click", async () => {
   const [file] = await pickFiles(".json,.csv,.tsv,application/json,text/csv,text/plain");
@@ -1257,7 +1261,9 @@ onFileDrop(editor, ([file]) => {
   if (file) void load(file);
 });
 
+// The header's, and on a phone the one in Help's title row.
 bindThemeToggle(byId("theme-toggle"));
+bindThemeToggle(byId("theme-toggle-help"));
 restore();
 showColours();
 validate();

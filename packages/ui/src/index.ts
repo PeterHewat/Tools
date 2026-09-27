@@ -1,6 +1,9 @@
 /** Browser helpers shared by every Tools app. */
 
 export * from "./dom.js";
+export * from "./icons.js";
+export * from "./menu.js";
+export * from "./panel.js";
 export * from "./theme.js";
 
 declare global {

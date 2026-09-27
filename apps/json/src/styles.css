@@ -59,23 +59,6 @@ body {
   width: 240px;
 }
 
-.more-menu .menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.more-menu svg {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 /* A bar between the header, the editor and the window's edge. */
 .bar {
   margin: 0;
@@ -84,35 +67,7 @@ body {
   background: var(--panel);
 }
 
-/* A switch: buttons joined into one control (Text | Tree | …, indent, path style). */
-.seg {
-  display: inline-flex;
-}
-
-.seg .ui-btn {
-  border-radius: 0;
-}
-
-/* Neighbours overlap by their shared border; the one whose border shows (pressed, hovered,
-   focused) is lifted above the next, or that button would cover its right edge. */
-.seg .ui-btn + .ui-btn {
-  margin-left: -1px;
-}
-
-.seg .ui-btn:hover,
-.seg .ui-btn:focus-visible,
-.seg .ui-btn[aria-pressed="true"] {
-  position: relative;
-  z-index: 1;
-}
-
-.seg .ui-btn:first-child {
-  border-radius: var(--radius) 0 0 var(--radius);
-}
-
-.seg .ui-btn:last-child {
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
+/* Buttons joined into one control (Text | Tree | …, indent, path style) are @tools/ui's .ui-seg. */
 
 /* The views as one dropdown, for a phone (see the media query below); drawn as a header button
    with its own chevron, since the native arrow differs on every platform. */
@@ -133,13 +88,13 @@ body {
 }
 
 /* Choices that read as one scale (2, 4, Tab) take the same width, that of the widest. */
-.seg.equal {
+.ui-seg.equal {
   display: inline-grid;
   grid-auto-columns: 1fr;
   grid-auto-flow: column;
 }
 
-.seg.equal .ui-btn {
+.ui-seg.equal .ui-btn {
   justify-content: center;
 }
 
@@ -150,7 +105,7 @@ body {
 
 /* Pressed reads as "on" or "you are here", and a button whose panel is open reads as pressed
    while it is: filled, as in the SVG app. */
-.seg .ui-btn[aria-pressed="true"],
+.ui-seg .ui-btn[aria-pressed="true"],
 .ui-btn.toggle[aria-pressed="true"],
 .ui-btn[aria-expanded="true"] {
   position: relative;
@@ -158,174 +113,24 @@ body {
   background: var(--accent-dim);
 }
 
-/* Settings: a panel under its button, with rows of settings and the nested-JSON actions.
-   Frosted like the SVG app's menus: the page shows through, blurred. */
-.menu {
-  position: fixed;
-  inset: auto;
+/* Settings: a menu under its button (panels.css), with rows of settings and the nested-JSON
+   actions. */
+.options {
   width: 280px;
-  margin: 0;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--ui-frost-bg);
-  /* Prefixed first: the minifier keeps only the last of the pair. */
-  -webkit-backdrop-filter: var(--ui-frost-filter);
-  backdrop-filter: var(--ui-frost-filter);
-  color: var(--text);
-  box-shadow: 0 8px 24px var(--shadow);
 }
 
-.menu-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 8px;
-  font-size: 0.9rem;
-}
-
-.menu-item {
-  display: block;
-  width: 100%;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 4px;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 0.9rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.menu-item:hover:not(:disabled),
-.menu-item:focus-visible {
-  outline: none;
-  background: var(--panel-2);
-}
-
-.menu-item:disabled {
-  color: var(--muted);
-  cursor: default;
-}
-
-.menu-label {
-  margin: 8px 8px 2px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.menu-label.first {
-  margin-top: 2px;
-  padding-top: 0;
-  border-top: 0;
-}
-
-/* Help: docked against the right edge under the header, full height, frosted — the SVG app's. */
-.help {
-  position: fixed;
-  inset: auto 0 0 auto;
-  /* Popovers default to their content's height; this one spans from its top to the bottom. */
-  height: auto;
-  width: min(420px, 100vw);
-  margin: 0;
-  padding: 10px 12px 14px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scroll) transparent;
-  border: 0;
-  border-left: 1px solid var(--border);
-  background: var(--ui-frost-bg);
-  /* Prefixed first: the minifier keeps only the last of the pair. */
-  -webkit-backdrop-filter: var(--ui-frost-filter);
-  backdrop-filter: var(--ui-frost-filter);
-  color: var(--text);
-  box-shadow: 0 8px 24px var(--shadow);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-/* Help's title row: the title, and on a phone the theme switch at its end. */
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.panel-head .panel-title {
-  margin: 0;
-}
-
-.panel-title {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.help h3 {
-  margin: 16px 0 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.help .panel-head + h3,
-.help .panel-title + h3 {
-  margin-top: 0;
-}
-
-.help ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.help li {
-  margin-bottom: 5px;
-}
-
-.help .keys {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.help .keys td {
-  padding: 3px 6px 3px 0;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-.help .keys td:first-child {
-  white-space: nowrap;
-}
-
-/* On a phone the panel covers the editor, so it is opaque: text behind text does not read. */
-@media (max-width: 720px) {
-  .help {
-    width: 100vw;
-    border-left: 0;
-    background: var(--panel);
+/* Help says what there is to press only where there is a keyboard, and mentions the phone's
+   folded status bar only on a phone. */
+@media (any-hover: none) {
+  .keys-only {
+    display: none;
   }
 }
 
-kbd {
-  padding: 0 4px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--bg);
-  font-family: var(--mono);
-  font-size: 11.5px;
+@media (min-width: 641px) {
+  .phone-only {
+    display: none;
+  }
 }
 
 /* YAML, CSV, Types, Schema show in a code view like the text; this is what shows instead when
@@ -363,7 +168,8 @@ kbd {
   min-width: 4rem;
 }
 
-.findbar > .ui-btn {
+.findbar > .ui-btn,
+.find-steps {
   flex: none;
 }
 
@@ -594,30 +400,55 @@ body:not([data-view="tree"]) .tree-area {
   text-align: center;
 }
 
-/* ---------- Where the caret is: path, then line and column ---------- */
+/* ---------- Where the caret is: line and column, then the path ---------- */
 
+/* One block of a fixed width, in monospace: the line and column at its start, the path against
+   its end. The path grows leftwards, so its end never moves; one too long to fit beside the line
+   and column takes their place (main.ts hides them), and only one wider than the whole block
+   ends in "…". */
 .where {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
+  position: relative;
+  display: block;
+  flex: none;
+  width: min(64ch, 100%);
   min-width: 0;
+  /* A line tall even while the line and column are empty (a page opened on the tree). */
+  min-height: 1.5em;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.where .cursor {
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.where.covered .cursor {
+  visibility: hidden;
+}
+
+.invisible {
+  visibility: hidden;
 }
 
 .path {
+  position: absolute;
+  top: 0;
+  right: 0;
+  max-width: 100%;
+  overflow: hidden;
+  /* Cut from the start, not the end: "…colours[0].name" still says where you are. The button
+     runs right to left so its "…" goes first; the path inside runs left to right as ever. */
+  direction: rtl;
   padding: 0;
   border: 0;
   background: none;
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.path {
-  overflow: hidden;
-  max-width: 40vw;
   color: var(--text);
+  font: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .path:disabled {
@@ -630,7 +461,12 @@ body:not([data-view="tree"]) .tree-area {
   color: var(--accent);
 }
 
-.path.copied::after {
+.path > span {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+.path.copied > span::after {
   content: " copied";
   color: var(--ok);
 }
@@ -773,11 +609,6 @@ body:not([data-view="tree"]) .tree-area {
 .icon-btn svg {
   width: 22px;
   height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .statusbar {
@@ -835,14 +666,14 @@ body:not([data-view="tree"]) .tree-area {
     display: contents;
   }
 
-  /* One row: ‹, the views as a dropdown, Settings, Find, and "⋯" for the file actions;
-     the theme switch and Help at the far end. */
+  /* One row: ‹, the views as a dropdown, Settings, Find, then "⋯" for the file actions and
+     Help at the far end. */
   .json-header {
     flex-wrap: nowrap;
     gap: 6px;
   }
 
-  .json-header .seg.views,
+  .json-header .ui-seg.views,
   .json-header .group.file {
     display: none;
   }
@@ -853,10 +684,12 @@ body:not([data-view="tree"]) .tree-area {
 
   .json-header .more-btn {
     display: inline-flex;
+    margin-left: auto;
   }
 
+  /* In Help's title row instead, as in every app on a phone. */
   .json-header .ui-theme-toggle {
-    margin-left: auto;
+    display: none;
   }
 
   .view-select {
@@ -906,11 +739,6 @@ body:not([data-view="tree"]) .tree-area {
   .status-toggle svg {
     width: 22px;
     height: 22px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
     transition: transform 0.15s;
   }
 

@@ -109,6 +109,75 @@
   margin-left: auto;
 }
 
+/* Buttons that belong together joined into one control: Undo | Redo, the drawing tools, Text |
+   Tree | …, Format | Minify. Neighbours overlap by their shared border, and only the outer
+   corners are round. A child may be a wrapper round its button (the SVG app's zoom, with its
+   menu); the button inside is joined as if it stood there itself. */
+.ui-seg {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* :nth-child(n) matches every child, and outweighs an app's own button class (.ui-btn,
+   .tool-btn) where a bare * would not. */
+.ui-seg > :nth-child(n),
+.ui-seg > :nth-child(n) > button {
+  border-radius: 0;
+}
+
+.ui-seg > * + * {
+  margin-left: -1px;
+}
+
+.ui-seg > :first-child,
+.ui-seg > :first-child > button {
+  border-radius: var(--radius, 6px) 0 0 var(--radius, 6px);
+}
+
+.ui-seg > :last-child,
+.ui-seg > :last-child > button {
+  border-radius: 0 var(--radius, 6px) var(--radius, 6px) 0;
+}
+
+.ui-seg > :only-child,
+.ui-seg > :only-child > button {
+  border-radius: var(--radius, 6px);
+}
+
+/* The one whose border shows (hovered, focused, pressed, open, the tool in use) is lifted above
+   its neighbour, or the next button would cover its right edge. */
+.ui-seg > :is(:hover, :focus-visible, [aria-pressed="true"], [aria-expanded="true"], .active),
+.ui-seg > * > button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  position: relative;
+  z-index: 1;
+}
+
+/* The light/dark switch (see theme.ts): an icon button that shows the theme it switches to,
+   drawn like every other icon button beside it. Here rather than in base.css, so an app with
+   its own controls has it too, for the one in its Help panel. */
+.ui-theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 6px);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ui-theme-toggle:hover,
+.ui-theme-toggle:focus-visible {
+  border-color: var(--accent);
+}
+
+.ui-theme-icon {
+  width: 22px;
+  height: 22px;
+}
+
 /* On a narrow screen "‹ Tools  Name" reduces to "‹"; the words stay for screen readers. */
 @media (max-width: 720px) {
   .ui-home {

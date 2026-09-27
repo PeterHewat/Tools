@@ -19,6 +19,7 @@ import { SITE, appBase, siteBase } from "@tools/catalog/site";
 // By package name, not "./theme.js": Node loads this file for the Vite config, and it does not
 // map a .js specifier onto the .ts file beside it the way the bundler does.
 import { THEME_BOOT_SCRIPT } from "@tools/ui/theme";
+import { withIcons } from "@tools/ui/icons";
 
 /** Served in dev instead of the real worker: it removes itself, so hot reload never sees a cache. */
 const DEV_SW = "self.registration.unregister();\n";
@@ -56,7 +57,7 @@ export function toolsApp(slug: string): UserConfig {
     // URL - the icon, the manifest, the welcome drawing - then resolved into the wrong folder.
     appType: "mpa",
     define: siteDefine(),
-    plugins: [pageHead(app), appHeader(app), workers(app)],
+    plugins: [pageHead(app), appHeader(app), pageIcons(), workers(app)],
     build: { outDir: `../../dist/${slug}`, emptyOutDir: true, target: "es2022" },
   };
 }
@@ -67,7 +68,7 @@ export function toolsHome(): UserConfig {
     base: siteBase(),
     appType: "mpa",
     define: siteDefine(),
-    plugins: [pageHead(null), siteManifest(), workers(null)],
+    plugins: [pageHead(null), pageIcons(), siteManifest(), workers(null)],
     // Not emptied: the site build writes the index first, then each app into its own folder.
     build: { outDir: "../../dist", emptyOutDir: false, target: "es2022" },
   };
@@ -83,7 +84,7 @@ const APPS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..",
  *
  * Vite's root is `apps/`, so `<base>svg/` is `apps/svg/index.html`. What differs from the apps
  * as they are built, this fills in: the index answers at the site root, each app's `public/`
- * files at its own base, each page gets its app's head and header, and `BASE_URL` in an app's
+ * files at its own base, each page gets its app's head, header and icons, and `BASE_URL` in an app's
  * code is its own base rather than the site's.
  */
 export function toolsSite(): UserConfig {
@@ -165,7 +166,7 @@ function sitePages(): Plugin {
         // Script and style URLs from the page's own root ("/src/main.ts") are under its folder.
         const folder = app ? app.slug : "home";
         const own = html.replace(/(\s(?:src|href)=")\/src\//g, `$1/${folder}/src/`);
-        return { html: app ? withHeaderStart(own, app) : own, tags: headTags(app) };
+        return { html: withIcons(app ? withHeaderStart(own, app) : own), tags: headTags(app) };
       },
     },
     transform(code, id) {
@@ -316,6 +317,14 @@ function appHeader(app: ToolsApp): Plugin {
     name: "tools-app-header",
     // Before Vite's own HTML handling, on the markup as written.
     transformIndexHtml: { order: "pre", handler: (html) => withHeaderStart(html, app) },
+  };
+}
+
+/** Draws the shared icons into a page's empty `<svg data-ui-icon>` and `<symbol data-ui-icon>`. */
+function pageIcons(): Plugin {
+  return {
+    name: "tools-icons",
+    transformIndexHtml: { order: "pre", handler: (html) => withIcons(html) },
   };
 }
 
