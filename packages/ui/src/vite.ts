@@ -4,27 +4,41 @@
  *     export default toolsApp("svg");
  *
  * From the catalog it sets the base path and output folder, writes the document `<title>`,
- * description and manifest, starts the page header (see `appHeader`), and emits the offline
- * service worker with the build's file list.
+ * description and a link to the site's manifest, and starts the page header (see `appHeader`).
+ *
+ * The site installs as one app, the index with every tool inside it: one manifest at the site
+ * root (emitted by the index page's build), scoped to the whole site, and one service worker
+ * there, written by the site build once every app is built (see `site-worker.ts`).
  */
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite";
-import { APPS, findApp, type ToolsApp } from "@tools/catalog";
+import { APPS, findApp, listedApps, type ToolsApp } from "@tools/catalog";
 import { SITE, appBase, siteBase } from "@tools/catalog/site";
 // By package name, not "./theme.js": Node loads this file for the Vite config, and it does not
 // map a .js specifier onto the .ts file beside it the way the bundler does.
 import { THEME_BOOT_SCRIPT } from "@tools/ui/theme";
 
-const SW_SOURCE = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "..", "sw.js"),
-  "utf8"
-);
-
 /** Served in dev instead of the real worker: it removes itself, so hot reload never sees a cache. */
 const DEV_SW = "self.registration.unregister();\n";
+
+/**
+ * Each app folder's `sw.js`. Until the site shared one worker, every app registered its own,
+ * scoped to its folder, and a browser that has one checks that URL for updates; this is what it
+ * finds. It removes itself, so the site's worker at the root takes the folder over (and clears
+ * its cache). Keep it while such browsers may still be about.
+ */
+export const RETIRED_WORKER =
+  "// Replaced by the site's worker at the root, which now answers for this folder too.\n" +
+  'self.addEventListener("install", () => self.skipWaiting());\n' +
+  'self.addEventListener("activate", (e) => e.waitUntil(self.registration.unregister()));\n';
+
+/**
+ * The site root as the pages see it, for `registerServiceWorker`: an app's own base is one
+ * folder below it.
+ */
+const siteDefine = () => ({ "import.meta.env.TOOLS_SITE_BASE": JSON.stringify(siteBase()) });
 
 const ICON = "icon.svg";
 const MANIFEST = "manifest.webmanifest";
@@ -41,7 +55,8 @@ export function toolsApp(slug: string): UserConfig {
     // Not "spa": its fallback served the app at any path under the base, where every relative
     // URL - the icon, the manifest, the welcome drawing - then resolved into the wrong folder.
     appType: "mpa",
-    plugins: [pageHead(app), appHeader(app), manifest(app), serviceWorker()],
+    define: siteDefine(),
+    plugins: [pageHead(app), appHeader(app), workers(app)],
     build: { outDir: `../../dist/${slug}`, emptyOutDir: true, target: "es2022" },
   };
 }
@@ -51,7 +66,8 @@ export function toolsHome(): UserConfig {
   return {
     base: siteBase(),
     appType: "mpa",
-    plugins: [pageHead(null), serviceWorker(), appArtInDev()],
+    define: siteDefine(),
+    plugins: [pageHead(null), siteManifest(), workers(null), appArtInDev()],
     // Not emptied: the site build writes the index first, then each app into its own folder.
     build: { outDir: "../../dist", emptyOutDir: false, target: "es2022" },
   };
@@ -84,18 +100,30 @@ function appArtInDev(): Plugin {
   };
 }
 
-/** The web app manifest for one app, as served next to its page. */
-export function manifestFor(app: ToolsApp): Record<string, unknown> {
+/**
+ * The site's web app manifest, served at its root. Installed from any page, it is this one app:
+ * it opens on the index, and every tool is inside its scope, so moving between them never
+ * leaves it for the browser. Each listed tool is a shortcut (a long press on the launcher icon).
+ */
+export function manifestFor(apps: readonly ToolsApp[] = listedApps()): Record<string, unknown> {
+  const svgIcon = (src: string) => ({ src, sizes: "any", type: "image/svg+xml", purpose: "any" });
   return {
-    name: app.name,
-    short_name: app.name,
-    description: app.blurb,
+    id: ".",
+    name: SITE.name,
+    short_name: SITE.name,
+    description: SITE.description,
     start_url: ".",
     scope: ".",
     display: "standalone",
     background_color: SITE.themeColor,
     theme_color: SITE.themeColor,
-    icons: [{ src: ICON, sizes: "any", type: "image/svg+xml", purpose: "any" }],
+    icons: [svgIcon(ICON)],
+    shortcuts: apps.map((a) => ({
+      name: a.name,
+      description: a.blurb,
+      url: `${a.slug}/`,
+      icons: [svgIcon(`${a.slug}/${ICON}`)],
+    })),
   };
 }
 
@@ -138,7 +166,8 @@ export function headTags(
     // Absolute: a page reached at a deeper path must still find the files beside its index.
     { tag: "link", attrs: { rel: "icon", href: `${base}${ICON}`, type: "image/svg+xml" } },
   ];
-  if (app) tags.push({ tag: "link", attrs: { rel: "manifest", href: `${base}${MANIFEST}` } });
+  // Every page names the one manifest, so installing from any of them installs the whole site.
+  tags.push({ tag: "link", attrs: { rel: "manifest", href: `${siteBase()}${MANIFEST}` } });
   const beacon = cfBeaconTag(env);
   if (beacon) tags.push(beacon);
   return tags.map((t) => ({ ...t, injectTo: "head" }));
@@ -213,13 +242,14 @@ function appHeader(app: ToolsApp): Plugin {
   };
 }
 
-function manifest(app: ToolsApp): Plugin {
-  const body = `${JSON.stringify(manifestFor(app), null, 2)}\n`;
+/** The site's manifest, emitted at the root by the index page's build and served there in dev. */
+function siteManifest(): Plugin {
+  const body = `${JSON.stringify(manifestFor(), null, 2)}\n`;
   return {
     name: "tools-manifest",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if ((req.url ?? "").split("?")[0] !== `${appBase(app.slug)}${MANIFEST}`) return next();
+        if ((req.url ?? "").split("?")[0] !== `${siteBase()}${MANIFEST}`) return next();
         res.setHeader("Content-Type", "application/manifest+json");
         res.end(body);
       });
@@ -230,15 +260,14 @@ function manifest(app: ToolsApp): Plugin {
   };
 }
 
-function serviceWorker(): Plugin {
-  let publicDir = "";
+/**
+ * Under the dev server any `sw.js` removes itself, so hot reload never sees a cache. An app's
+ * build puts the retired worker in its folder; the index's puts nothing, because the site build
+ * writes the real worker there once every app is built.
+ */
+function workers(app: ToolsApp | null): Plugin {
   return {
     name: "tools-service-worker",
-    // After Vite's own HTML plugin, so index.html is already in the bundle when this runs.
-    enforce: "post",
-    configResolved(config) {
-      publicDir = config.publicDir;
-    },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!(req.url ?? "").split("?")[0]!.endsWith("/sw.js")) return next();
@@ -246,29 +275,8 @@ function serviceWorker(): Plugin {
         res.end(DEV_SW);
       });
     },
-    generateBundle(_options, bundle) {
-      const hash = createHash("sha256");
-      const files: string[] = [];
-      for (const [name, chunk] of Object.entries(bundle)) {
-        files.push(name);
-        hash.update(name).update(chunk.type === "chunk" ? chunk.code : chunk.source);
-      }
-      for (const name of listFiles(publicDir)) {
-        files.push(name);
-        hash.update(name).update(readFileSync(join(publicDir, name)));
-      }
-      files.sort();
-      const head =
-        `const VERSION = ${JSON.stringify(hash.digest("hex").slice(0, 16))};\n` +
-        `const PRECACHE = ${JSON.stringify(files)};\n`;
-      this.emitFile({ type: "asset", fileName: "sw.js", source: head + SW_SOURCE });
+    generateBundle() {
+      if (app) this.emitFile({ type: "asset", fileName: "sw.js", source: RETIRED_WORKER });
     },
   };
-}
-
-function listFiles(dir: string): string[] {
-  if (!dir || !existsSync(dir)) return [];
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((d) => d.isFile())
-    .map((d) => relative(dir, join(d.parentPath, d.name)).replace(/\\/g, "/"));
 }

@@ -3,14 +3,15 @@
  * Builds the whole site into `dist/`: the index page at the root, then one folder per app.
  *
  * Apps come from the catalog, so adding one to `packages/catalog` is all it takes to get it
- * built and listed. Each app's own Vite build emits the shared service worker into its folder
- * (see `@tools/ui/vite`), since a worker only controls the scope it is served from.
+ * built and listed. Last, it writes the site's one service worker at the root, precaching every
+ * file of every app (see `@tools/ui/site-worker`), so the installed site is whole offline.
  */
-import { rm, mkdir, copyFile, readdir } from "node:fs/promises";
+import { rm, mkdir, copyFile, readdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { APPS } from "../packages/catalog/src/index.ts";
 import { siteBase } from "../packages/catalog/src/site.ts";
+import { SITE_WORKER, readTree, siteWorker } from "../packages/ui/src/site-worker.ts";
 
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "dist");
@@ -40,6 +41,9 @@ async function main(): Promise<void> {
 
   // GitHub Pages serves 404.html for unknown paths; point it at the index.
   await copyFile(join(DIST, "index.html"), join(DIST, "404.html"));
+
+  // Last, once every file it precaches is in place: the one worker, for the whole site.
+  await writeFile(join(DIST, SITE_WORKER), siteWorker(readTree(DIST)));
 
   const entries = await readdir(DIST);
   console.log(`\nBuilt ${APPS.length} app(s) + index into dist/ (${entries.length} entries)`);

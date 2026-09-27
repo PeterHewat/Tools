@@ -1,13 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { findApp } from "@tools/catalog";
-import { SITE, appBase } from "@tools/catalog/site";
+import { SITE, appBase, siteBase } from "@tools/catalog/site";
 import { THEME_BOOT_SCRIPT, THEME_KEY } from "./theme.js";
 import {
   cfBeaconTag,
   headTags,
   headerStartHtml,
   manifestFor,
+  RETIRED_WORKER,
   toolsApp,
+  toolsHome,
   withHeaderStart,
 } from "./vite.js";
 
@@ -36,20 +38,18 @@ describe("page head", () => {
     expect(attr(tags, "rel", "manifest")).toBeDefined();
   });
 
-  test("the icon and manifest are addressed from the app's base, not from the page", () => {
-    const tags = headTags(svg);
-    expect(attr(tags, "rel", "icon")?.attrs?.href).toBe(`${appBase("svg")}icon.svg`);
-    expect(attr(tags, "rel", "manifest")?.attrs?.href).toBe(
-      `${appBase("svg")}manifest.webmanifest`
-    );
+  test("the icon is the app's own, addressed from its base rather than from the page", () => {
+    expect(attr(headTags(svg), "rel", "icon")?.attrs?.href).toBe(`${appBase("svg")}icon.svg`);
+  });
+
+  test("every page, the index and each app, names the site's one manifest", () => {
+    for (const tags of [headTags(svg), headTags(null)]) {
+      expect(attr(tags, "rel", "manifest")?.attrs?.href).toBe(`${siteBase()}manifest.webmanifest`);
+    }
   });
 
   test("an unknown path is a 404, not the app served somewhere it does not live", () => {
     expect(toolsApp("svg").appType).toBe("mpa");
-  });
-
-  test("the index page has no manifest", () => {
-    expect(attr(headTags(null), "rel", "manifest")).toBeUndefined();
   });
 
   test("the analytics beacon is omitted unless a token is set at build time", () => {
@@ -115,11 +115,36 @@ describe("app header", () => {
 });
 
 describe("manifest", () => {
-  test("names the app and stays inside its folder", () => {
-    const m = manifestFor(svg);
-    expect(m.name).toBe("SVG");
+  test("installs the site: it opens on the index, and every app is inside its scope", () => {
+    const m = manifestFor([svg]);
+    expect(m.name).toBe(SITE.name);
     expect(m.start_url).toBe(".");
     expect(m.scope).toBe(".");
+    expect(m.display).toBe("standalone");
+  });
+
+  test("each app is a shortcut to its own folder, with its own icon", () => {
+    expect(manifestFor([svg]).shortcuts).toEqual([
+      {
+        name: "SVG",
+        description: svg.blurb,
+        url: "svg/",
+        icons: [{ src: "svg/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+      },
+    ]);
+  });
+
+  test("the pages learn the site root, to register its worker", () => {
+    for (const config of [toolsApp("svg"), toolsHome()]) {
+      expect(config.define?.["import.meta.env.TOOLS_SITE_BASE"]).toBe(JSON.stringify(siteBase()));
+    }
+  });
+});
+
+describe("retired worker", () => {
+  test("an app folder's old worker only removes itself", () => {
+    expect(RETIRED_WORKER).toContain("self.registration.unregister()");
+    expect(RETIRED_WORKER).not.toContain("fetch");
   });
 });
 
