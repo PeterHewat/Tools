@@ -6,9 +6,10 @@ send anonymous page-view analytics to Cloudflare when you are online.
 
 **[peterhewat.github.io/Workbench](https://peterhewat.github.io/Workbench/)**
 
-| Tool                     | What it does                                       |
-| ------------------------ | -------------------------------------------------- |
-| [Vellum](./apps/vellum/) | Trace reference images and export clean, pure SVG. |
+| Tool                     | What it does                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| [Vellum](./apps/vellum/) | Trace reference images and export clean, pure SVG.                             |
+| [JSON](./apps/json/)     | Format, minify and validate JSON, with errors pinned to their line and column. |
 
 ## Running it
 

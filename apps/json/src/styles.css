@@ -1,0 +1,733 @@
+/* JSON's own layout. Tokens and controls come from @workbench/ui/base.css. */
+
+/* The page is the editor: header on top, then the tool filling every pixel left. */
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* Edge to edge: the editor meets the header and the window, bars sit between with rules. */
+.json-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+/*
+ * Every control lives in the header, in groups by what they act on: the view, the layout,
+ * the tools, finding, the file. A rule separates neighbouring groups; the row wraps on a
+ * narrow screen rather than hide anything.
+ */
+.json-header {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+/* Find, the file and the theme: kept together at the far end, and wrapping together. */
+.end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.end .wb-theme-toggle {
+  margin-left: 0;
+}
+
+.json-header h1 {
+  margin-right: 4px;
+}
+
+.group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Text buttons a little tighter than elsewhere, so the whole bar fits one row on a laptop. */
+.json-header .wb-btn:not(.icon-btn) {
+  padding-inline: 9px;
+}
+
+/* Two buttons that always sit together (Expand all, Collapse all). */
+.pair {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.group + .group {
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+/* A bar between the header, the editor and the window's edge. */
+.bar {
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+/* A switch: buttons joined into one control (Text | Tree | …, indent, path style). */
+.seg {
+  display: inline-flex;
+}
+
+.seg .wb-btn {
+  border-radius: 0;
+}
+
+/* Neighbours overlap by their shared border; the one whose border shows (pressed, hovered,
+   focused) is lifted above the next, or that button would cover its right edge. */
+.seg .wb-btn + .wb-btn {
+  margin-left: -1px;
+}
+
+.seg .wb-btn:hover,
+.seg .wb-btn:focus-visible,
+.seg .wb-btn[aria-pressed="true"] {
+  position: relative;
+  z-index: 1;
+}
+
+.seg .wb-btn:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.seg .wb-btn:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.wb-btn.small {
+  padding: 3px 9px;
+  font-size: 0.85rem;
+}
+
+/* Pressed reads as "on" or "you are here", and a button whose panel is open reads as pressed
+   while it is: filled, as in Vellum. */
+.seg .wb-btn[aria-pressed="true"],
+.wb-btn.toggle[aria-pressed="true"],
+.wb-btn[aria-expanded="true"] {
+  position: relative;
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* Settings: a panel under its button, with rows of settings and the nested-JSON actions.
+   Frosted like Vellum's menus: the page shows through, blurred. */
+.menu {
+  position: fixed;
+  inset: auto;
+  width: 280px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  /* Prefixed first: the minifier keeps only the last of the pair, and Chrome has no -webkit-
+     alias, so the standard property must win. */
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  color: var(--text);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible {
+  outline: none;
+  background: var(--panel-2);
+}
+
+.menu-item:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.menu-label {
+  margin: 8px 8px 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.menu-label.first {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Help: docked against the right edge under the header, full height, frosted — Vellum's. */
+.help {
+  position: fixed;
+  inset: auto 0 0 auto;
+  /* Popovers default to their content's height; this one spans from its top to the bottom. */
+  height: auto;
+  width: min(420px, 100vw);
+  margin: 0;
+  padding: 10px 12px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll) transparent;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  color: var(--text);
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.panel-title {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.help h3 {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.help .panel-title + h3 {
+  margin-top: 0;
+}
+
+.help ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.help li {
+  margin-bottom: 5px;
+}
+
+.help .keys {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.help .keys td {
+  padding: 3px 6px 3px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.help .keys td:first-child {
+  white-space: nowrap;
+}
+
+/* On a phone the panel covers the editor, so it is opaque: text behind text does not read. */
+@media (max-width: 720px) {
+  .help {
+    width: 100vw;
+    border-left: 0;
+    background: var(--panel);
+  }
+}
+
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+/* YAML, CSV, Types, Schema show in a code view like the text; this is what shows instead when
+   there is nothing to convert. */
+.export-message {
+  flex: 1;
+  margin: 0;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Find: a bar under the header, and marks drawn in the coloured layer. */
+.findbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* "Aa": match case, the way code editors show it. */
+.case-toggle {
+  justify-content: center;
+  min-width: 36px;
+  padding: 0 8px;
+  font-weight: 600;
+}
+
+.find-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.findbar > .wb-btn {
+  flex: none;
+}
+
+.findbar.no-match .find-input {
+  border-color: var(--danger);
+}
+
+.find-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.highlight mark {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--warn) 30%, transparent);
+  color: inherit;
+}
+
+.highlight mark.cur {
+  background: color-mix(in srgb, var(--warn) 60%, transparent);
+  outline: 1px solid var(--warn);
+}
+
+/* A long document's pages: shown under the editor only when there is more than one. */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-input {
+  width: 5.5em;
+  margin: 0 4px;
+  padding: 3px 6px;
+}
+
+/* ---------- Tree ---------- */
+
+/*
+ * The tree has a gutter like the text: each row's cell holds the text line its value starts
+ * on, and the background draws the gutter on down past the last row.
+ */
+.tree {
+  --ln-width: calc(var(--ln-digits, 2) * 1ch + 20px);
+
+  flex: 1;
+  min-height: 8rem;
+  overflow: auto;
+  background: linear-gradient(
+    to right,
+    var(--panel) calc(var(--ln-width) - 1px),
+    var(--border) calc(var(--ln-width) - 1px) var(--ln-width),
+    var(--bg) var(--ln-width)
+  );
+  font: 13px / 1.6 var(--mono);
+}
+
+.tree .row {
+  padding-right: 12px;
+  white-space: pre;
+  cursor: default;
+}
+
+/* Stays put when the tree scrolls sideways; its right margin indents the row by depth. */
+.tree .ln {
+  position: sticky;
+  left: 0;
+  display: inline-block;
+  width: var(--ln-width);
+  margin-right: calc(var(--level) * 18px + 8px);
+  padding: 0 8px 0 12px;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  text-align: right;
+  user-select: none;
+}
+
+.tree .row:hover {
+  background: var(--panel-2);
+}
+
+/* Translucent, so every syntax colour stays readable on it. */
+.tree .row.sel {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.tree .row:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/*
+ * The fold arrow: a CSS triangle centred in a square cell, turned down when the row is open.
+ * Drawn rather than a ▸ glyph, whose ink sits off the centre of its box, so it would swing
+ * around the rotation point instead of turning in place.
+ */
+.tw {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  vertical-align: -2px;
+  color: var(--muted);
+  transition: transform 0.1s;
+}
+
+.tw.can-fold {
+  cursor: pointer;
+}
+
+.tw.can-fold::before {
+  content: "";
+  /* Nudged right by a third of its width, so its centre of mass sits on the cell's centre. */
+  margin-left: 2px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid currentColor;
+}
+
+.row:hover .tw.can-fold {
+  color: var(--text);
+}
+
+.ti[aria-expanded="true"] > .row > .tw {
+  transform: rotate(90deg);
+}
+
+.t-index {
+  color: var(--muted);
+}
+
+.tree .more {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-align: left;
+  white-space: pre;
+  cursor: pointer;
+}
+
+/* Lines up with the rows' text, past where their fold arrow sits. */
+.more-text {
+  padding-left: 18px;
+}
+
+.tree .more:hover .more-text {
+  text-decoration: underline;
+}
+
+.tree-empty {
+  display: block;
+  padding: 24px;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+/* ---------- Where the caret is: path, then line and column ---------- */
+
+.where {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.path {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.path {
+  overflow: hidden;
+  max-width: 40vw;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.path:hover:not(:disabled),
+.path.copied {
+  color: var(--accent);
+}
+
+.path.copied::after {
+  content: " copied";
+  color: var(--ok);
+}
+
+/*
+ * The editor: a gutter of line numbers, then the text. The textarea's own text is transparent;
+ * what shows is the coloured copy underneath (code-view.ts). Both layers must lay text out
+ * identically, so they share font, size, line height, padding and tab size, and the colours
+ * never change weight or style: bold or italic glyphs can be wider and would drift.
+ */
+.code {
+  --code-font: 13px / 1.5 var(--mono);
+  --code-pad: 6px 10px;
+
+  display: flex;
+  flex: 1;
+  min-height: 8rem;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.gutter {
+  flex: none;
+  width: calc(var(--gutter-digits, 2) * 1ch + 20px);
+  padding: 6px 8px 6px 12px;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font: var(--code-font);
+  text-align: right;
+  user-select: none;
+}
+
+.gutter-lines {
+  white-space: pre;
+}
+
+.gutter .err {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.code-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.highlight,
+.editor {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: var(--code-pad);
+  font: var(--code-font);
+  tab-size: 2;
+  white-space: pre;
+}
+
+.highlight {
+  overflow: hidden;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.editor {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+  resize: none;
+}
+
+.editor::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: transparent;
+}
+
+.editor::placeholder {
+  color: var(--muted);
+}
+
+.editor.dragging {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+/* Too big to colour: the textarea shows its own text. */
+.code.plain .editor,
+.code.plain .editor::selection {
+  color: var(--text);
+}
+
+.t-key {
+  color: var(--accent);
+}
+
+.t-string {
+  color: var(--ok);
+}
+
+.t-number {
+  color: var(--warn);
+}
+
+.t-literal {
+  color: var(--violet);
+}
+
+/* TypeScript's type names. */
+.t-type {
+  color: var(--ok);
+}
+
+/* Colours off (a setting): the tree shows its values in the text colour too. The code views
+   switch to plain text themselves. */
+.no-colour .tree :is(.t-key, .t-string, .t-number, .t-literal, .t-index) {
+  color: inherit;
+}
+
+.t-comment,
+.t-punct {
+  color: var(--muted);
+}
+
+/* Open, Copy, Download, Clear: actions everyone knows by their picture. */
+/* The same size and weight as Vellum's tool buttons. */
+.icon-btn {
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.icon-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.statusbar {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.statusbar .wb-status {
+  margin: 0;
+}
+
+.warning {
+  color: var(--warn);
+}
+
+.problem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.excerpt {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.excerpt .caret {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  /* The groups' buttons flow straight into the header's rows, so "‹" shares its row with the
+     view switch instead of wrapping as whole groups and leaving gaps. */
+  .json-header .group {
+    display: contents;
+  }
+
+  /* Compact enough for "‹" and all six views on one row of a phone. */
+  .json-header .seg .wb-btn {
+    padding-inline: 6px;
+    font-size: 0.85rem;
+  }
+
+  /* "Valid JSON · … deep" on one line, the sizes on the next. */
+  .sizes {
+    display: block;
+  }
+
+  .sizes .sep {
+    display: none;
+  }
+}
+
+/* Moved by transform as the textarea scrolls; a block, so the transform applies. */
+.highlight code {
+  display: block;
+  font: inherit;
+}

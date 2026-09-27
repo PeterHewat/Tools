@@ -29,6 +29,17 @@
         "vite": "^8.3.0",
       },
     },
+    "apps/json": {
+      "name": "@workbench/json",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@workbench/catalog": "workspace:*",
+        "@workbench/codec": "workspace:*",
+        "@workbench/ui": "workspace:*",
+        "typescript": "~6.0.3",
+        "vite": "^8.3.0",
+      },
+    },
     "apps/vellum": {
       "name": "@workbench/vellum",
       "version": "0.0.0",
@@ -181,6 +192,8 @@
     "@workbench/codec": ["@workbench/codec@workspace:packages/codec"],
 
     "@workbench/home": ["@workbench/home@workspace:apps/home"],
+
+    "@workbench/json": ["@workbench/json@workspace:apps/json"],
 
     "@workbench/tsconfig": ["@workbench/tsconfig@workspace:packages/tsconfig"],
 

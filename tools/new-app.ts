@@ -88,7 +88,7 @@ export default defineConfig(workbenchApp("${slug}"));
   </head>
   <body>
     <header class="wb-header">
-      <a class="wb-home" href="../">← Workbench</a>
+      <a class="wb-home" href="../" title="All tools"><span class="wb-home-label">Workbench</span></a>
       <h1>${title}</h1>
       <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
     </header>
