@@ -20,9 +20,9 @@ setup. These are still written once per app, and differ where they should not:
   and one way of opening, closing and placing them.
 - **Settings.** The JSON app has a cog menu; the SVG app keeps its settings in the Document
   panel. Decide on one pattern.
-- **Floating controls.** The SVG app's bars float as pills over the canvas on a phone; the JSON
-  app's header is a solid bar. Decide whether the JSON phone header becomes one row with a "⋯"
-  menu for the file actions.
+- **Phone header.** The JSON app's phone header is one solid row, its file actions under "⋯"
+  and the theme switch in the bar; the SVG app's bars float as pills over the canvas, with the
+  theme switch in Help. Decide on one.
 
 ## JSON
 

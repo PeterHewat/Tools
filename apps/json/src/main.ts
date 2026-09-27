@@ -1127,6 +1127,36 @@ options.addEventListener("toggle", (e) => {
   optionsBtn.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open"));
 });
 
+// On a phone the file actions (Import, Export, Copy, Clear) fold into the "⋯" menu. Its
+// items are made from the bar's buttons each time it opens, so they carry the same names and
+// the same disabled state, and pressing one presses that button.
+const more = byId("more");
+const moreBtn = byId<HTMLButtonElement>("more-btn");
+const fileButtons = [byId("open"), downloadBtn, copyBtn, clearBtn] as HTMLButtonElement[];
+more.addEventListener("beforetoggle", (e) => {
+  if ((e as ToggleEvent).newState !== "open") return;
+  more.replaceChildren(
+    ...fileButtons.map((b) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "menu-item";
+      item.disabled = b.disabled;
+      item.append(b.querySelector("svg")!.cloneNode(true), b.title.replace(/ —.*/, ""));
+      item.addEventListener("click", () => {
+        more.hidePopover();
+        b.click();
+      });
+      return item;
+    })
+  );
+  const r = moreBtn.getBoundingClientRect();
+  more.style.top = `${r.bottom + 4}px`;
+  more.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 248))}px`;
+});
+more.addEventListener("toggle", (e) => {
+  moreBtn.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open"));
+});
+
 // Help docks under the header, which wraps to more rows on a narrow screen. It stays open until
 // its button closes it, and a reload of the tab keeps it open, as in the SVG app.
 const help = byId("help");
@@ -1228,7 +1258,6 @@ onFileDrop(editor, ([file]) => {
 });
 
 bindThemeToggle(byId("theme-toggle"));
-bindThemeToggle(byId("theme-toggle-help"));
 restore();
 showColours();
 validate();

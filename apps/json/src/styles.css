@@ -50,6 +50,32 @@ body {
   padding-inline: 9px;
 }
 
+/* "⋯": the file actions as a menu, on a phone only. */
+.more-btn {
+  display: none;
+}
+
+.more-menu {
+  width: 240px;
+}
+
+.more-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.more-menu svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* A bar between the header, the editor and the window's edge. */
 .bar {
   margin: 0;
@@ -237,10 +263,6 @@ body {
   margin: 0;
 }
 
-.theme-in-help {
-  display: none;
-}
-
 .panel-title {
   margin: 0 0 10px;
   color: var(--muted);
@@ -294,16 +316,6 @@ body {
     width: 100vw;
     border-left: 0;
     background: var(--panel);
-  }
-
-  /* The theme switch moves from the bar into Help, as in the SVG app: a phone bar has no
-     room to spare for something set once. */
-  .json-header .ui-theme-toggle:not(.theme-in-help) {
-    display: none;
-  }
-
-  .theme-in-help {
-    display: inline-grid;
   }
 }
 
@@ -823,9 +835,28 @@ body:not([data-view="tree"]) .tree-area {
     display: contents;
   }
 
-  /* One dropdown for the six views: with it, the bar is two rows instead of three. */
-  .json-header .seg.views {
+  /* One row: ‹, the views as a dropdown, Settings, Find, and "⋯" for the file actions;
+     the theme switch and Help at the far end. */
+  .json-header {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .json-header .seg.views,
+  .json-header .group.file {
     display: none;
+  }
+
+  .json-header .ui-header-end {
+    display: contents;
+  }
+
+  .json-header .more-btn {
+    display: inline-flex;
+  }
+
+  .json-header .ui-theme-toggle {
+    margin-left: auto;
   }
 
   .view-select {

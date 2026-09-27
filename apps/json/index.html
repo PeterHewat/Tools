@@ -124,7 +124,26 @@
           </button>
         </div>
 
-        <div class="group" role="group" aria-label="File">
+        <!-- On a phone the file actions fold into this menu, built from the buttons below. -->
+        <button
+          type="button"
+          class="ui-btn icon-btn more-btn"
+          id="more-btn"
+          popovertarget="more"
+          aria-haspopup="true"
+          aria-expanded="false"
+          title="Import, export, copy, clear"
+          aria-label="More"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5" cy="12" r="1.2" />
+            <circle cx="12" cy="12" r="1.2" />
+            <circle cx="19" cy="12" r="1.2" />
+          </svg>
+        </button>
+        <div class="menu more-menu" id="more" popover aria-label="File"></div>
+
+        <div class="group file" role="group" aria-label="File">
           <button
             type="button"
             class="ui-btn icon-btn"
@@ -185,12 +204,6 @@
         <aside class="help" id="help" popover="manual" aria-label="Help">
           <div class="panel-head">
             <p class="panel-title">Help</p>
-            <!-- On a phone the theme switch lives here, as in the SVG app, not in the bar. -->
-            <button
-              type="button"
-              class="ui-theme-toggle theme-in-help"
-              id="theme-toggle-help"
-            ></button>
           </div>
           <h3>About</h3>
           <ul>
