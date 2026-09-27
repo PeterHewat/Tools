@@ -5,16 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
   <body>
-    <!-- One row, grouped by what the controls act on: the view, the layout, the tools, finding,
-         the file. Controls that cannot apply are disabled, never hidden, so nothing moves. -->
+    <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.
+         Controls that cannot apply are disabled, never hidden, so nothing moves. -->
     <header class="wb-header json-header">
-      <a class="wb-home" href="../">← Workbench</a>
+      <a class="wb-home" href="../" title="All tools">Workbench</a>
       <h1>JSON</h1>
 
       <div class="group" role="group" aria-label="View">
         <div class="seg" role="group" aria-label="Show as">
-          <button type="button" class="wb-btn" id="view-text" aria-pressed="true">Text</button>
-          <button type="button" class="wb-btn" id="view-tree" aria-pressed="false">Tree</button>
+          <button type="button" class="wb-btn" data-view="text" aria-pressed="true">Text</button>
+          <button type="button" class="wb-btn" data-view="tree" aria-pressed="false">Tree</button>
+          <button type="button" class="wb-btn" data-view="yaml" aria-pressed="false">YAML</button>
+          <button type="button" class="wb-btn" data-view="csv" aria-pressed="false">CSV</button>
+          <button
+            type="button"
+            class="wb-btn"
+            data-view="ts"
+            aria-pressed="false"
+            title="TypeScript types"
+          >
+            Types
+          </button>
+          <button type="button" class="wb-btn" data-view="schema" aria-pressed="false">
+            Schema
+          </button>
         </div>
         <button
           type="button"
@@ -46,37 +60,58 @@
           Format
         </button>
         <button type="button" class="wb-btn" id="minify">Minify</button>
-        <select class="wb-select" id="indent" title="Indent" aria-label="Indent">
-          <option value="2">2 spaces</option>
-          <option value="4">4 spaces</option>
-          <option value="tab">Tabs</option>
-        </select>
-        <button type="button" class="wb-btn toggle" id="sort-keys" aria-pressed="false">
-          Sort keys
-        </button>
-      </div>
-
-      <div class="group">
         <button
           type="button"
-          class="wb-btn"
-          id="tools-btn"
-          popovertarget="tools-menu"
-          aria-haspopup="menu"
+          class="wb-btn icon-btn"
+          id="options-btn"
+          popovertarget="options"
+          aria-haspopup="true"
+          title="Options"
+          aria-label="Options"
         >
-          Tools
-          <svg class="caret-down" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 10l5 5 5-5" />
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4" />
           </svg>
         </button>
-        <div class="menu" id="tools-menu" popover role="menu" aria-label="Tools">
-          <button type="button" role="menuitem" data-action="unwrap">Unwrap JSON string</button>
-          <button type="button" role="menuitem" data-action="wrap">Wrap value in a string</button>
-          <div class="menu-label" role="presentation">Export as</div>
-          <button type="button" role="menuitem" data-export="yaml">YAML</button>
-          <button type="button" role="menuitem" data-export="csv">CSV</button>
-          <button type="button" role="menuitem" data-export="ts">TypeScript types</button>
-          <button type="button" role="menuitem" data-export="schema">JSON Schema</button>
+        <div class="menu options" id="options" popover aria-label="Options">
+          <div class="menu-label first">Format with</div>
+          <div class="menu-row">
+            <span>Indent</span>
+            <div class="seg small" role="group" aria-label="Indent">
+              <button type="button" class="wb-btn" data-indent="2" aria-pressed="true">2</button>
+              <button type="button" class="wb-btn" data-indent="4" aria-pressed="false">4</button>
+              <button type="button" class="wb-btn" data-indent="tab" aria-pressed="false">
+                Tab
+              </button>
+            </div>
+          </div>
+          <div class="menu-row">
+            <span>Sort keys</span>
+            <button
+              type="button"
+              class="wb-btn toggle small"
+              id="sort-keys"
+              aria-pressed="false"
+              aria-label="Sort keys"
+            >
+              Off
+            </button>
+          </div>
+          <div class="menu-label">Paths</div>
+          <div class="menu-row">
+            <span>Style</span>
+            <div class="seg small" role="group" aria-label="Path style">
+              <button type="button" class="wb-btn" data-path-style="js" aria-pressed="true">
+                a.b[0]
+              </button>
+              <button type="button" class="wb-btn" data-path-style="pointer" aria-pressed="false">
+                /a/b/0
+              </button>
+            </div>
+          </div>
+          <div class="menu-label">Nested JSON</div>
+          <button type="button" class="menu-item" data-action="unwrap">Unwrap JSON string</button>
+          <button type="button" class="menu-item" data-action="wrap">Wrap value in a string</button>
         </div>
       </div>
 
@@ -145,6 +180,7 @@
           aria-label="Find"
           spellcheck="false"
         />
+        <span class="wb-label find-count" id="find-count" aria-live="polite"></span>
         <button
           type="button"
           class="wb-btn toggle case-toggle"
@@ -155,7 +191,6 @@
         >
           Aa
         </button>
-        <span class="wb-label find-count" id="find-count" aria-live="polite"></span>
         <button
           type="button"
           class="wb-btn icon-btn"
@@ -174,7 +209,6 @@
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
         </button>
-        <span class="toolbar-gap"></span>
         <button
           type="button"
           class="wb-btn icon-btn"
@@ -202,6 +236,7 @@
         </div>
       </div>
       <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
+      <pre class="export hidden" id="export" tabindex="0"></pre>
 
       <div class="bar pager hidden" id="pager">
         <button
@@ -248,54 +283,9 @@
         <p class="wb-status" id="status" role="status"></p>
         <span class="where">
           <button type="button" class="path wb-mono hidden" id="path" title="Copy path"></button>
-          <button
-            type="button"
-            class="path-style hidden"
-            id="path-style"
-            title="Switch between JavaScript and JSON Pointer paths"
-          ></button>
           <span class="wb-label wb-mono" id="cursor"></span>
         </span>
       </div>
-
-      <dialog class="output" id="output" aria-labelledby="output-title">
-        <div class="output-head">
-          <h2 id="output-title"></h2>
-          <span class="toolbar-gap"></span>
-          <button
-            type="button"
-            class="wb-btn icon-btn"
-            id="output-copy"
-            title="Copy"
-            aria-label="Copy"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M9 9h11v11H9zM5 15H4V4h11v1" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="wb-btn icon-btn"
-            id="output-download"
-            title="Download"
-            aria-label="Download"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="wb-btn icon-btn"
-            id="output-close"
-            title="Close (Esc)"
-            aria-label="Close (Esc)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-          </button>
-        </div>
-        <pre class="wb-code output-text" id="output-text"></pre>
-      </dialog>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -22,9 +22,15 @@ export interface TreeHandlers {
 export interface TreeView {
   /**
    * Shows a document, or a message when there is none. Keeps open rows and the selection.
-   * `lineAt` numbers each row with the text line its value (or key) starts on.
+   * `lineAt` numbers each row with the text line its value (or key) starts on, or the column
+   * when the text is one line; `unit` names which, in each number's tooltip.
    */
-  show(root: JsonNode | null, message: string, lineAt?: (offset: number) => number): void;
+  show(
+    root: JsonNode | null,
+    message: string,
+    lineAt?: (offset: number) => number,
+    unit?: "Line" | "Column"
+  ): void;
   /** Opens the rows down to a value, by child positions, and selects it. */
   reveal(indices: readonly number[]): void;
   expandAll(): void;
@@ -82,6 +88,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
   let root: Item | null = null;
   let selected: Item | null = null;
   let lineAt: (offset: number) => number = () => 0;
+  let unit = "Line";
 
   const keyOf = (item: Item) => item.indices.join("/");
 
@@ -105,7 +112,9 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
     const count = countOf(node);
     const fold = span(count ? "tw can-fold" : "tw", "");
     fold.setAttribute("aria-hidden", "true"); // the row's aria-expanded says it already
-    const line = span("ln", String(lineAt(at)));
+    const n = lineAt(at);
+    const line = span("ln", String(n));
+    line.title = `${unit} ${n.toLocaleString()}`;
     line.setAttribute("aria-hidden", "true");
     row.append(line, fold);
     if (seg !== null) {
@@ -277,9 +286,10 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
   });
 
   return {
-    show(node, message, lines) {
+    show(node, message, lines, numbering = "Line") {
       selected = null;
       lineAt = lines ?? (() => 0);
+      unit = numbering;
       if (node) {
         const digits = String(lineAt(node.end)).length;
         container.style.setProperty("--ln-digits", String(Math.max(2, digits)));

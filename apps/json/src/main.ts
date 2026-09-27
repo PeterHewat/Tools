@@ -18,13 +18,13 @@ import {
   type RepairKind,
 } from "./lib/ast.js";
 import { createCodeView } from "./code-view.js";
+import { toCsv, toJsonSchema, toTypeScript, toYaml, type Converted } from "./lib/convert.js";
 import { excerptAt, formatBytes } from "./lib/inspect.js";
-import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
+import { unwrapString, wrapAsString } from "./lib/nested.js";
 import { lineCount, lineOf, lineStarts, pageAt, pageOf } from "./lib/pages.js";
+import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson, printedSize } from "./lib/print.js";
 import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
-import { toCsv, toJsonSchema, toTypeScript, toYaml, type Converted } from "./lib/convert.js";
-import { unwrapString, wrapAsString } from "./lib/nested.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
 
@@ -32,10 +32,10 @@ const editor = byId<HTMLTextAreaElement>("editor");
 const formatBtn = byId<HTMLButtonElement>("format");
 const minifyBtn = byId<HTMLButtonElement>("minify");
 const sortKeys = byId<HTMLButtonElement>("sort-keys");
-const indentSel = byId<HTMLSelectElement>("indent");
 const copyBtn = byId<HTMLButtonElement>("copy");
 const downloadBtn = byId<HTMLButtonElement>("download");
 const clearBtn = byId<HTMLButtonElement>("clear");
+const findOpenBtn = byId<HTMLButtonElement>("find-open");
 const status = byId("status");
 const cursor = byId("cursor");
 const warning = byId("warning");
@@ -45,12 +45,10 @@ const fixBtn = byId<HTMLButtonElement>("fix");
 const fixNote = byId("fix-note");
 const codeEl = byId("code");
 const treeEl = byId("tree");
-const viewTextBtn = byId<HTMLButtonElement>("view-text");
-const viewTreeBtn = byId<HTMLButtonElement>("view-tree");
+const exportEl = byId("export");
 const expandAllBtn = byId<HTMLButtonElement>("expand-all");
 const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
 const pathBtn = byId<HTMLButtonElement>("path");
-const pathStyleBtn = byId<HTMLButtonElement>("path-style");
 const pager = byId("pager");
 const pageInput = byId<HTMLInputElement>("page-input");
 const pageCountEl = byId("page-count");
@@ -61,12 +59,13 @@ const findBar = byId("findbar");
 const findInput = byId<HTMLInputElement>("find-input");
 const findCount = byId("find-count");
 const findCase = byId<HTMLButtonElement>("find-case");
-const toolsMenu = byId("tools-menu");
-const toolsBtn = byId<HTMLButtonElement>("tools-btn");
-const output = byId<HTMLDialogElement>("output");
-const outputTitle = byId("output-title");
-const outputText = byId("output-text");
-const outputCopy = byId<HTMLButtonElement>("output-copy");
+const options = byId("options");
+const optionsBtn = byId<HTMLButtonElement>("options-btn");
+const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
+const indentButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-indent]")];
+const pathStyleButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-path-style]")];
+const unwrapBtn = options.querySelector<HTMLButtonElement>('[data-action="unwrap"]')!;
+const wrapBtn = options.querySelector<HTMLButtonElement>('[data-action="wrap"]')!;
 const view = createCodeView(codeEl, editor, byId("highlight"), byId("gutter"));
 const tree = createTree(treeEl, {
   select: (path, _node, indices) => {
@@ -76,21 +75,13 @@ const tree = createTree(treeEl, {
   open: (node) => showInText(node),
 });
 
-/** The draft and options, kept across reloads. A convenience: the page works without it. */
-const STORAGE_KEY = "workbench.json.draft";
-/** Past this, a draft is not worth the storage quota it would eat. */
-const MAX_SAVED = 2_000_000;
+// ---------- State ----------
 
-type ViewMode = "text" | "tree";
+/** Text and Tree edit the document; the others show it converted, read-only. */
+type ViewMode = "text" | "tree" | ExportKind;
+type ExportKind = "yaml" | "csv" | "ts" | "schema";
 type PathStyle = "js" | "pointer";
-
-interface Saved {
-  text: string;
-  indent: string;
-  sortKeys: boolean;
-  view: ViewMode;
-  pathStyle: PathStyle;
-}
+type Indent = "2" | "4" | "tab";
 
 let fileName = "data.json";
 type Doc = Extract<ParseResult, { ok: true }>;
@@ -109,40 +100,73 @@ let treeSelection: number[] = [];
 /** Valid and on one line: sorting keeps it minified, and there is no indent to choose. */
 let minified = false;
 let mode: ViewMode = "text";
+/** Where "the value you are on" is: the text's caret or the tree's selection, whichever was last. */
+let place: "text" | "tree" = "text";
+let indentChoice: Indent = "2";
 let pathStyle: PathStyle = "js";
 /** The tree shows an older document until it is next opened. */
 let treeStale = true;
 /** Why the text is not JSON, and the edits that would make it JSON when there are some. */
 let fault: { message: string; position: JsonPosition; edits: Edit[] | null } | null = null;
 
+// ---------- Storage ----------
+
+/**
+ * Settings persist (localStorage, shared by every tab). The draft is the person's data, so
+ * it lives only as long as the tab (sessionStorage): a reload keeps it, closing the tab ends it.
+ */
+const PREFS_KEY = "workbench.json.prefs";
+const DRAFT_KEY = "workbench.json.draft";
+/** Past this, a draft is not worth the storage quota it would eat. */
+const MAX_SAVED = 2_000_000;
+
+interface Prefs {
+  indent: Indent;
+  sortKeys: boolean;
+  view: ViewMode;
+  pathStyle: PathStyle;
+}
+
+const VIEWS: readonly ViewMode[] = ["text", "tree", "yaml", "csv", "ts", "schema"];
+
 function restore(): void {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<Saved> | null;
-    if (!saved) return;
-    if (typeof saved.text === "string") showDocument(saved.text);
-    if (saved.indent && [...indentSel.options].some((o) => o.value === saved.indent)) {
-      indentSel.value = saved.indent;
+    const prefs = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null") as Partial<Prefs> | null;
+    if (prefs) {
+      if (prefs.indent === "2" || prefs.indent === "4" || prefs.indent === "tab") {
+        indentChoice = prefs.indent;
+      }
+      setPressed(sortKeys, prefs.sortKeys === true);
+      if (prefs.view && VIEWS.includes(prefs.view)) mode = prefs.view;
+      if (prefs.pathStyle === "pointer") pathStyle = "pointer";
     }
-    setPressed(sortKeys, saved.sortKeys === true);
-    if (saved.view === "tree") mode = "tree";
-    if (saved.pathStyle === "pointer") pathStyle = "pointer";
   } catch {
-    /* storage refused or holds something else: start empty */
+    /* storage refused or holds something else: defaults */
   }
+  try {
+    const draft = sessionStorage.getItem(DRAFT_KEY);
+    if (draft !== null) showDocument(draft);
+  } catch {
+    /* storage refused: start empty */
+  }
+  showOptions();
 }
 
 function save(): void {
-  const full = documentText();
-  const text = full.length > MAX_SAVED ? "" : full;
-  const saved: Saved = {
-    text,
-    indent: indentSel.value,
+  const prefs: Prefs = {
+    indent: indentChoice,
     sortKeys: isPressed(sortKeys),
     view: mode,
     pathStyle,
   };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    /* storage refused or full */
+  }
+  try {
+    const text = documentText();
+    sessionStorage.setItem(DRAFT_KEY, text.length > MAX_SAVED ? "" : text);
   } catch {
     /* storage refused or full */
   }
@@ -154,7 +178,7 @@ const setPressed = (button: HTMLElement, on: boolean) =>
   button.setAttribute("aria-pressed", String(on));
 
 function indent(): number | "\t" {
-  return indentSel.value === "tab" ? "\t" : Number(indentSel.value);
+  return indentChoice === "tab" ? "\t" : Number(indentChoice);
 }
 
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
@@ -180,6 +204,8 @@ function describeEdits(edits: readonly Edit[]): string {
     .map(([kind, n]) => plural(n, REPAIR_WORDS[kind]))
     .join(", ");
 }
+
+// ---------- Pages ----------
 
 /** The whole document, whichever page the editor shows. */
 function documentText(): string {
@@ -240,12 +266,17 @@ function selectInDocument(start: number, end: number, focus = true): void {
   showCursor();
 }
 
-// ---------- Tools: nested JSON and export ----------
+// ---------- The value you are on: nested JSON and the CSV table ----------
+
+/** The value under the caret, while the document is valid and parsed from the text as it is. */
+function atCursor(): ReturnType<typeof nodeAt> | null {
+  return doc && !stale ? nodeAt(doc.root, aside.before.length + editor.selectionStart) : null;
+}
 
 /** The values from the root down to the one under the caret, or selected in the tree. */
 function contextChain(): JsonNode[] {
   if (!doc || stale) return [];
-  const indices = mode === "tree" ? treeSelection : (atCursor()?.indices ?? []);
+  const indices = place === "tree" ? treeSelection : (atCursor()?.indices ?? []);
   const chain: JsonNode[] = [doc.root];
   for (const k of indices) {
     const node = chain.at(-1)!;
@@ -261,74 +292,101 @@ function contextChain(): JsonNode[] {
   return chain;
 }
 
-interface Export {
-  title: string;
+// ---------- Export views ----------
+
+interface ExportSpec {
+  label: string;
   extension: string;
-  make: () => Converted;
+  make: (root: JsonNode) => Converted;
 }
 
-const EXPORTS: Record<string, Export> = {
-  yaml: { title: "YAML", extension: ".yaml", make: () => ({ ok: true, text: toYaml(doc!.root) }) },
+/** The first array in the document, nearest the root first: a document's main table. */
+function firstArray(root: JsonNode): JsonNode | undefined {
+  const queue = [root];
+  for (let k = 0; k < queue.length; k++) {
+    const node = queue[k];
+    if (node.kind === "array") return node;
+    if (node.kind === "object") for (const m of node.members) queue.push(m.value);
+  }
+  return undefined;
+}
+
+const EXPORTS: Record<ExportKind, ExportSpec> = {
+  yaml: { label: "YAML", extension: ".yaml", make: (root) => ({ ok: true, text: toYaml(root) }) },
+  // The innermost array around the caret (or tree selection), so any table in a document can
+  // be exported; failing that, the document's first array.
   csv: {
-    title: "CSV",
+    label: "CSV",
     extension: ".csv",
-    // The innermost array around the caret, so a table nested in a document still exports.
-    make: () => toCsv(contextChain().findLast((n) => n.kind === "array") ?? doc!.root),
+    make: (root) =>
+      toCsv(contextChain().findLast((n) => n.kind === "array") ?? firstArray(root) ?? root),
   },
   ts: {
-    title: "TypeScript types",
+    label: "TypeScript types",
     extension: ".d.ts",
-    make: () => ({ ok: true, text: toTypeScript(doc!.root) }),
+    make: (root) => ({ ok: true, text: toTypeScript(root) }),
   },
   schema: {
-    title: "JSON Schema",
+    label: "JSON Schema",
     extension: ".schema.json",
-    make: () => ({ ok: true, text: toJsonSchema(doc!.root) }),
+    make: (root) => ({ ok: true, text: toJsonSchema(root) }),
   },
 };
 
-let outputName = "";
+const isExport = (m: ViewMode): m is ExportKind => m in EXPORTS;
 
-function showExport(kind: string): void {
-  const spec = EXPORTS[kind];
-  if (!spec || !doc) return;
+/** What the export view shows, or null when it shows a message instead. */
+let exported: string | null = null;
+
+function showExport(): void {
+  if (!isExport(mode)) return;
   let result: Converted;
-  try {
-    result = spec.make();
-  } catch (err) {
-    // Converters recurse; a document nested thousands deep can exhaust the stack.
+  if (!doc) {
     result = {
       ok: false,
-      message: err instanceof RangeError ? "Too deeply nested to convert." : String(err),
+      message: fault ? "Not valid JSON: switch to Text to fix it." : "Nothing to convert yet.",
     };
+  } else {
+    try {
+      result = EXPORTS[mode].make(doc.root);
+    } catch (err) {
+      // Converters recurse; a document nested thousands deep can exhaust the stack.
+      result = {
+        ok: false,
+        message: err instanceof RangeError ? "Too deeply nested to convert." : String(err),
+      };
+    }
   }
-  outputTitle.textContent = spec.title;
-  outputText.textContent = result.ok ? result.text : result.message;
-  outputText.classList.toggle("error", !result.ok);
-  outputCopy.disabled = !result.ok;
-  byId<HTMLButtonElement>("output-download").disabled = !result.ok;
-  outputName = fileName.replace(/\.json$/i, "") + spec.extension;
-  output.showModal();
+  exported = result.ok ? result.text : null;
+  exportEl.textContent = result.ok ? result.text : result.message;
+  exportEl.classList.toggle("message", !result.ok);
+  showFileControls();
 }
 
-/** Enables the menu's items for what is under the caret, and names what they will act on. */
-function prepareTools(): void {
+// ---------- Options: indent, sort keys, path style, nested JSON ----------
+
+/** Shows the options as they are, and which can apply to the document as it is. */
+function showOptions(): void {
+  for (const b of indentButtons) {
+    setPressed(b, b.dataset.indent === indentChoice);
+    // Minified text has no indent to change, so the choice waits, disabled, until Format.
+    b.disabled = !doc || minified;
+  }
+  sortKeys.textContent = isPressed(sortKeys) ? "On" : "Off";
+  sortKeys.disabled = !doc;
+  for (const b of pathStyleButtons) setPressed(b, b.dataset.pathStyle === pathStyle);
+
   const chain = contextChain();
   const node = chain.at(-1);
-  const unwrap = toolsMenu.querySelector<HTMLButtonElement>('[data-action="unwrap"]')!;
-  const wrap = toolsMenu.querySelector<HTMLButtonElement>('[data-action="wrap"]')!;
-  unwrap.disabled = !node || unwrapString(documentText(), node, indent()) === null;
-  unwrap.title = unwrap.disabled
-    ? "Put the cursor on a string that holds a JSON object or array"
+  unwrapBtn.disabled = !node || unwrapString(documentText(), node, indent()) === null;
+  unwrapBtn.title = unwrapBtn.disabled
+    ? "Put the cursor on (or select in the tree) a string that holds a JSON object or array"
     : "";
-  wrap.disabled = !node;
-  wrap.textContent = chain.length > 1 ? "Wrap value in a string" : "Wrap document in a string";
-  for (const b of toolsMenu.querySelectorAll<HTMLButtonElement>("[data-export]")) {
-    b.disabled = !doc || stale;
-  }
+  wrapBtn.disabled = !node;
+  wrapBtn.textContent = chain.length > 1 ? "Wrap value in a string" : "Wrap document in a string";
 }
 
-function runTool(action: string): void {
+function runNested(action: string): void {
   const node = contextChain().at(-1);
   if (!node) return;
   const text = documentText();
@@ -353,9 +411,9 @@ function refreshFind(): void {
   const key = [query, isPressed(findCase), mode, findVersion].join("\u0000");
   if (key === findKey) return;
   findKey = key;
-  const options = { matchCase: isPressed(findCase) };
-  textMatches = mode === "text" ? findInText(documentText(), query, options) : [];
-  treeMatches = mode === "tree" && doc && !stale ? findInTree(doc.root, query, options) : [];
+  const matchCase = { matchCase: isPressed(findCase) };
+  textMatches = mode === "text" ? findInText(documentText(), query, matchCase) : [];
+  treeMatches = mode === "tree" && doc && !stale ? findInTree(doc.root, query, matchCase) : [];
   findIndex = Math.min(findIndex, matchCount() - 1);
   showFindCount();
   showMarks();
@@ -426,6 +484,7 @@ function findStep(delta: number): void {
 }
 
 function openFind(): void {
+  if (mode !== "text" && mode !== "tree") return;
   findBar.classList.remove("hidden");
   const selected = editor.value.slice(editor.selectionStart, editor.selectionEnd);
   if (mode === "text" && selected && selected.length < 200 && !selected.includes("\n")) {
@@ -441,8 +500,10 @@ function closeFind(): void {
   findBar.classList.add("hidden");
   view.setMarks([]);
   if (mode === "text") editor.focus();
-  else tree.focus();
+  else if (mode === "tree") tree.focus();
 }
+
+// ---------- Validation: after every pause in typing, and every change made from code ----------
 
 function validate(): void {
   const text = documentText();
@@ -461,13 +522,10 @@ function validate(): void {
         ? { message: parsed.message, position: positionAt(text, parsed.offset), edits }
         : null;
   }
-
-  for (const b of [copyBtn, downloadBtn, clearBtn]) b.disabled = empty;
-  formatBtn.disabled = minifyBtn.disabled = sortKeys.disabled = !doc;
-  // Minified text has no indent to change, so the choice waits, disabled, until Format.
   minified = !!doc && !text.includes("\n");
-  indentSel.disabled = !doc || minified;
-  showViewControls();
+
+  formatBtn.disabled = minifyBtn.disabled = !doc;
+  clearBtn.disabled = empty;
   status.classList.toggle("wb-status--error", !!fault);
   status.classList.toggle("wb-status--ok", !!doc);
   problem.classList.toggle("hidden", !fault);
@@ -520,9 +578,12 @@ function validate(): void {
   view.refresh();
   showPager();
   findVersion++;
-  if (!findBar.classList.contains("hidden")) refreshFind();
+  if (findOpen()) refreshFind();
   treeStale = true;
   if (mode === "tree") showTree();
+  showExport();
+  showOptions();
+  showViewControls();
   showCursor();
   save();
 }
@@ -536,12 +597,14 @@ function validateSoon(): void {
 /** Past this, a document with hardly any line breaks gets a nudge to format it. */
 const LONG_TEXT = 1_000_000;
 
+// ---------- Rewrites and their undo ----------
+
 /**
- * Whole-text rewrites (Format, Minify, Clear), undone by the app rather than the browser.
- * `execCommand("insertText")` would put them on the browser's own undo stack, but Chromium
- * inserts line by line and takes seconds on a few thousand lines. Assigning `value` is instant
- * and resets the browser's stack instead, so Ctrl+Z / Ctrl+Y step through these here, whenever
- * the text still reads exactly as a rewrite left it.
+ * Whole-text rewrites (Format, Minify, Clear, Fix, Unwrap), undone by the app rather than the
+ * browser. `execCommand("insertText")` would put them on the browser's own undo stack, but
+ * Chromium inserts line by line and takes seconds on a few thousand lines. Assigning `value`
+ * is instant and resets the browser's stack instead, so Ctrl+Z / Ctrl+Y step through these
+ * here, whenever the text still reads exactly as a rewrite left it.
  */
 interface Rewrite {
   before: string;
@@ -582,7 +645,6 @@ function stepHistory(back: boolean): boolean {
 
 function rewrite(minify: boolean): void {
   if (!doc) return;
-  minified = minify;
   replaceText(
     printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isPressed(sortKeys) })
   );
@@ -593,10 +655,7 @@ function fix(): void {
   if (fault?.edits) replaceText(applyEdits(documentText(), fault.edits));
 }
 
-/** The value under the caret, while the document is valid and parsed from the text as it is. */
-function atCursor(): ReturnType<typeof nodeAt> | null {
-  return doc && !stale ? nodeAt(doc.root, aside.before.length + editor.selectionStart) : null;
-}
+// ---------- Where you are: caret, path ----------
 
 function showCursor(): void {
   if (mode !== "text") return;
@@ -613,55 +672,77 @@ let shownPath: PathSegment[] | null = null;
 function showPath(path: PathSegment[] | null): void {
   shownPath = path;
   const text = path && (pathStyle === "js" ? jsPath(path) : jsonPointer(path));
-  pathBtn.classList.toggle("hidden", !path);
-  pathStyleBtn.classList.toggle("hidden", !path);
+  pathBtn.classList.toggle("hidden", !path || isExport(mode));
   pathBtn.textContent = text || "root";
   pathBtn.disabled = !text;
-  pathStyleBtn.textContent = pathStyle === "js" ? "a.b" : "/a/b";
 }
+
+// ---------- Views ----------
 
 function showTree(): void {
   if (!treeStale) return;
-  const starts = lineStarts(documentText());
+  const text = documentText();
+  // A minified document is one line, where every value would be "line 1": number the rows by
+  // column there instead, which still says where each value is.
+  const oneLine = !text.includes("\n");
+  const starts = oneLine ? [] : lineStarts(text);
   tree.show(
     doc?.root ?? null,
     fault ? "Not valid JSON: switch to Text to fix it." : "Nothing to show yet.",
-    (offset) => lineOf(starts, offset)
+    oneLine ? (offset) => offset + 1 : (offset) => lineOf(starts, offset),
+    oneLine ? "Column" : "Line"
   );
   treeStale = false;
 }
 
 function setMode(next: ViewMode): void {
   mode = next;
-  const inTree = mode === "tree";
-  codeEl.classList.toggle("hidden", inTree);
-  treeEl.classList.toggle("hidden", !inTree);
-  showViewControls();
-  cursor.classList.toggle("hidden", inTree);
+  if (mode === "text" || mode === "tree") place = mode;
+  codeEl.classList.toggle("hidden", mode !== "text");
+  treeEl.classList.toggle("hidden", mode !== "tree");
+  exportEl.classList.toggle("hidden", !isExport(mode));
+  for (const b of viewButtons) setPressed(b, b.dataset.view === mode);
+  cursor.classList.toggle("hidden", mode !== "text");
   showPager();
   if (findOpen()) {
-    findIndex = -1;
-    refreshFind();
+    if (isExport(mode)) closeFind();
+    else {
+      findIndex = -1;
+      refreshFind();
+    }
   }
-  viewTextBtn.setAttribute("aria-pressed", String(!inTree));
-  viewTreeBtn.setAttribute("aria-pressed", String(inTree));
-  if (inTree) {
+  if (mode === "tree") {
     showTree();
     const at = atCursor();
     if (at) tree.reveal(at.indices);
     else showPath(null);
     tree.focus();
-  } else {
+  } else if (mode === "text") {
     view.refresh();
     editor.focus();
     showCursor();
+  } else {
+    showExport();
+    showPath(shownPath);
   }
+  showViewControls();
   save();
 }
 
-/** Expand and collapse act on the tree: disabled, not hidden, while it is not shown. */
+/** Controls that act on one view: disabled, not hidden, while another is shown. */
 function showViewControls(): void {
   expandAllBtn.disabled = collapseAllBtn.disabled = mode !== "tree" || !doc;
+  findOpenBtn.disabled = isExport(mode);
+  showFileControls();
+}
+
+/** Copy and Download take what is on screen: the document, or the conversion shown. */
+function showFileControls(): void {
+  const empty = !documentText().trim();
+  copyBtn.disabled = downloadBtn.disabled = isExport(mode) ? exported === null : empty;
+  const what = isExport(mode) ? EXPORTS[mode].label : "the document";
+  copyBtn.title = `Copy ${what}`;
+  downloadBtn.title = `Download ${what}`;
 }
 
 /** Switches to the text with a value selected and scrolled to the middle. */
@@ -672,6 +753,7 @@ function showInText(node: JsonNode): void {
 
 function goToError(): void {
   if (!fault) return;
+  if (mode !== "text") setMode("text");
   const { offset } = fault.position;
   selectInDocument(offset, offset + 1);
 }
@@ -682,8 +764,18 @@ async function load(file: File): Promise<void> {
   editor.setSelectionRange(0, 0);
   editor.scrollTop = 0;
   validate();
-  showCursor();
 }
+
+/** What Copy and Download hand over, and under which name. */
+function outgoing(): { text: string; name: string; mime: string } {
+  if (isExport(mode) && exported !== null) {
+    const name = fileName.replace(/\.json$/i, "") + EXPORTS[mode].extension;
+    return { text: exported, name, mime: "text/plain" };
+  }
+  return { text: documentText(), name: fileName, mime: "application/json" };
+}
+
+// ---------- Events ----------
 
 // Select all + paste on a long document means "replace it", not "replace this page": Ctrl+A
 // can only select the page the editor holds.
@@ -719,54 +811,57 @@ editor.addEventListener("keydown", (e) => {
 
 formatBtn.addEventListener("click", () => rewrite(false));
 minifyBtn.addEventListener("click", () => rewrite(true));
-// Picking an option means "show it like this", so it applies at once (and Ctrl+Z takes it back).
-// With nothing valid to rewrite, validate() still refreshes the formatted size and saves.
+byId("goto").addEventListener("click", goToError);
+fixBtn.addEventListener("click", fix);
+for (const b of viewButtons) {
+  b.addEventListener("click", () => setMode(b.dataset.view as ViewMode));
+}
+expandAllBtn.addEventListener("click", () => tree.expandAll());
+collapseAllBtn.addEventListener("click", () => tree.collapseAll());
+
+// Options. Picking one means "show it like this", so it applies at once (and Ctrl+Z takes it
+// back); with nothing valid to rewrite, it is just remembered.
+// The rewrite changes nothing when the text is already laid out that way, so the options and
+// the formatted size refresh either way.
+for (const b of indentButtons) {
+  b.addEventListener("click", () => {
+    indentChoice = b.dataset.indent as Indent;
+    if (doc && !minified) rewrite(false);
+    validate();
+  });
+}
 sortKeys.addEventListener("click", () => {
   setPressed(sortKeys, !isPressed(sortKeys));
   if (doc) rewrite(minified);
-  else save();
+  showOptions();
+  save();
 });
-indentSel.addEventListener("change", () => (doc ? rewrite(false) : validate()));
-byId("goto").addEventListener("click", goToError);
-fixBtn.addEventListener("click", fix);
-viewTextBtn.addEventListener("click", () => setMode("text"));
-viewTreeBtn.addEventListener("click", () => setMode("tree"));
-expandAllBtn.addEventListener("click", () => tree.expandAll());
-collapseAllBtn.addEventListener("click", () => tree.collapseAll());
-toolsMenu.addEventListener("beforetoggle", (e) => {
+for (const b of pathStyleButtons) {
+  b.addEventListener("click", () => {
+    pathStyle = b.dataset.pathStyle as PathStyle;
+    showOptions();
+    showPath(shownPath);
+    save();
+  });
+}
+unwrapBtn.addEventListener("click", () => {
+  options.hidePopover();
+  runNested("unwrap");
+});
+wrapBtn.addEventListener("click", () => {
+  options.hidePopover();
+  runNested("wrap");
+});
+options.addEventListener("beforetoggle", (e) => {
   if ((e as ToggleEvent).newState !== "open") return;
   clearTimeout(pending);
   if (stale) validate();
-  prepareTools();
-  // Popovers open in the top layer; place this one under its button.
-  const r = toolsBtn.getBoundingClientRect();
-  toolsMenu.style.top = `${r.bottom + 4}px`;
-  toolsMenu.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 248))}px`;
+  showOptions();
+  // Popovers open in the top layer; place this one under its button, inside the window.
+  const r = optionsBtn.getBoundingClientRect();
+  options.style.top = `${r.bottom + 4}px`;
+  options.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 288))}px`;
 });
-toolsMenu.addEventListener("click", (e) => {
-  const item = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
-  if (!item || item.disabled) return;
-  toolsMenu.hidePopover();
-  if (item.dataset.export) showExport(item.dataset.export);
-  else if (item.dataset.action) runTool(item.dataset.action);
-});
-toolsMenu.addEventListener("keydown", (e) => {
-  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-  e.preventDefault();
-  const items = [...toolsMenu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
-  const at = items.indexOf(document.activeElement as HTMLButtonElement);
-  items[(at + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
-});
-toolsMenu.addEventListener("toggle", (e) => {
-  if ((e as ToggleEvent).newState === "open") {
-    toolsMenu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
-  }
-});
-outputCopy.addEventListener("click", () => void copyText(outputText.textContent ?? "", outputCopy));
-byId("output-download").addEventListener("click", () =>
-  downloadText(outputName, outputText.textContent ?? "")
-);
-byId("output-close").addEventListener("click", () => output.close());
 
 let findTimer = 0;
 findInput.addEventListener("input", () => {
@@ -790,14 +885,14 @@ findCase.addEventListener("click", () => {
 byId("find-prev").addEventListener("click", () => findStep(-1));
 byId("find-next").addEventListener("click", () => findStep(1));
 byId("find-close").addEventListener("click", closeFind);
-byId("find-open").addEventListener("click", openFind);
+findOpenBtn.addEventListener("click", openFind);
 // Ctrl+F opens this find rather than the browser's, which cannot see other pages of a long
 // document; F3 steps through matches like most editors.
 document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && !isExport(mode)) {
     e.preventDefault();
     openFind();
-  } else if (e.key === "F3") {
+  } else if (e.key === "F3" && !isExport(mode)) {
     e.preventDefault();
     if (!findOpen()) openFind();
     else findStep(e.shiftKey ? -1 : 1);
@@ -811,23 +906,19 @@ pageInput.addEventListener("change", () => {
   showPager();
 });
 pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
-pathStyleBtn.addEventListener("click", () => {
-  pathStyle = pathStyle === "js" ? "pointer" : "js";
-  showPath(shownPath);
-  save();
-});
 
 byId("open").addEventListener("click", async () => {
   const [file] = await pickFiles(".json,application/json,text/plain");
   if (file) await load(file);
 });
 copyBtn.addEventListener("click", async () => {
-  const text = documentText();
-  if (!(await copyText(text, copyBtn))) downloadText(fileName, text, "application/json");
+  const out = outgoing();
+  if (!(await copyText(out.text, copyBtn))) downloadText(out.name, out.text, out.mime);
 });
-downloadBtn.addEventListener("click", () =>
-  downloadText(fileName, documentText(), "application/json")
-);
+downloadBtn.addEventListener("click", () => {
+  const out = outgoing();
+  downloadText(out.name, out.text, out.mime);
+});
 clearBtn.addEventListener("click", () => {
   fileName = "data.json";
   replaceText("");

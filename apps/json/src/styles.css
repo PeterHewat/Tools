@@ -45,6 +45,7 @@ body {
 
 .group {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
@@ -52,10 +53,6 @@ body {
 .group + .group {
   padding-left: 8px;
   border-left: 1px solid var(--border);
-}
-
-.toolbar-gap {
-  flex: 1;
 }
 
 /* A bar between the header, the editor and the window's edge. */
@@ -66,20 +63,30 @@ body {
   background: var(--panel);
 }
 
-/* Text | Tree: two buttons joined into one switch. */
+/* A switch: buttons joined into one control (Text | Tree | …, indent, path style). */
 .seg {
   display: inline-flex;
 }
 
+.seg .wb-btn {
+  border-radius: 0;
+}
+
+.seg .wb-btn + .wb-btn {
+  margin-left: -1px;
+}
+
 .seg .wb-btn:first-child {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+  border-radius: var(--radius) 0 0 var(--radius);
 }
 
 .seg .wb-btn:last-child {
-  margin-left: -1px;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.wb-btn.small {
+  padding: 3px 9px;
+  font-size: 0.85rem;
 }
 
 /* Pressed reads as "on" or "you are here", quieter than the primary action beside it. */
@@ -91,23 +98,13 @@ body {
   color: var(--accent);
 }
 
-/* Tools: a menu under its button, and a dialog for what an export produced. */
-.caret-down {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
+/* Options: a panel under its button, with rows of settings and the nested-JSON actions. */
 .menu {
   position: fixed;
   inset: auto;
-  width: 240px;
+  width: 280px;
   margin: 0;
-  padding: 4px;
+  padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
@@ -115,10 +112,19 @@ body {
   box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
 }
 
-.menu button {
+.menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+}
+
+.menu-item {
   display: block;
   width: 100%;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border: 0;
   border-radius: 4px;
   background: none;
@@ -129,69 +135,53 @@ body {
   cursor: pointer;
 }
 
-.menu button:hover:not(:disabled),
-.menu button:focus-visible {
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible {
   outline: none;
   background: var(--panel-2);
 }
 
-.menu button:disabled {
+.menu-item:disabled {
   color: var(--muted);
   cursor: default;
 }
 
 .menu-label {
-  margin: 6px 10px 2px;
-  padding-top: 6px;
+  margin: 8px 8px 2px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 0.8rem;
 }
 
-.output {
-  width: min(900px, calc(100vw - 32px));
-  height: min(80dvh, 900px);
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text);
+.menu-label.first {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: 0;
 }
 
-.output[open] {
-  display: flex;
-  flex-direction: column;
-}
-
-.output::backdrop {
-  background: rgb(0 0 0 / 45%);
-}
-
-.output-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.output-head h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.output-text {
+/* YAML, CSV, Types, Schema: the document converted, read-only, as the text view shows JSON. */
+.export {
   flex: 1;
   min-height: 0;
   margin: 0;
-  border: 0;
-  border-radius: 0;
+  padding: 6px 12px;
   overflow: auto;
+  background: var(--bg);
+  font: 13px / 1.5 var(--mono);
+  tab-size: 2;
+  white-space: pre;
 }
 
-.output-text.error {
-  color: var(--danger);
-  font-family: inherit;
+.export:focus-visible {
+  outline: none;
+}
+
+.export.message {
+  padding: 24px;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+  text-align: center;
   white-space: normal;
 }
 
@@ -208,13 +198,18 @@ body {
 /* "Aa": match case, the way code editors show it. */
 .case-toggle {
   justify-content: center;
-  width: 36px;
-  padding: 0;
+  min-width: 36px;
+  padding: 0 8px;
   font-weight: 600;
 }
 
 .find-input {
-  width: min(24rem, 100%);
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.findbar > .wb-btn {
+  flex: none;
 }
 
 .findbar.no-match .find-input {
@@ -222,7 +217,7 @@ body {
 }
 
 .find-count {
-  min-width: 6.5em;
+  flex: none;
   font-variant-numeric: tabular-nums;
 }
 
@@ -387,8 +382,7 @@ body {
   min-width: 0;
 }
 
-.path,
-.path-style {
+.path {
   padding: 0;
   border: 0;
   background: none;
@@ -418,19 +412,6 @@ body {
 .path.copied::after {
   content: " copied";
   color: var(--ok);
-}
-
-.path-style {
-  padding: 0 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--muted);
-  font-family: var(--mono);
-}
-
-.path-style:hover {
-  color: var(--text);
-  border-color: var(--accent);
 }
 
 /*
@@ -610,10 +591,6 @@ body {
 }
 
 @media (max-width: 640px) {
-  .toolbar-gap {
-    display: none;
-  }
-
   /* "Valid JSON · … deep" on one line, the sizes on the next. */
   .sizes {
     display: block;
