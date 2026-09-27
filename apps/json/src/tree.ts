@@ -14,7 +14,7 @@ import { childrenOf, type PathSegment } from "./lib/path.js";
 
 export interface TreeHandlers {
   /** A row was selected. */
-  select(path: PathSegment[], node: JsonNode): void;
+  select(path: PathSegment[], node: JsonNode, indices: number[]): void;
   /** A row was opened (double-click or Enter), to be shown in the text. */
   open(node: JsonNode): void;
 }
@@ -201,7 +201,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
     if (focus) item.row.focus({ preventScroll: true });
     if (notify) {
       item.row.scrollIntoView({ block: "nearest" });
-      handlers.select(item.path, item.node);
+      handlers.select(item.path, item.node, item.indices);
     }
   }
 
@@ -293,7 +293,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
       }
       select(item, false);
       item.row.scrollIntoView({ block: "center" });
-      handlers.select(item.path, item.node);
+      handlers.select(item.path, item.node, item.indices);
     },
 
     expandAll() {

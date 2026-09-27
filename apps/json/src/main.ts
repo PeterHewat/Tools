@@ -23,6 +23,8 @@ import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { lineCount, pageAt, pageOf } from "./lib/pages.js";
 import { printJson, printedSize } from "./lib/print.js";
 import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
+import { toCsv, toJsonSchema, toTypeScript, toYaml, type Converted } from "./lib/convert.js";
+import { unwrapString, wrapAsString } from "./lib/nested.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
 
@@ -59,9 +61,18 @@ const findBar = byId("findbar");
 const findInput = byId<HTMLInputElement>("find-input");
 const findCount = byId("find-count");
 const findCase = byId<HTMLInputElement>("find-case");
+const toolsMenu = byId("tools-menu");
+const toolsBtn = byId<HTMLButtonElement>("tools-btn");
+const output = byId<HTMLDialogElement>("output");
+const outputTitle = byId("output-title");
+const outputText = byId("output-text");
+const outputCopy = byId<HTMLButtonElement>("output-copy");
 const view = createCodeView(codeEl, editor, byId("highlight"), byId("gutter"));
 const tree = createTree(treeEl, {
-  select: (path) => showPath(path),
+  select: (path, _node, indices) => {
+    treeSelection = indices;
+    showPath(path);
+  },
   open: (node) => showInText(node),
 });
 
@@ -93,6 +104,8 @@ let stale = false;
  */
 let aside = { before: "", after: "" };
 let page = { index: 0, count: 1, firstLine: 1 };
+/** Child positions of the row selected in the tree. */
+let treeSelection: number[] = [];
 let mode: ViewMode = "text";
 let pathStyle: PathStyle = "js";
 /** The tree shows an older document until it is next opened. */
@@ -218,6 +231,102 @@ function selectInDocument(start: number, end: number, focus = true): void {
   editor.scrollTop = Math.max(0, (line - 1) * lineHeight - editor.clientHeight / 2);
   view.refresh();
   showCursor();
+}
+
+// ---------- Tools: nested JSON and export ----------
+
+/** The values from the root down to the one under the caret, or selected in the tree. */
+function contextChain(): JsonNode[] {
+  if (!doc || stale) return [];
+  const indices = mode === "tree" ? treeSelection : (atCursor()?.indices ?? []);
+  const chain: JsonNode[] = [doc.root];
+  for (const k of indices) {
+    const node = chain.at(-1)!;
+    const next =
+      node.kind === "object"
+        ? node.members[k]?.value
+        : node.kind === "array"
+          ? node.items[k]
+          : null;
+    if (!next) break;
+    chain.push(next);
+  }
+  return chain;
+}
+
+interface Export {
+  title: string;
+  extension: string;
+  make: () => Converted;
+}
+
+const EXPORTS: Record<string, Export> = {
+  yaml: { title: "YAML", extension: ".yaml", make: () => ({ ok: true, text: toYaml(doc!.root) }) },
+  csv: {
+    title: "CSV",
+    extension: ".csv",
+    // The innermost array around the caret, so a table nested in a document still exports.
+    make: () => toCsv(contextChain().findLast((n) => n.kind === "array") ?? doc!.root),
+  },
+  ts: {
+    title: "TypeScript types",
+    extension: ".d.ts",
+    make: () => ({ ok: true, text: toTypeScript(doc!.root) }),
+  },
+  schema: {
+    title: "JSON Schema",
+    extension: ".schema.json",
+    make: () => ({ ok: true, text: toJsonSchema(doc!.root) }),
+  },
+};
+
+let outputName = "";
+
+function showExport(kind: string): void {
+  const spec = EXPORTS[kind];
+  if (!spec || !doc) return;
+  let result: Converted;
+  try {
+    result = spec.make();
+  } catch (err) {
+    // Converters recurse; a document nested thousands deep can exhaust the stack.
+    result = {
+      ok: false,
+      message: err instanceof RangeError ? "Too deeply nested to convert." : String(err),
+    };
+  }
+  outputTitle.textContent = spec.title;
+  outputText.textContent = result.ok ? result.text : result.message;
+  outputText.classList.toggle("error", !result.ok);
+  outputCopy.disabled = !result.ok;
+  byId<HTMLButtonElement>("output-download").disabled = !result.ok;
+  outputName = fileName.replace(/\.json$/i, "") + spec.extension;
+  output.showModal();
+}
+
+/** Enables the menu's items for what is under the caret, and names what they will act on. */
+function prepareTools(): void {
+  const chain = contextChain();
+  const node = chain.at(-1);
+  const unwrap = toolsMenu.querySelector<HTMLButtonElement>('[data-action="unwrap"]')!;
+  const wrap = toolsMenu.querySelector<HTMLButtonElement>('[data-action="wrap"]')!;
+  unwrap.disabled = !node || unwrapString(documentText(), node, indent()) === null;
+  unwrap.title = unwrap.disabled
+    ? "Put the cursor on a string that holds a JSON object or array"
+    : "";
+  wrap.disabled = !node;
+  wrap.textContent = chain.length > 1 ? "Wrap value in a string" : "Wrap document in a string";
+  for (const b of toolsMenu.querySelectorAll<HTMLButtonElement>("[data-export]")) {
+    b.disabled = !doc || stale;
+  }
+}
+
+function runTool(action: string): void {
+  const node = contextChain().at(-1);
+  if (!node) return;
+  const text = documentText();
+  const next = action === "unwrap" ? unwrapString(text, node, indent()) : wrapAsString(text, node);
+  if (next !== null) replaceText(next);
 }
 
 // ---------- Find ----------
@@ -552,6 +661,16 @@ async function load(file: File): Promise<void> {
   showCursor();
 }
 
+// Select all + paste on a long document means "replace it", not "replace this page": Ctrl+A
+// can only select the page the editor holds.
+editor.addEventListener("paste", (e) => {
+  const all = editor.selectionStart === 0 && editor.selectionEnd === editor.value.length;
+  const pasted = e.clipboardData?.getData("text/plain");
+  if (page.count > 1 && all && pasted !== undefined) {
+    e.preventDefault();
+    replaceText(pasted);
+  }
+});
 editor.addEventListener("input", () => {
   stale = true;
   validateSoon();
@@ -586,6 +705,41 @@ viewTextBtn.addEventListener("click", () => setMode("text"));
 viewTreeBtn.addEventListener("click", () => setMode("tree"));
 expandAllBtn.addEventListener("click", () => tree.expandAll());
 collapseAllBtn.addEventListener("click", () => tree.collapseAll());
+toolsMenu.addEventListener("beforetoggle", (e) => {
+  if ((e as ToggleEvent).newState !== "open") return;
+  clearTimeout(pending);
+  if (stale) validate();
+  prepareTools();
+  // Popovers open in the top layer; place this one under its button.
+  const r = toolsBtn.getBoundingClientRect();
+  toolsMenu.style.top = `${r.bottom + 4}px`;
+  toolsMenu.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 248))}px`;
+});
+toolsMenu.addEventListener("click", (e) => {
+  const item = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
+  if (!item || item.disabled) return;
+  toolsMenu.hidePopover();
+  if (item.dataset.export) showExport(item.dataset.export);
+  else if (item.dataset.action) runTool(item.dataset.action);
+});
+toolsMenu.addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  e.preventDefault();
+  const items = [...toolsMenu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+  const at = items.indexOf(document.activeElement as HTMLButtonElement);
+  items[(at + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+});
+toolsMenu.addEventListener("toggle", (e) => {
+  if ((e as ToggleEvent).newState === "open") {
+    toolsMenu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+  }
+});
+outputCopy.addEventListener("click", () => void copyText(outputText.textContent ?? "", outputCopy));
+byId("output-download").addEventListener("click", () =>
+  downloadText(outputName, outputText.textContent ?? "")
+);
+byId("output-close").addEventListener("click", () => output.close());
+
 let findTimer = 0;
 findInput.addEventListener("input", () => {
   clearTimeout(findTimer);

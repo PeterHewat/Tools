@@ -51,6 +51,110 @@ body {
   color: var(--accent);
 }
 
+/* Tools: a menu under its button, and a dialog for what an export produced. */
+.caret-down {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.menu {
+  position: fixed;
+  inset: auto;
+  width: 240px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+}
+
+.menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu button:hover:not(:disabled),
+.menu button:focus-visible {
+  outline: none;
+  background: var(--panel-2);
+}
+
+.menu button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.menu-label {
+  margin: 6px 10px 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.output {
+  width: min(900px, calc(100vw - 32px));
+  height: min(80dvh, 900px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.output[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.output::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.output-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.output-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.output-text {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: auto;
+}
+
+.output-text.error {
+  color: var(--danger);
+  font-family: inherit;
+  white-space: normal;
+}
+
 /* Find: a bar under the toolbar, and marks drawn in the coloured layer. */
 .findbar {
   display: flex;

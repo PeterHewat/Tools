@@ -39,6 +39,27 @@
         </label>
         <button type="button" class="wb-btn hidden" id="expand-all">Expand all</button>
         <button type="button" class="wb-btn hidden" id="collapse-all">Collapse all</button>
+        <button
+          type="button"
+          class="wb-btn"
+          id="tools-btn"
+          popovertarget="tools-menu"
+          aria-haspopup="menu"
+        >
+          Tools
+          <svg class="caret-down" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 10l5 5 5-5" />
+          </svg>
+        </button>
+        <div class="menu" id="tools-menu" popover role="menu" aria-label="Tools">
+          <button type="button" role="menuitem" data-action="unwrap">Unwrap JSON string</button>
+          <button type="button" role="menuitem" data-action="wrap">Wrap value in a string</button>
+          <div class="menu-label" role="presentation">Export as</div>
+          <button type="button" role="menuitem" data-export="yaml">YAML</button>
+          <button type="button" role="menuitem" data-export="csv">CSV</button>
+          <button type="button" role="menuitem" data-export="ts">TypeScript types</button>
+          <button type="button" role="menuitem" data-export="schema">JSON Schema</button>
+        </div>
         <span class="toolbar-gap"></span>
         <button
           type="button"
@@ -198,6 +219,44 @@
         <span class="wb-label hidden" id="fix-note"></span>
         <button type="button" class="wb-btn wb-btn--primary hidden" id="fix">Fix</button>
       </div>
+      <dialog class="output" id="output" aria-labelledby="output-title">
+        <div class="output-head">
+          <h2 id="output-title"></h2>
+          <span class="toolbar-gap"></span>
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="output-copy"
+            title="Copy"
+            aria-label="Copy"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 9h11v11H9zM5 15H4V4h11v1" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="output-download"
+            title="Download"
+            aria-label="Download"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="wb-btn icon-btn"
+            id="output-close"
+            title="Close (Esc)"
+            aria-label="Close (Esc)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+        <pre class="wb-code output-text" id="output-text"></pre>
+      </dialog>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
