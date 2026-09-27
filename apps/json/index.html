@@ -146,28 +146,34 @@
             type="button"
             class="ui-btn icon-btn"
             id="open"
-            title="Open a file"
-            aria-label="Open a file"
+            title="Import JSON — a file from this device"
+            aria-label="Import JSON"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-            </svg>
-          </button>
-          <button type="button" class="ui-btn icon-btn" id="copy" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="9" y="9" width="11" height="11" rx="2" />
-              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
             </svg>
           </button>
           <button
             type="button"
             class="ui-btn icon-btn"
             id="download"
-            title="Download"
-            aria-label="Download"
+            title="Export JSON"
+            aria-label="Export JSON"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="copy"
+            title="Copy JSON to clipboard"
+            aria-label="Copy JSON to clipboard"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
             </svg>
           </button>
           <button type="button" class="ui-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
@@ -198,8 +204,8 @@
           <h3>About</h3>
           <ul>
             <li>
-              JSON is part of <a href="../">Tools</a>, a set of tools that run entirely in your
-              browser and keep working offline.
+              JSON is one of a set of <a href="../">Tools</a> that run entirely in your browser and
+              keep working offline.
             </li>
             <li>
               Nothing you open or paste leaves this page: the draft is kept only for this tab, so a
@@ -220,8 +226,8 @@
               <kbd>Enter</kbd>, to show it in the text.
             </li>
             <li>
-              <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Copy
-              and Download take whatever view is shown. CSV uses the array around the cursor (or
+              <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Export
+              and Copy take whatever view is shown. CSV uses the array around the cursor (or
               selected in the tree), else the document's first array.
             </li>
           </ul>

@@ -152,13 +152,11 @@ body {
   color: var(--muted);
 }
 
-/* The note on one side, the licence and the source on the other; they stack when narrow. */
+/* The licence and the source, at the end of the line. */
 footer {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px 16px;
+  justify-content: flex-end;
   margin-top: 28px;
   padding-top: 12px;
   border-top: 1px solid var(--border);

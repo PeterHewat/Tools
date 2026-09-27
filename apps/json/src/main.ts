@@ -782,13 +782,18 @@ function showViewControls(): void {
   showFileControls();
 }
 
-/** Copy and Download take what is on screen: the document, or the conversion shown. */
+/**
+ * Export and Copy take what is on screen: the document, or the conversion shown. Named as
+ * the SVG app names its own: Export SVG, Copy SVG to clipboard.
+ */
 function showFileControls(): void {
   const empty = !documentText().trim();
   copyBtn.disabled = downloadBtn.disabled = isExport(mode) ? exported === null : empty;
-  const what = isExport(mode) ? EXPORTS[mode].label : "the document";
-  copyBtn.title = `Copy ${what}`;
-  downloadBtn.title = `Download ${what}`;
+  const what = isExport(mode) ? EXPORTS[mode].label : "JSON";
+  copyBtn.title = `Copy ${what} to clipboard`;
+  downloadBtn.title = `Export ${what}`;
+  copyBtn.setAttribute("aria-label", copyBtn.title);
+  downloadBtn.setAttribute("aria-label", downloadBtn.title);
 }
 
 /** Switches to the text with a value selected and scrolled to the middle. */

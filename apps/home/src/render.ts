@@ -59,7 +59,6 @@ export function pageHtml(apps: readonly ToolsApp[], base: string): string {
       }
     </main>
     <footer>
-      <p>Everything runs in your browser — nothing is uploaded.</p>
       <p class="footer-meta">
         MIT
         <a class="repo-link" href="${SITE.repo}" title="Source on GitHub" aria-label="Source on GitHub">
