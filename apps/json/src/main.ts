@@ -916,14 +916,37 @@ options.addEventListener("beforetoggle", (e) => {
   options.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 288))}px`;
 });
 
-const help = byId("help");
-help.addEventListener("beforetoggle", (e) => {
-  if ((e as ToggleEvent).newState !== "open") return;
-  // Opens under its button, against the right edge of the window.
-  const r = byId("help-btn").getBoundingClientRect();
-  help.style.top = `${r.bottom + 4}px`;
-  help.style.right = `${Math.max(8, innerWidth - r.right)}px`;
+options.addEventListener("toggle", (e) => {
+  optionsBtn.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open"));
 });
+
+// Help docks under the header, which wraps to more rows on a narrow screen. It stays open until
+// its button closes it, and a reload of the tab keeps it open, as in Vellum.
+const help = byId("help");
+const helpBtn = byId("help-btn");
+const HELP_KEY = "workbench.json.help";
+function placeHelp(): void {
+  help.style.top = `${byId("header").getBoundingClientRect().bottom}px`;
+}
+help.addEventListener("beforetoggle", (e) => {
+  if ((e as ToggleEvent).newState === "open") placeHelp();
+});
+help.addEventListener("toggle", (e) => {
+  const open = (e as ToggleEvent).newState === "open";
+  helpBtn.setAttribute("aria-expanded", String(open));
+  try {
+    if (open) sessionStorage.setItem(HELP_KEY, "1");
+    else sessionStorage.removeItem(HELP_KEY);
+  } catch {
+    // Storage blocked: it just will not reopen.
+  }
+});
+window.addEventListener("resize", placeHelp);
+try {
+  if (sessionStorage.getItem(HELP_KEY)) help.showPopover();
+} catch {
+  // Storage blocked: start closed.
+}
 
 let findTimer = 0;
 findInput.addEventListener("input", () => {

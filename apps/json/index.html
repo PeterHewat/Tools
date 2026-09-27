@@ -7,7 +7,7 @@
   <body>
     <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.
          Controls that cannot apply are disabled, never hidden, so nothing moves. -->
-    <header class="wb-header json-header">
+    <header class="wb-header json-header" id="header">
       <a class="wb-home" href="../" title="All tools"
         ><span class="wb-home-label">Workbench</span></a
       >
@@ -59,14 +59,7 @@
       </div>
 
       <div class="group" role="group" aria-label="Layout">
-        <button
-          type="button"
-          class="wb-btn wb-btn--primary"
-          id="format"
-          title="Format (Ctrl+Enter)"
-        >
-          Format
-        </button>
+        <button type="button" class="wb-btn" id="format" title="Format (Ctrl+Enter)">Format</button>
         <button type="button" class="wb-btn" id="minify">Minify</button>
         <button
           type="button"
@@ -74,6 +67,7 @@
           id="options-btn"
           popovertarget="options"
           aria-haspopup="true"
+          aria-expanded="false"
           title="Settings"
           aria-label="Settings"
         >
@@ -195,6 +189,7 @@
           class="wb-btn icon-btn"
           id="help-btn"
           popovertarget="help"
+          aria-expanded="false"
           title="Help — what everything does"
           aria-label="Help"
         >
@@ -203,13 +198,20 @@
             <circle cx="12" cy="18.4" r="1" />
           </svg>
         </button>
-        <aside class="help" id="help" popover aria-label="Help">
-          <h2>JSON</h2>
-          <p>
-            Part of <a href="../">Workbench</a>, a set of tools that run entirely in your browser
-            and keep working offline. Nothing you open or paste leaves this page: the draft is kept
-            only for this tab, so a reload keeps it and closing the tab ends it.
-          </p>
+        <!-- Docked right like Vellum's: it stays open beside the work until its button closes it. -->
+        <aside class="help" id="help" popover="manual" aria-label="Help">
+          <p class="panel-title">Help</p>
+          <h3>About</h3>
+          <ul>
+            <li>
+              JSON is part of <a href="../">Workbench</a>, a set of tools that run entirely in your
+              browser and keep working offline.
+            </li>
+            <li>
+              Nothing you open or paste leaves this page: the draft is kept only for this tab, so a
+              reload keeps it and closing the tab ends it.
+            </li>
+          </ul>
 
           <h3>Views</h3>
           <ul>
@@ -248,20 +250,32 @@
           </ul>
 
           <h3>Keys</h3>
-          <dl class="keys">
-            <dt><kbd>Ctrl</kbd>+<kbd>Enter</kbd></dt>
-            <dd>Format</dd>
-            <dt><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></dt>
-            <dd>Undo / redo, Format and Minify included</dd>
-            <dt><kbd>Ctrl</kbd>+<kbd>F</kbd></dt>
-            <dd>Find</dd>
-            <dt><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>, <kbd>F3</kbd></dt>
-            <dd>Next / previous match</dd>
-            <dt><kbd>Esc</kbd></dt>
-            <dd>Close find</dd>
-            <dt>Arrows</dt>
-            <dd>In the tree: move, open and close rows</dd>
-          </dl>
+          <table class="keys">
+            <tr>
+              <td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td>
+              <td>Format</td>
+            </tr>
+            <tr>
+              <td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
+              <td>Undo / redo, Format and Minify included</td>
+            </tr>
+            <tr>
+              <td><kbd>Ctrl</kbd>+<kbd>F</kbd></td>
+              <td>Find</td>
+            </tr>
+            <tr>
+              <td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>, <kbd>F3</kbd></td>
+              <td>Next / previous match</td>
+            </tr>
+            <tr>
+              <td><kbd>Esc</kbd></td>
+              <td>Close find</td>
+            </tr>
+            <tr>
+              <td>Arrows</td>
+              <td>In the tree: move, open and close rows</td>
+            </tr>
+          </table>
         </aside>
       </div>
     </header>

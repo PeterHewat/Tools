@@ -109,16 +109,18 @@ body {
   font-size: 0.85rem;
 }
 
-/* Pressed reads as "on" or "you are here", quieter than the primary action beside it. */
+/* Pressed reads as "on" or "you are here", and a button whose panel is open reads as pressed
+   while it is: filled, as in Vellum. */
 .seg .wb-btn[aria-pressed="true"],
-.wb-btn.toggle[aria-pressed="true"] {
+.wb-btn.toggle[aria-pressed="true"],
+.wb-btn[aria-expanded="true"] {
   position: relative;
   border-color: var(--accent);
-  background: var(--bg);
-  color: var(--accent);
+  background: var(--accent-dim);
 }
 
-/* Options: a panel under its button, with rows of settings and the nested-JSON actions. */
+/* Settings: a panel under its button, with rows of settings and the nested-JSON actions.
+   Frosted like Vellum's menus: the page shows through, blurred. */
 .menu {
   position: fixed;
   inset: auto;
@@ -127,9 +129,13 @@ body {
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  /* Prefixed first: the minifier keeps only the last of the pair, and Chrome has no -webkit-
+     alias, so the standard property must win. */
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
   color: var(--text);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .menu-row {
@@ -180,40 +186,51 @@ body {
   border-top: 0;
 }
 
-/* Help: what everything does, in a panel under its button. */
+/* Help: docked against the right edge under the header, full height, frosted — Vellum's. */
 .help {
   position: fixed;
-  inset: auto;
-  width: min(440px, calc(100vw - 16px));
-  max-height: calc(100dvh - 80px);
+  inset: auto 0 0 auto;
+  /* Popovers default to their content's height; this one spans from its top to the bottom. */
+  height: auto;
+  width: min(420px, 100vw);
   margin: 0;
-  padding: 4px 18px 14px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
+  padding: 10px 12px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll) transparent;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
   color: var(--text);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
-  font-size: 0.9rem;
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
-.help h2 {
-  margin: 12px 0 4px;
-  font-size: 1rem;
-}
-
-.help h3 {
-  margin: 16px 0 6px;
+.panel-title {
+  margin: 0 0 10px;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.help p {
-  margin: 0;
+.help h3 {
+  margin: 16px 0 6px;
   color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.help .panel-title + h3 {
+  margin-top: 0;
 }
 
 .help ul {
@@ -221,30 +238,41 @@ body {
   padding-left: 18px;
 }
 
-.help li + li {
-  margin-top: 6px;
+.help li {
+  margin-bottom: 5px;
 }
 
 .help .keys {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 14px;
-  margin: 0;
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.help dd {
-  margin: 0;
-  color: var(--muted);
+.help .keys td {
+  padding: 3px 6px 3px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.help .keys td:first-child {
+  white-space: nowrap;
+}
+
+/* On a phone the panel covers the editor, so it is opaque: text behind text does not read. */
+@media (max-width: 720px) {
+  .help {
+    width: 100vw;
+    border-left: 0;
+    background: var(--panel);
+  }
 }
 
 kbd {
-  padding: 1px 5px;
+  padding: 0 4px;
   border: 1px solid var(--border);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  background: var(--panel-2);
+  border-radius: 3px;
+  background: var(--bg);
   font-family: var(--mono);
-  font-size: 0.8em;
+  font-size: 11.5px;
 }
 
 /* YAML, CSV, Types, Schema show in a code view like the text; this is what shows instead when
@@ -614,16 +642,17 @@ kbd {
 }
 
 /* Open, Copy, Download, Clear: actions everyone knows by their picture. */
+/* The same size and weight as Vellum's tool buttons. */
 .icon-btn {
   justify-content: center;
-  width: 36px;
+  width: 34px;
   height: 34px;
   padding: 0;
 }
 
 .icon-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
