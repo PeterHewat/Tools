@@ -21,6 +21,11 @@ export interface CodeView {
   setMarks(marks: readonly Mark[]): void;
   /** How lines are coloured: JSON by default; another language, or none (all plain). */
   setLexer(lexer: Lexer): void;
+  /**
+   * Numbers the gutter from somewhere else, one per line (null leaves a line unnumbered): the
+   * CSV view's rows show the JSON line each comes from. Null numbers the lines themselves.
+   */
+  setLineLabels(labels: readonly (number | null)[] | null): void;
 }
 
 export type Lexer = (line: string) => Token[];
@@ -47,6 +52,7 @@ export function createCodeView(
   let linesOf: string | null = null;
   let errorLine: number | null = null;
   let firstLine = 1;
+  let labels: readonly (number | null)[] | null = null;
   let lineHeight = 0;
   let charWidth = 0;
   /** Tokens of the long lines on screen, by content, so scrolling along one does not re-lex it. */
@@ -103,7 +109,9 @@ export function createCodeView(
         starts[k] = at;
         at += lines[k].length + 1;
       }
-      const lastNumber = firstLine + lines.length - 1;
+      const lastNumber = labels
+        ? labels.reduce<number>((max, n) => Math.max(max, n ?? 0), 0)
+        : firstLine + lines.length - 1;
       root.style.setProperty("--gutter-digits", String(Math.max(2, String(lastNumber).length)));
     }
     const plain = value.length > MAX_COLOURED;
@@ -136,7 +144,12 @@ export function createCodeView(
 
     gutter.style.transform = `translateY(${y}px)`;
     let numbers = "";
-    for (let n = firstLine + first; n < firstLine + last; n++) {
+    for (let k = first; k < last; k++) {
+      if (labels) {
+        numbers += `${labels[k] ?? ""}\n`;
+        continue;
+      }
+      const n = firstLine + k;
       numbers += (n === errorLine ? `<span class="err">${n}</span>` : n) + "\n";
     }
     gutter.innerHTML = numbers;
@@ -166,6 +179,11 @@ export function createCodeView(
     },
     setMarks(next) {
       marks = next;
+      render();
+    },
+    setLineLabels(next) {
+      labels = next;
+      linesOf = null; // the gutter width depends on them
       render();
     },
     setFirstLine(line) {

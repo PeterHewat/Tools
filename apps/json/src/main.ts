@@ -19,8 +19,15 @@ import {
 } from "./lib/ast.js";
 import { createCodeView, type Lexer } from "./code-view.js";
 import { highlightLine } from "./lib/highlight.js";
-import { lexCsv, lexPlain, lexTypeScript, lexYaml } from "./lib/lexers.js";
-import { toCsv, toJsonSchema, toTypeScript, toYaml, type Converted } from "./lib/convert.js";
+import { lexCsvSheet, lexPlain, lexTypeScript, lexYaml } from "./lib/lexers.js";
+import {
+  exactCandidates,
+  toCsv,
+  toJsonSchema,
+  toTypeScript,
+  toYaml,
+  type Converted,
+} from "./lib/convert.js";
 import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { unwrapString, wrapAsString } from "./lib/nested.js";
 import { lineCount, lineOf, lineStarts, pageAt, pageOf } from "./lib/pages.js";
@@ -28,7 +35,7 @@ import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson, printedSize } from "./lib/print.js";
 import { SAMPLE } from "./lib/sample.js";
 import { csvToJson, looksLikeCsv } from "./lib/csv-read.js";
-import { defaultTable, tablesIn, type Table } from "./lib/tables.js";
+import { csvSheet, tablesIn, type CsvSheet } from "./lib/tables.js";
 import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
@@ -55,8 +62,9 @@ const exportEl = byId("export");
 const exportText = byId<HTMLTextAreaElement>("export-text");
 const exportMessage = byId("export-message");
 const csvBar = byId("csvbar");
-const csvTable = byId<HTMLSelectElement>("csv-table");
-const csvWhy = byId("csv-why");
+const csvNote = byId("csv-note");
+const exactBar = byId("exactbar");
+const exactList = byId("exact-list");
 const coloursBtn = byId<HTMLButtonElement>("colours");
 const expandAllBtn = byId<HTMLButtonElement>("expand-all");
 const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
@@ -329,72 +337,91 @@ interface ExportSpec {
   make: (root: JsonNode) => Converted;
 }
 
-// ---------- CSV: which array is the table ----------
+// ---------- CSV: every array as a table ----------
 
-/** The array picked in the CSV bar, by path, until another is picked. */
-let csvPick: string | null = null;
-const pathKey = (path: readonly PathSegment[]) => JSON.stringify(path);
+/** The CSV view's tables as last shown, for the gutter, Copy and Export. */
+let sheet: CsvSheet | null = null;
+/** The JSON line each line of the CSV view comes from (see `showExport`). */
+let sheetLabels: (number | null)[] | null = null;
 
-/**
- * The array the CSV view shows, and fills its picker with every array it could show instead.
- * A pick sticks while that array exists; otherwise the view follows the caret into any array,
- * and falls back to the document's first array of objects.
- */
-function csvTarget(root: JsonNode): Table | undefined {
+const rows = (n: number) => `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
+
+function makeCsv(root: JsonNode): Converted {
   const tables = tablesIn(root);
-  const picked = csvPick === null ? undefined : tables.find((t) => pathKey(t.path) === csvPick);
-  const chain = contextChain();
-  let around: Table | undefined;
-  for (let k = chain.length - 1; k >= 0 && !around; k--) {
-    const node = chain[k];
-    if (node.kind !== "array") continue;
-    const path = csvPathOf(k);
-    around = tables.find((t) => t.node === node) ?? {
-      node,
-      path,
-      objects: node.items.some((i) => i.kind === "object"),
-    };
-    if (!tables.includes(around)) tables.push(around);
+  sheet = tables.length
+    ? csvSheet(tables, (t) => `${formatPath(t.path)} · ${rows(t.node.items.length)}`)
+    : null;
+  sheetLabels = null;
+  if (!sheet) return { ok: false, message: "No arrays here: CSV makes a table of a list." };
+  // One line of JSON would number every row 1: then the rows keep their own numbers.
+  const text = documentText();
+  if (text.includes("\n")) {
+    const starts = lineStarts(text);
+    sheetLabels = sheet.sources.map((s) => (s < 0 ? null : lineOf(starts, s)));
   }
-  const fallback = defaultTable(tables);
-  const target = picked ?? around ?? fallback;
-  csvTable.replaceChildren(
-    ...tables.map((t) => {
-      const count = t.node.items.length;
-      const option = new Option(
-        `${formatPath(t.path)} · ${count.toLocaleString()} ${count === 1 ? "row" : "rows"}`,
-        pathKey(t.path)
-      );
-      option.selected = t === target;
-      return option;
-    })
-  );
-  csvTable.disabled = !tables.length;
-  csvWhy.textContent = !target
-    ? "No arrays in this document"
-    : target === picked
-      ? ""
-      : target === around
-        ? "the array at the cursor"
-        : "the first list of objects";
-  return target;
+  return { ok: true, text: sheet.text };
 }
 
-/** The path to the `depth`-th value of the context chain, for an array the picker lacks. */
-function csvPathOf(depth: number): PathSegment[] {
-  const indices = (place === "tree" ? treeSelection : (atCursor()?.indices ?? [])).slice(0, depth);
-  const path: PathSegment[] = [];
-  let node = doc!.root;
-  for (const k of indices) {
-    if (node.kind === "object") {
-      path.push(node.members[k].key);
-      node = node.members[k].value;
-    } else if (node.kind === "array") {
-      path.push(k);
-      node = node.items[k];
-    }
+/** With several tables, the one the CSV view's cursor is in: Copy and Export take it. */
+function csvSection(): CsvSheet["sections"][number] | undefined {
+  if (mode !== "csv" || !sheet || sheet.sections.length < 2) return undefined;
+  const line = positionAt(exportText.value, exportText.selectionStart).line - 1;
+  return sheet.sections.find((s) => line <= s.lastLine) ?? sheet.sections.at(-1);
+}
+
+/** Says what the tables are, and which one Copy and Export take. */
+function showCsvNote(): void {
+  const shown = mode === "csv" && !!sheet && exported !== null;
+  csvBar.classList.toggle("hidden", !shown);
+  if (!shown) return;
+  const numbered = sheetLabels ? ", numbered by their line in the JSON" : "";
+  const [only] = sheet!.sections;
+  const section = csvSection();
+  if (!section) {
+    csvNote.textContent = `${formatPath(only.table.path)} · ${rows(only.table.node.items.length)}${numbered}`;
+    return;
   }
-  return path;
+  const name = document.createElement("b");
+  name.textContent = formatPath(section.table.path);
+  csvNote.replaceChildren(
+    `${sheet!.sections.length} tables${numbered}. Copy and Export take the one at the cursor: `,
+    name
+  );
+}
+
+// ---------- Types and Schema: exact values ----------
+
+/** Places (as `apps[].id`) whose strings Types and Schema list rather than call "string". */
+const exactPlaces = new Set<string>();
+/** The places the bar shows, so it is only rebuilt when they change and focus stays put. */
+let exactShown = "";
+
+/** One toggle per place with a few strings, for Types and Schema. */
+function showExactBar(): void {
+  const candidates = (mode === "ts" || mode === "schema") && doc ? exactCandidates(doc.root) : [];
+  exactBar.classList.toggle("hidden", !candidates.length);
+  const key = JSON.stringify(candidates);
+  if (key !== exactShown) {
+    exactShown = key;
+    exactList.replaceChildren(
+      ...candidates.map(({ place, values }) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "ui-btn toggle";
+        b.dataset.place = place;
+        b.textContent = place || "(root)";
+        b.title = values.map((v) => JSON.stringify(v)).join(" | ");
+        b.addEventListener("click", () => {
+          if (!exactPlaces.delete(place)) exactPlaces.add(place);
+          showExport();
+        });
+        return b;
+      })
+    );
+  }
+  for (const b of exactList.querySelectorAll<HTMLButtonElement>("[data-place]")) {
+    setPressed(b, exactPlaces.has(b.dataset.place!));
+  }
 }
 
 /** A path as the status bar writes it, in the chosen style; the root has a name of its own. */
@@ -410,28 +437,24 @@ const EXPORTS: Record<ExportKind, ExportSpec> = {
     extension: ".yaml",
     make: (root) => ({ ok: true, text: toYaml(root) }),
   },
-  // The array picked above the view; else the innermost one around the caret (or tree
-  // selection); else the first array of objects. The picker shows which, and why.
+  // Every array, one table after another (see lib/tables.ts).
   csv: {
     label: "CSV",
-    lexer: lexCsv,
+    lexer: lexCsvSheet,
     extension: ".csv",
-    make: (root) => {
-      const table = csvTarget(root);
-      return toCsv(table?.node ?? root);
-    },
+    make: makeCsv,
   },
   ts: {
     label: "TypeScript types",
     lexer: lexTypeScript,
     extension: ".d.ts",
-    make: (root) => ({ ok: true, text: toTypeScript(root) }),
+    make: (root) => ({ ok: true, text: toTypeScript(root, { exact: exactPlaces }) }),
   },
   schema: {
     label: "JSON Schema",
     lexer: highlightLine,
     extension: ".schema.json",
-    make: (root) => ({ ok: true, text: toJsonSchema(root) }),
+    make: (root) => ({ ok: true, text: toJsonSchema(root, { exact: exactPlaces }) }),
   },
 };
 
@@ -444,7 +467,8 @@ function showExport(): void {
   if (!isExport(mode)) {
     exportEl.classList.add("hidden");
     exportMessage.classList.add("hidden");
-    csvBar.classList.add("hidden");
+    showCsvNote();
+    showExactBar();
     return;
   }
   let result: Converted;
@@ -465,11 +489,13 @@ function showExport(): void {
     }
   }
   exported = result.ok ? result.text : null;
-  csvBar.classList.toggle("hidden", mode !== "csv" || !doc);
   exportEl.classList.toggle("hidden", !result.ok);
   exportMessage.classList.toggle("hidden", result.ok);
+  showCsvNote();
+  showExactBar();
   if (result.ok) {
     exportView.setLexer(colours ? EXPORTS[mode].lexer : lexPlain);
+    exportView.setLineLabels(mode === "csv" ? sheetLabels : null);
     // Only when it changed: an edit elsewhere must not throw the reader back to the top.
     if (exportText.value !== result.text) exportText.value = result.text;
     exportView.refresh();
@@ -682,8 +708,7 @@ function validate(): void {
         : null;
   }
   minified = !!doc && !text.includes("\n");
-
-  formatBtn.disabled = minifyBtn.disabled = !doc;
+  showLayout(text);
   clearBtn.disabled = empty;
   status.classList.toggle("ui-status--error", !!fault);
   status.classList.toggle("ui-status--ok", !!doc);
@@ -809,6 +834,21 @@ function stepHistory(back: boolean): boolean {
   return true;
 }
 
+/**
+ * Format and Minify read as pressed while the text is exactly what they would make of it, so
+ * they say how the text is laid out until an edit changes that. One printing, of the layout
+ * the text has the shape of: several lines can only be formatted, one only minified.
+ */
+function showLayout(text: string): void {
+  formatBtn.disabled = minifyBtn.disabled = !doc;
+  const oneLine = !text.includes("\n");
+  const laidOut =
+    !!doc &&
+    text === printJson(doc.root, { indent: oneLine ? 0 : indent(), sortKeys: isOn(sortKeys) });
+  setPressed(formatBtn, laidOut && !oneLine);
+  setPressed(minifyBtn, laidOut && oneLine);
+}
+
 function rewrite(minify: boolean): void {
   if (!doc) return;
   replaceText(printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isOn(sortKeys) }));
@@ -877,7 +917,7 @@ function setMode(next: ViewMode): void {
   treeEl.classList.toggle("hidden", mode !== "tree");
   for (const b of viewButtons) setPressed(b, b.dataset.view === mode);
   viewSelect.value = mode;
-  // A phone shows the tree's own buttons (Expand all, Collapse all) only in the tree.
+  // The text's and the tree's own buttons float over them, shown only in their own view.
   document.body.dataset.view = mode;
   cursor.classList.toggle("hidden", mode !== "text");
   showPager();
@@ -918,7 +958,12 @@ function showViewControls(): void {
 function showFileControls(): void {
   const empty = !documentText().trim();
   copyBtn.disabled = downloadBtn.disabled = isExport(mode) ? exported === null : empty;
-  const what = isExport(mode) ? EXPORTS[mode].label : "JSON";
+  const section = csvSection();
+  const what = section
+    ? `CSV of ${formatPath(section.table.path)}`
+    : isExport(mode)
+      ? EXPORTS[mode].label
+      : "JSON";
   copyBtn.title = `Copy ${what} to clipboard`;
   downloadBtn.title = `Export ${what}`;
   copyBtn.setAttribute("aria-label", copyBtn.title);
@@ -940,7 +985,7 @@ function goToError(): void {
 
 async function load(file: File): Promise<void> {
   fileName = file.name;
-  csvPick = null;
+  exactPlaces.clear();
   const text = await file.text();
   const json = isCsvFile(file) ? csvToJson(text, indent()) : null;
   if (json) fileName = file.name.replace(/\.(csv|tsv)$/i, ".json");
@@ -954,9 +999,16 @@ async function load(file: File): Promise<void> {
 
 /** What Copy and Download hand over, and under which name. */
 function outgoing(): { text: string; name: string; mime: string } {
+  const base = fileName.replace(/\.json$/i, "");
+  const section = csvSection();
+  if (section) {
+    // One of several tables: its CSV alone, named after it ("data-apps.csv").
+    const csv = toCsv(section.table.node);
+    const path = section.table.path.join("-").replace(/[^\w.-]+/g, "_");
+    if (csv.ok) return { text: csv.text, name: `${base}-${path || "root"}.csv`, mime: "text/csv" };
+  }
   if (isExport(mode) && exported !== null) {
-    const name = fileName.replace(/\.json$/i, "") + EXPORTS[mode].extension;
-    return { text: exported, name, mime: "text/plain" };
+    return { text: exported, name: base + EXPORTS[mode].extension, mime: "text/plain" };
   }
   return { text: documentText(), name: fileName, mime: "application/json" };
 }
@@ -1004,10 +1056,14 @@ for (const b of viewButtons) {
   b.addEventListener("click", () => setMode(b.dataset.view as ViewMode));
 }
 viewSelect.addEventListener("change", () => setMode(viewSelect.value as ViewMode));
-csvTable.addEventListener("change", () => {
-  csvPick = csvTable.value;
-  showExport();
-});
+// Where the cursor is in the CSV view decides which table Copy and Export take.
+for (const type of ["keyup", "click", "select", "focus"]) {
+  exportText.addEventListener(type, () => {
+    if (mode !== "csv") return;
+    showCsvNote();
+    showFileControls();
+  });
+}
 expandAllBtn.addEventListener("click", () => tree.expandAll());
 collapseAllBtn.addEventListener("click", () => tree.collapseAll());
 
@@ -1025,6 +1081,7 @@ for (const b of indentButtons) {
 sortKeys.addEventListener("click", () => {
   setOn(sortKeys, !isOn(sortKeys));
   if (doc) rewrite(minified);
+  showLayout(documentText());
   showOptions();
   save();
 });

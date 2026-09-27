@@ -416,7 +416,8 @@ kbd {
 
 /* ---------- Tree ---------- */
 
-/* The tree and its own buttons: only there in the tree view. */
+/* The text and the tree, each with its own buttons: only there in its own view. */
+.text-area,
 .tree-area {
   position: relative;
   display: flex;
@@ -425,26 +426,34 @@ kbd {
   min-height: 0;
 }
 
+body:not([data-view="text"]) .text-area,
 body:not([data-view="tree"]) .tree-area {
   display: none;
 }
 
-/* Expand all, Collapse all: floating at the tree's top right, clear of its scrollbar, in a
-   frosted pill like the SVG app's floating controls. */
-.tree-tools {
+/* Format | Minify over the text, Expand all | Collapse all over the tree: joined like the
+   views, floating at the top right clear of the scrollbar, frosted like the SVG app's
+   floating controls. */
+.view-tools {
   position: absolute;
   top: 8px;
   right: 20px;
   z-index: 2;
-  display: flex;
-  gap: var(--ui-group-gap, 4px);
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--ui-frost-bg);
   -webkit-backdrop-filter: var(--ui-frost-filter);
   backdrop-filter: var(--ui-frost-filter);
   box-shadow: 0 4px 14px var(--shadow);
+}
+
+.view-tools .ui-btn {
+  background: transparent;
+}
+
+.view-tools .ui-btn:not(.icon-btn) {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 /*
@@ -834,7 +843,7 @@ body:not([data-view="tree"]) .tree-area {
   font: inherit;
 }
 
-/* CSV: which array is the table, above the view, and why that one when nobody picked it. */
+/* CSV: what the tables are, above the view, and which one Copy and Export take. */
 .csvbar {
   display: flex;
   align-items: center;
@@ -847,20 +856,38 @@ body:not([data-view="tree"]) .tree-area {
   display: none;
 }
 
-.csv-table {
+.csv-note {
   min-width: 0;
-  max-width: 60%;
-  min-height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel-2);
-  color: var(--text);
-  font: 13px var(--mono);
 }
 
-.csv-why {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Types and Schema: the places whose strings can be listed, each a toggle. */
+.exactbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.exactbar.hidden {
+  display: none;
+}
+
+.exactbar > .ui-label {
+  flex: none;
+}
+
+.exact-list {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.exact-list .ui-btn {
+  flex: none;
+  min-height: 28px;
+  padding: 0 9px;
+  font: 12.5px var(--mono);
 }

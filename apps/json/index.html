@@ -39,13 +39,7 @@
         </select>
       </div>
 
-      <div class="group" role="group" aria-label="Layout">
-        <div class="seg" role="group" aria-label="Layout">
-          <button type="button" class="ui-btn" id="format" title="Format (Ctrl+Enter)">
-            Format
-          </button>
-          <button type="button" class="ui-btn" id="minify">Minify</button>
-        </div>
+      <div class="group" role="group" aria-label="Settings">
         <button
           type="button"
           class="ui-btn icon-btn"
@@ -220,16 +214,24 @@
             <li>
               <b>Tree</b> — fold objects and arrays. The gutter shows the line each value starts on
               in the text (the column, when the text is one line). Double-click a row, or press
-              <kbd>Enter</kbd>, to show it in the text.
+              <kbd>Enter</kbd>, to show it in the text. Expand all and Collapse all are at its top
+              right.
             </li>
             <li>
               <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Export
               and Copy take whatever view is shown.
             </li>
             <li>
-              <b>CSV</b> makes one array into a table: a row per item, a column per key.
-              <b>Rows from</b>, above it, says which array and lets you pick another; left alone it
-              follows the cursor into any array, else takes the first list of objects.
+              <b>Exact values</b>, above Types and Schema, lists the places that hold only a few
+              different strings. Turn one on and it is typed as those strings (<code
+                >"json" | "svg"</code
+              >, an <code>enum</code> in the schema) rather than any string.
+            </li>
+            <li>
+              <b>CSV</b> makes every array a table — a row per item, a column per key — one after
+              another under their names. The gutter gives each row's line in the JSON. With several
+              tables, Copy and Export take the one the cursor is in. An array inside a table is a
+              cell of it, written as JSON.
             </li>
             <li>
               <b>CSV in</b> — import a <code>.csv</code> or <code>.tsv</code> file and it opens as
@@ -246,8 +248,9 @@
               button closes it again.
             </li>
             <li>
-              <b>Format</b> and <b>Minify</b> keep numbers and strings exactly as written, so large
-              IDs are never rounded.
+              <b>Format</b> and <b>Minify</b>, over the text's top right, keep numbers and strings
+              exactly as written, so large IDs are never rounded. The one that matches how the text
+              is laid out stays lit until an edit changes that.
             </li>
             <li>
               <b>Fix</b> appears when the text is almost JSON — comments, trailing commas, single
@@ -345,24 +348,41 @@
         </button>
       </div>
 
-      <div class="code" id="code">
-        <div class="gutter" aria-hidden="true"><div class="gutter-lines" id="gutter"></div></div>
-        <div class="code-body">
-          <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
-          <textarea
-            class="ui-code editor"
-            id="editor"
-            aria-label="JSON"
-            placeholder="Paste JSON here, or drop a .json file"
-            spellcheck="false"
-            autocomplete="off"
-            autocapitalize="off"
-          ></textarea>
+      <!-- The text, with its own buttons floating at its top right: they only apply to it. -->
+      <div class="text-area">
+        <div class="view-tools seg" role="group" aria-label="Layout">
+          <button
+            type="button"
+            class="ui-btn"
+            id="format"
+            aria-pressed="false"
+            title="Format (Ctrl+Enter)"
+          >
+            Format
+          </button>
+          <button type="button" class="ui-btn" id="minify" aria-pressed="false" title="Minify">
+            Minify
+          </button>
+        </div>
+        <div class="code" id="code">
+          <div class="gutter" aria-hidden="true"><div class="gutter-lines" id="gutter"></div></div>
+          <div class="code-body">
+            <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
+            <textarea
+              class="ui-code editor"
+              id="editor"
+              aria-label="JSON"
+              placeholder="Paste JSON here, or drop a .json file"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+            ></textarea>
+          </div>
         </div>
       </div>
       <!-- The tree, with its own buttons floating at its top right: they only apply to it. -->
       <div class="tree-area">
-        <div class="tree-tools" role="group" aria-label="Tree">
+        <div class="view-tools seg" role="group" aria-label="Tree">
           <button
             type="button"
             class="ui-btn icon-btn"
@@ -388,11 +408,15 @@
         </div>
         <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
       </div>
-      <!-- CSV only: which array becomes the table. It says which one is in use, and why. -->
+      <!-- CSV only: what the tables are, and which one Copy and Export take. -->
       <div class="bar csvbar hidden" id="csvbar">
-        <label class="ui-label" for="csv-table">Rows from</label>
-        <select class="csv-table" id="csv-table"></select>
-        <span class="ui-label csv-why" id="csv-why"></span>
+        <span class="ui-label csv-note" id="csv-note" aria-live="polite"></span>
+      </div>
+      <!-- Types and Schema only: places with a few strings, which can be listed instead of
+           "string". Each is a toggle; the values show in its tooltip. -->
+      <div class="bar exactbar hidden" id="exactbar" role="group" aria-label="Exact values">
+        <span class="ui-label">Exact values</span>
+        <div class="exact-list" id="exact-list"></div>
       </div>
       <!-- YAML, CSV, Types, Schema: the same view as the text, read-only. -->
       <div class="code hidden" id="export">

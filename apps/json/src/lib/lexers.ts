@@ -72,6 +72,11 @@ export function lexYaml(line: string): Token[] {
 /** Column colours, cycled: each column keeps one colour, so a row reads across at a glance. */
 const COLUMN_KINDS: readonly TokenKind[] = ["key", "string", "number", "literal"];
 
+/** The CSV view's lines: a table's `# name` heading when it shows several, else CSV. */
+export function lexCsvSheet(line: string): Token[] {
+  return line.startsWith("# ") ? [{ kind: "comment", text: line }] : lexCsv(line);
+}
+
 /** Fields coloured by column, commas muted; quoted fields keep their quotes. */
 export function lexCsv(line: string): Token[] {
   const tokens: Token[] = [];

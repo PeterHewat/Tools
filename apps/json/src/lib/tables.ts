@@ -1,11 +1,12 @@
 /**
- * The arrays a document could be turned into a CSV table from, for the CSV view's picker.
+ * The CSV view: every array in the document as a table, one after another.
  *
- * Nearest the root first, in document order at each depth. Inside an array only its first item
- * is looked into: the same nested array in every row of a big table is one choice, not
- * thousands.
+ * The arrays are the ones reached through objects, in document order. An array inside an
+ * array is not a table of its own: it is a cell of the outer one, written as JSON, as a
+ * spreadsheet would hold it.
  */
 import type { JsonNode } from "./ast.js";
+import { csvRows } from "./convert.js";
 import type { PathSegment } from "./path.js";
 
 export interface Table {
@@ -15,25 +16,57 @@ export interface Table {
   objects: boolean;
 }
 
-/** Past this many, the picker would be no use: the rest are left out. */
+/** Past this many, the view would be no use: the rest are left out. */
 export const MAX_TABLES = 100;
 
 export function tablesIn(root: JsonNode): Table[] {
   const found: Table[] = [];
-  const queue: { node: JsonNode; path: PathSegment[] }[] = [{ node: root, path: [] }];
-  for (let k = 0; k < queue.length && found.length < MAX_TABLES; k++) {
-    const { node, path } = queue[k];
+  const walk = (node: JsonNode, path: PathSegment[]): void => {
+    if (found.length >= MAX_TABLES) return;
     if (node.kind === "array") {
       found.push({ node, path, objects: node.items.some((i) => i.kind === "object") });
-      if (node.items.length) queue.push({ node: node.items[0], path: [...path, 0] });
     } else if (node.kind === "object") {
-      for (const m of node.members) queue.push({ node: m.value, path: [...path, m.key] });
+      for (const m of node.members) walk(m.value, [...path, m.key]);
     }
-  }
+  };
+  walk(root, []);
   return found;
 }
 
-/** The table to show when nothing says otherwise: the first of objects, else the first. */
-export function defaultTable(tables: readonly Table[]): Table | undefined {
-  return tables.find((t) => t.objects) ?? tables[0];
+export interface CsvSheet {
+  /** The tables, each under a `# heading` line when there are several, a blank line between. */
+  text: string;
+  /** For each line of the text, the document offset its row comes from; -1 for none. */
+  sources: number[];
+  /** Each table's lines of the text, its heading included. */
+  sections: { table: Table; firstLine: number; lastLine: number }[];
+}
+
+/**
+ * The tables one after another. A lone table is plain CSV; several each start with a
+ * `# heading` line (not CSV: it names the table), and Copy and Export take one of them.
+ */
+export function csvSheet(tables: readonly Table[], heading: (t: Table) => string): CsvSheet {
+  const rows: string[] = [];
+  const sources: number[] = [];
+  const sections: CsvSheet["sections"] = [];
+  const many = tables.length > 1;
+  let line = 0;
+  const add = (row: string, source: number) => {
+    rows.push(row);
+    sources.push(source);
+    // A cell with line breaks makes one row several lines; only the first has a source.
+    for (const _ of row.matchAll(/\r\n|\n|\r/g)) sources.push(-1);
+    line = sources.length;
+  };
+  for (const table of tables) {
+    if (many && rows.length) add("", -1);
+    const firstLine = line;
+    if (many) add(`# ${heading(table)}`, -1);
+    csvRows(table.node).forEach((row, k) =>
+      add(row, k === 0 ? table.node.start : table.node.items[k - 1].start)
+    );
+    sections.push({ table, firstLine, lastLine: line - 1 });
+  }
+  return { text: rows.length ? rows.join("\r\n") + "\r\n" : "", sources, sections };
 }
