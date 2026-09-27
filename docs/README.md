@@ -9,12 +9,13 @@ Four kinds of document. The kind tells you how much to trust it, and when it get
 | **Plan**      | Intent. Nothing here is built yet.                                    |
 | **Work log**  | An open investigation. Deleted when the work lands.                   |
 
-| Document                                                                   | Kind      | Read it when                                       |
-| -------------------------------------------------------------------------- | --------- | -------------------------------------------------- |
-| [adr/001-static-apps-no-framework.md](adr/001-static-apps-no-framework.md) | Decision  | Tempted to add a framework or a runtime dependency |
-| [adr/002-catalog-drives-the-site.md](adr/002-catalog-drives-the-site.md)   | Decision  | Adding an app, or changing the deploy path         |
-| [svg-spec.md](svg-spec.md)                                                 | Reference | Working on SVG                                     |
-| [plan/app-ideas.md](plan/app-ideas.md)                                     | Plan      | Browsing or prioritizing future Tools apps         |
+| Document                                                                   | Kind      | Read it when                                                              |
+| -------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------- |
+| [adr/001-static-apps-no-framework.md](adr/001-static-apps-no-framework.md) | Decision  | Tempted to add a framework or a runtime dependency                        |
+| [adr/002-catalog-drives-the-site.md](adr/002-catalog-drives-the-site.md)   | Decision  | Adding an app, or changing the deploy path                                |
+| [svg-spec.md](svg-spec.md)                                                 | Reference | Working on SVG                                                            |
+| [plan/app-ideas.md](plan/app-ideas.md)                                     | Plan      | Browsing or prioritizing future Tools apps                                |
+| [plan/code-editor.md](plan/code-editor.md)                                 | Plan      | Folding and IDE editing in the JSON app, the SVG source panel, or YAML in |
 
 ## Conventions
 
