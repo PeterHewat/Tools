@@ -4,7 +4,8 @@
  *     export default toolsApp("svg");
  *
  * From the catalog it sets the base path and output folder, writes the document `<title>`,
- * description and manifest, and emits the offline service worker with the build's file list.
+ * description and manifest, starts the page header (see `appHeader`), and emits the offline
+ * service worker with the build's file list.
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -40,7 +41,7 @@ export function toolsApp(slug: string): UserConfig {
     // Not "spa": its fallback served the app at any path under the base, where every relative
     // URL - the icon, the manifest, the welcome drawing - then resolved into the wrong folder.
     appType: "mpa",
-    plugins: [pageHead(app), manifest(app), serviceWorker()],
+    plugins: [pageHead(app), appHeader(app), manifest(app), serviceWorker()],
     build: { outDir: `../../dist/${slug}`, emptyOutDir: true, target: "es2022" },
   };
 }
@@ -155,6 +156,60 @@ function pageHead(app: ToolsApp | null): Plugin {
       }
       return headTags(app);
     },
+  };
+}
+
+/** The attribute that marks an app's header, where its start is written from the catalog. */
+export const HEADER_ATTR = "data-tools-header";
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * How every app's header starts: back to the index, the app's name, and its status while it is
+ * not stable. Styled by `@tools/ui/header.css`. They are direct children of the header, so an
+ * app's own layout (a phone's floating buttons, say) can place each of them.
+ */
+export function headerStartHtml(app: ToolsApp): string {
+  const status =
+    app.status === "stable"
+      ? ""
+      : `<span class="ui-app-status ui-app-status--${app.status}">${app.status}</span>`;
+  return (
+    `<a class="ui-home" href="../" title="All ${escapeHtml(SITE.name.toLowerCase())}">` +
+    `<span class="ui-home-label">${escapeHtml(SITE.name)}</span></a>` +
+    `<h1 class="ui-app-name">${escapeHtml(app.name)}</h1>` +
+    status
+  );
+}
+
+/**
+ * Writes `headerStartHtml` at the start of the page's `<header data-tools-header>`. The app's
+ * markup brings only its own controls, so the name and badge cannot disagree with the catalog,
+ * and a change to how headers start is made once, here.
+ */
+export function withHeaderStart(html: string, app: ToolsApp): string {
+  if (/class="ui-home"|class="ui-app-name"/.test(html)) {
+    throw new Error(
+      `index.html must not write its own home link or name: ${HEADER_ATTR} adds them`
+    );
+  }
+  const match = /<header\b[^>]*\sdata-tools-header(?:="")?(?=[\s>/])[^>]*>/.exec(html);
+  if (!match) throw new Error(`index.html needs a <header ${HEADER_ATTR}> for the app's header`);
+  const at = match.index + match[0].length;
+  return html.slice(0, at) + headerStartHtml(app) + html.slice(at);
+}
+
+function appHeader(app: ToolsApp): Plugin {
+  return {
+    name: "tools-app-header",
+    // Before Vite's own HTML handling, on the markup as written.
+    transformIndexHtml: { order: "pre", handler: (html) => withHeaderStart(html, app) },
   };
 }
 

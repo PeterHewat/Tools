@@ -8,12 +8,14 @@
     ".": "./src/index.ts",
     "./vite": "./src/vite.ts",
     "./theme": "./src/theme.ts",
-    "./base.css": "./base.css"
+    "./base.css": "./base.css",
+    "./header.css": "./header.css"
   },
   "files": [
     "src",
     "sw.js",
-    "base.css"
+    "base.css",
+    "header.css"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",

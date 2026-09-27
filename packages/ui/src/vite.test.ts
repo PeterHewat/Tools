@@ -2,7 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { findApp } from "@tools/catalog";
 import { SITE, appBase } from "@tools/catalog/site";
 import { THEME_BOOT_SCRIPT, THEME_KEY } from "./theme.js";
-import { cfBeaconTag, headTags, manifestFor, toolsApp } from "./vite.js";
+import {
+  cfBeaconTag,
+  headTags,
+  headerStartHtml,
+  manifestFor,
+  toolsApp,
+  withHeaderStart,
+} from "./vite.js";
 
 const svg = findApp("svg")!;
 
@@ -68,6 +75,42 @@ describe("page head", () => {
       expect(attr(tags, "name", "color-scheme")?.attrs?.content).toBe("dark light");
     }
     expect(THEME_BOOT_SCRIPT).toContain(JSON.stringify(THEME_KEY));
+  });
+});
+
+describe("app header", () => {
+  const json = findApp("json")!;
+  const page = (header: string) => `<body>${header}<button>Mine</button></header></body>`;
+
+  test("starts with the way back, then the app's name from the catalog", () => {
+    const html = withHeaderStart(page('<header class="ui-header" data-tools-header>'), svg);
+    expect(html).toContain(
+      '<header class="ui-header" data-tools-header><a class="ui-home" href="../"'
+    );
+    expect(html).toContain('<h1 class="ui-app-name">SVG</h1><button>Mine</button>');
+  });
+
+  test("a stable app has no badge; one that is not says what it is", () => {
+    expect(headerStartHtml({ ...svg, status: "stable" })).not.toContain("ui-app-status");
+    expect(headerStartHtml({ ...json, status: "beta" })).toContain(
+      '<span class="ui-app-status ui-app-status--beta">beta</span>'
+    );
+  });
+
+  test("the marker is found among other attributes", () => {
+    const html = withHeaderStart(page('<header class="x" data-tools-header role="toolbar">'), svg);
+    expect(html).toContain('role="toolbar"><a class="ui-home"');
+  });
+
+  test("a page without the marker, or with its own home link, fails the build", () => {
+    expect(() => withHeaderStart(page("<header>"), svg)).toThrow(/data-tools-header/);
+    expect(() =>
+      withHeaderStart(page('<header data-tools-header><a class="ui-home">'), svg)
+    ).toThrow(/must not write its own/);
+  });
+
+  test("markup in a name cannot break out", () => {
+    expect(headerStartHtml({ ...svg, name: "<b>" })).toContain("&lt;b&gt;");
   });
 });
 

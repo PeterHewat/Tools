@@ -21,28 +21,6 @@ body {
  * the tools, finding, the file. A rule separates neighbouring groups; the row wraps on a
  * narrow screen rather than hide anything.
  */
-.json-header {
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 12px;
-}
-
-/* Find, the file and the theme: kept together at the far end, and wrapping together. */
-.end {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.end .ui-theme-toggle {
-  margin-left: 0;
-}
-
-.json-header h1 {
-  margin-right: 4px;
-}
-
 .group {
   display: inline-flex;
   flex-wrap: wrap;

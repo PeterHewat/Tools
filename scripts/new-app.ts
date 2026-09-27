@@ -62,7 +62,7 @@ const files: Record<string, string> = {
     "@tools/catalog": "workspace:*",
     "@tools/ui": "workspace:*",
     "typescript": "~6.0.3",
-    "vite": "^8.3.0"
+    "vite": "^8.3.1"
   }
 }
 `,
@@ -79,7 +79,8 @@ import { toolsApp } from "@tools/ui/vite";
 
 export default defineConfig(toolsApp("${slug}"));
 `,
-  // Title, description, colour scheme, icon and manifest are added at build time.
+  // Title, description, colour scheme, icon and manifest are added at build time, and so is the
+  // start of the header: "‹ Tools", the name and the status badge, from the catalog.
   "index.html": `<!doctype html>
 <html lang="en">
   <head>
@@ -87,10 +88,10 @@ export default defineConfig(toolsApp("${slug}"));
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
   <body>
-    <header class="ui-header">
-      <a class="ui-home" href="../" title="All tools"><span class="ui-home-label">Tools</span></a>
-      <h1>${title}</h1>
-      <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
+      </div>
     </header>
     <main class="ui-main" id="app"></main>
     <script type="module" src="/src/main.ts"></script>

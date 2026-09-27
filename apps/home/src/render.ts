@@ -20,7 +20,7 @@ export function cardHtml(app: ToolsApp, base: string): string {
       ? ""
       : `<span class="status status--${app.status}">${app.status}</span>`;
   const art = app.art
-    ? `<img class="card-art" src="${base}${app.slug}/art.svg" alt="" width="512" height="320" loading="lazy" />`
+    ? `<img class="card-art" src="${base}${app.slug}/art.svg" alt="" width="320" height="320" loading="lazy" />`
     : "";
   return `<a class="card" href="${base}${app.slug}/">
       ${art}

@@ -331,7 +331,7 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   tags. What matched is marked - in the name, from a copy laid over the field, and in the tags that
   matched, shown under a folded row, in solid yellow. ▲ ▼ are off while the list is filtered. Esc clears the field, and so do a new document and an import, which a filter would otherwise hide.
 - The last open document reopens at start. The first start, with an empty library, creates
-  **Workbench** from `public/art.svg` (512 × 320, the app's own export, also the index
+  **Workbench** from `public/art.svg` (320 × 320, the app's own export, also the index
   page's card art), tagged isometric, desk and gradient; an `svg.welcomed` flag keeps it from coming back once deleted.
 - **Demos** (`demos.ts`): finished drawings in `public/demos/`, each named and tagged in one list,
   are added at the bottom of the list, in that order. A browser remembers the files it was given

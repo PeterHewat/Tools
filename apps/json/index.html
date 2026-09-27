@@ -7,10 +7,8 @@
   <body>
     <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.
          Controls that cannot apply are disabled, never hidden, so nothing moves. -->
-    <header class="ui-header json-header" id="header">
-      <a class="ui-home" href="../" title="All tools"><span class="ui-home-label">Tools</span></a>
-      <h1>JSON</h1>
-
+    <!-- "‹ Tools", the name and the beta badge are written in at build time, from the catalog. -->
+    <header class="ui-header json-header" id="header" data-tools-header>
       <div class="group" role="group" aria-label="View">
         <div class="seg" role="group" aria-label="Show as">
           <button type="button" class="ui-btn" data-view="text" aria-pressed="true">Text</button>
@@ -130,7 +128,7 @@
         </div>
       </div>
 
-      <div class="end">
+      <div class="ui-header-end">
         <div class="group">
           <button
             type="button"
