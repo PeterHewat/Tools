@@ -1,6 +1,6 @@
 # Code of Conduct
 
-Workbench is a small project with one maintainer. Everyone who takes part — in issues, pull
+Tools is a small project with one maintainer. Everyone who takes part — in issues, pull
 requests, reviews or anywhere else the project lives — is expected to make it a place people are
 glad to come back to.
 

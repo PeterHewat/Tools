@@ -1,4 +1,4 @@
-/* JSON's own layout. Tokens and controls come from @workbench/ui/base.css. */
+/* JSON's own layout. Tokens and controls come from @tools/ui/base.css. */
 
 /* The page is the editor: header on top, then the tool filling every pixel left. */
 body {
@@ -35,7 +35,7 @@ body {
   margin-left: auto;
 }
 
-.end .wb-theme-toggle {
+.end .ui-theme-toggle {
   margin-left: 0;
 }
 
@@ -51,7 +51,7 @@ body {
 }
 
 /* Text buttons a little tighter than elsewhere, so the whole bar fits one row on a laptop. */
-.json-header .wb-btn:not(.icon-btn) {
+.json-header .ui-btn:not(.icon-btn) {
   padding-inline: 9px;
 }
 
@@ -79,41 +79,41 @@ body {
   display: inline-flex;
 }
 
-.seg .wb-btn {
+.seg .ui-btn {
   border-radius: 0;
 }
 
 /* Neighbours overlap by their shared border; the one whose border shows (pressed, hovered,
    focused) is lifted above the next, or that button would cover its right edge. */
-.seg .wb-btn + .wb-btn {
+.seg .ui-btn + .ui-btn {
   margin-left: -1px;
 }
 
-.seg .wb-btn:hover,
-.seg .wb-btn:focus-visible,
-.seg .wb-btn[aria-pressed="true"] {
+.seg .ui-btn:hover,
+.seg .ui-btn:focus-visible,
+.seg .ui-btn[aria-pressed="true"] {
   position: relative;
   z-index: 1;
 }
 
-.seg .wb-btn:first-child {
+.seg .ui-btn:first-child {
   border-radius: var(--radius) 0 0 var(--radius);
 }
 
-.seg .wb-btn:last-child {
+.seg .ui-btn:last-child {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
-.wb-btn.small {
+.ui-btn.small {
   padding: 3px 9px;
   font-size: 0.85rem;
 }
 
 /* Pressed reads as "on" or "you are here", and a button whose panel is open reads as pressed
    while it is: filled, as in the SVG app. */
-.seg .wb-btn[aria-pressed="true"],
-.wb-btn.toggle[aria-pressed="true"],
-.wb-btn[aria-expanded="true"] {
+.seg .ui-btn[aria-pressed="true"],
+.ui-btn.toggle[aria-pressed="true"],
+.ui-btn[aria-expanded="true"] {
   position: relative;
   border-color: var(--accent);
   background: var(--accent-dim);
@@ -309,7 +309,7 @@ kbd {
   min-width: 0;
 }
 
-.findbar > .wb-btn {
+.findbar > .ui-btn {
   flex: none;
 }
 
@@ -668,7 +668,7 @@ kbd {
   gap: 4px 12px;
 }
 
-.statusbar .wb-status {
+.statusbar .ui-status {
   margin: 0;
 }
 
@@ -711,7 +711,7 @@ kbd {
   }
 
   /* Compact enough for "‹" and all six views on one row of a phone. */
-  .json-header .seg .wb-btn {
+  .json-header .seg .ui-btn {
     padding-inline: 6px;
     font-size: 0.85rem;
   }

@@ -1,7 +1,7 @@
 import { getState, selectedElements, setState } from "./state.js";
 import { fitArtboardInView, fitBoxInView, zoomAt } from "./viewport.js";
 import { unionBox } from "./selection-transform.js";
-import { byId, bySelector } from "@workbench/ui";
+import { byId, bySelector } from "@tools/ui";
 
 /**
  * Zoom is one control: it says what the zoom is, and opens a list to set it.

@@ -1,4 +1,4 @@
-/** Browser helpers shared by every Workbench app. */
+/** Browser helpers shared by every Tools app. */
 
 export * from "./dom.js";
 export * from "./theme.js";

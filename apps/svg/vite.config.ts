@@ -1,4 +1,4 @@
 import { defineConfig } from "vite";
-import { workbenchApp } from "@workbench/ui/vite";
+import { toolsApp } from "@tools/ui/vite";
 
-export default defineConfig(workbenchApp("svg"));
+export default defineConfig(toolsApp("svg"));

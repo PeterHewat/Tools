@@ -1,4 +1,4 @@
 import { defineConfig } from "vite";
-import { workbenchHome } from "@workbench/ui/vite";
+import { toolsHome } from "@tools/ui/vite";
 
-export default defineConfig(workbenchHome());
+export default defineConfig(toolsHome());

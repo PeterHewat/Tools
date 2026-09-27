@@ -1,5 +1,5 @@
-import type { WorkbenchApp } from "@workbench/catalog";
-import { SITE } from "@workbench/catalog/site";
+import type { ToolsApp } from "@tools/catalog";
+import { SITE } from "@tools/catalog/site";
 
 export function escapeHtml(s: string): string {
   return s
@@ -13,7 +13,7 @@ export function escapeHtml(s: string): string {
  * One index card. `base` is the site root, so the link is `<base><slug>/`. An app with art gets
  * its picture across the top, served from its own folder.
  */
-export function cardHtml(app: WorkbenchApp, base: string): string {
+export function cardHtml(app: ToolsApp, base: string): string {
   const tags = app.tags.map((t) => `<li>${escapeHtml(t)}</li>`).join("");
   const status =
     app.status === "stable"
@@ -40,10 +40,10 @@ export function cardHtml(app: WorkbenchApp, base: string): string {
     </a>`;
 }
 
-export function pageHtml(apps: readonly WorkbenchApp[], base: string): string {
+export function pageHtml(apps: readonly ToolsApp[], base: string): string {
   return `
     <header class="masthead">
-      <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
+      <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
       <h1>${escapeHtml(SITE.name)}</h1>
       <p class="tagline">${escapeHtml(SITE.tagline)}</p>
     </header>

@@ -15,7 +15,7 @@ body {
 }
 
 /* Top right on every width: the masthead has the room, and on a phone it is still in reach. */
-.masthead .wb-theme-toggle {
+.masthead .ui-theme-toggle {
   position: absolute;
   top: 16px;
   right: 0;

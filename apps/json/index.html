@@ -7,35 +7,33 @@
   <body>
     <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.
          Controls that cannot apply are disabled, never hidden, so nothing moves. -->
-    <header class="wb-header json-header" id="header">
-      <a class="wb-home" href="../" title="All tools"
-        ><span class="wb-home-label">Workbench</span></a
-      >
+    <header class="ui-header json-header" id="header">
+      <a class="ui-home" href="../" title="All tools"><span class="ui-home-label">Tools</span></a>
       <h1>JSON</h1>
 
       <div class="group" role="group" aria-label="View">
         <div class="seg" role="group" aria-label="Show as">
-          <button type="button" class="wb-btn" data-view="text" aria-pressed="true">Text</button>
-          <button type="button" class="wb-btn" data-view="tree" aria-pressed="false">Tree</button>
-          <button type="button" class="wb-btn" data-view="yaml" aria-pressed="false">YAML</button>
-          <button type="button" class="wb-btn" data-view="csv" aria-pressed="false">CSV</button>
+          <button type="button" class="ui-btn" data-view="text" aria-pressed="true">Text</button>
+          <button type="button" class="ui-btn" data-view="tree" aria-pressed="false">Tree</button>
+          <button type="button" class="ui-btn" data-view="yaml" aria-pressed="false">YAML</button>
+          <button type="button" class="ui-btn" data-view="csv" aria-pressed="false">CSV</button>
           <button
             type="button"
-            class="wb-btn"
+            class="ui-btn"
             data-view="ts"
             aria-pressed="false"
             title="TypeScript types"
           >
             Types
           </button>
-          <button type="button" class="wb-btn" data-view="schema" aria-pressed="false">
+          <button type="button" class="ui-btn" data-view="schema" aria-pressed="false">
             Schema
           </button>
         </div>
         <span class="pair">
           <button
             type="button"
-            class="wb-btn icon-btn"
+            class="ui-btn icon-btn"
             id="expand-all"
             title="Expand all"
             aria-label="Expand all"
@@ -46,7 +44,7 @@
           </button>
           <button
             type="button"
-            class="wb-btn icon-btn"
+            class="ui-btn icon-btn"
             id="collapse-all"
             title="Collapse all"
             aria-label="Collapse all"
@@ -59,11 +57,11 @@
       </div>
 
       <div class="group" role="group" aria-label="Layout">
-        <button type="button" class="wb-btn" id="format" title="Format (Ctrl+Enter)">Format</button>
-        <button type="button" class="wb-btn" id="minify">Minify</button>
+        <button type="button" class="ui-btn" id="format" title="Format (Ctrl+Enter)">Format</button>
+        <button type="button" class="ui-btn" id="minify">Minify</button>
         <button
           type="button"
-          class="wb-btn icon-btn"
+          class="ui-btn icon-btn"
           id="options-btn"
           popovertarget="options"
           aria-haspopup="true"
@@ -82,9 +80,9 @@
           <div class="menu-row">
             <span>Indent</span>
             <div class="seg small" role="group" aria-label="Indent">
-              <button type="button" class="wb-btn" data-indent="2" aria-pressed="true">2</button>
-              <button type="button" class="wb-btn" data-indent="4" aria-pressed="false">4</button>
-              <button type="button" class="wb-btn" data-indent="tab" aria-pressed="false">
+              <button type="button" class="ui-btn" data-indent="2" aria-pressed="true">2</button>
+              <button type="button" class="ui-btn" data-indent="4" aria-pressed="false">4</button>
+              <button type="button" class="ui-btn" data-indent="tab" aria-pressed="false">
                 Tab
               </button>
             </div>
@@ -93,7 +91,7 @@
             <span>Sort keys</span>
             <button
               type="button"
-              class="wb-btn toggle small"
+              class="ui-btn toggle small"
               id="sort-keys"
               aria-pressed="false"
               aria-label="Sort keys"
@@ -106,7 +104,7 @@
             <span>Colours</span>
             <button
               type="button"
-              class="wb-btn toggle small"
+              class="ui-btn toggle small"
               id="colours"
               aria-pressed="true"
               aria-label="Syntax colours"
@@ -118,10 +116,10 @@
           <div class="menu-row">
             <span>Style</span>
             <div class="seg small" role="group" aria-label="Path style">
-              <button type="button" class="wb-btn" data-path-style="js" aria-pressed="true">
+              <button type="button" class="ui-btn" data-path-style="js" aria-pressed="true">
                 a.b[0]
               </button>
-              <button type="button" class="wb-btn" data-path-style="pointer" aria-pressed="false">
+              <button type="button" class="ui-btn" data-path-style="pointer" aria-pressed="false">
                 /a/b/0
               </button>
             </div>
@@ -136,7 +134,7 @@
         <div class="group">
           <button
             type="button"
-            class="wb-btn icon-btn"
+            class="ui-btn icon-btn"
             id="find-open"
             title="Find (Ctrl+F)"
             aria-label="Find (Ctrl+F)"
@@ -150,7 +148,7 @@
         <div class="group" role="group" aria-label="File">
           <button
             type="button"
-            class="wb-btn icon-btn"
+            class="ui-btn icon-btn"
             id="open"
             title="Open a file"
             aria-label="Open a file"
@@ -159,7 +157,7 @@
               <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
             </svg>
           </button>
-          <button type="button" class="wb-btn icon-btn" id="copy" title="Copy" aria-label="Copy">
+          <button type="button" class="ui-btn icon-btn" id="copy" title="Copy" aria-label="Copy">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="9" y="9" width="11" height="11" rx="2" />
               <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
@@ -167,7 +165,7 @@
           </button>
           <button
             type="button"
-            class="wb-btn icon-btn"
+            class="ui-btn icon-btn"
             id="download"
             title="Download"
             aria-label="Download"
@@ -176,17 +174,17 @@
               <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />
             </svg>
           </button>
-          <button type="button" class="wb-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
+          <button type="button" class="ui-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
             </svg>
           </button>
         </div>
 
-        <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
+        <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
         <button
           type="button"
-          class="wb-btn icon-btn"
+          class="ui-btn icon-btn"
           id="help-btn"
           popovertarget="help"
           aria-expanded="false"
@@ -204,7 +202,7 @@
           <h3>About</h3>
           <ul>
             <li>
-              JSON is part of <a href="../">Workbench</a>, a set of tools that run entirely in your
+              JSON is part of <a href="../">Tools</a>, a set of tools that run entirely in your
               browser and keep working offline.
             </li>
             <li>
@@ -283,17 +281,17 @@
     <main class="json-main">
       <div class="bar findbar hidden" id="findbar" role="search">
         <input
-          class="wb-input find-input"
+          class="ui-input find-input"
           id="find-input"
           type="search"
           placeholder="Find"
           aria-label="Find"
           spellcheck="false"
         />
-        <span class="wb-label find-count" id="find-count" aria-live="polite"></span>
+        <span class="ui-label find-count" id="find-count" aria-live="polite"></span>
         <button
           type="button"
-          class="wb-btn toggle case-toggle"
+          class="ui-btn toggle case-toggle"
           id="find-case"
           aria-pressed="false"
           title="Match case"
@@ -303,7 +301,7 @@
         </button>
         <button
           type="button"
-          class="wb-btn icon-btn"
+          class="ui-btn icon-btn"
           id="find-prev"
           title="Previous match (Shift+Enter)"
           aria-label="Previous match (Shift+Enter)"
@@ -312,7 +310,7 @@
         </button>
         <button
           type="button"
-          class="wb-btn icon-btn"
+          class="ui-btn icon-btn"
           id="find-next"
           title="Next match (Enter)"
           aria-label="Next match (Enter)"
@@ -321,7 +319,7 @@
         </button>
         <button
           type="button"
-          class="wb-btn icon-btn"
+          class="ui-btn icon-btn"
           id="find-close"
           title="Close (Esc)"
           aria-label="Close (Esc)"
@@ -335,7 +333,7 @@
         <div class="code-body">
           <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
           <textarea
-            class="wb-code editor"
+            class="ui-code editor"
             id="editor"
             aria-label="JSON"
             placeholder="Paste JSON here, or drop a .json file"
@@ -354,7 +352,7 @@
         <div class="code-body">
           <pre class="highlight" aria-hidden="true"><code id="export-highlight"></code></pre>
           <textarea
-            class="wb-code editor"
+            class="ui-code editor"
             id="export-text"
             aria-label="Converted document"
             readonly
@@ -367,17 +365,17 @@
       <div class="bar pager hidden" id="pager">
         <button
           type="button"
-          class="wb-btn icon-btn"
+          class="ui-btn icon-btn"
           id="page-prev"
           title="Previous page"
           aria-label="Previous page"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
         </button>
-        <label class="wb-label">
+        <label class="ui-label">
           Page
           <input
-            class="wb-input page-input"
+            class="ui-input page-input"
             id="page-input"
             type="number"
             min="1"
@@ -387,29 +385,29 @@
         </label>
         <button
           type="button"
-          class="wb-btn icon-btn"
+          class="ui-btn icon-btn"
           id="page-next"
           title="Next page"
           aria-label="Next page"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
         </button>
-        <span class="wb-label" id="page-lines"></span>
+        <span class="ui-label" id="page-lines"></span>
       </div>
 
       <div class="bar problem hidden" id="problem">
         <pre class="excerpt" id="excerpt"></pre>
-        <button type="button" class="wb-btn" id="goto">Go to error</button>
-        <span class="wb-label hidden" id="fix-note"></span>
-        <button type="button" class="wb-btn wb-btn--primary hidden" id="fix">Fix</button>
+        <button type="button" class="ui-btn" id="goto">Go to error</button>
+        <span class="ui-label hidden" id="fix-note"></span>
+        <button type="button" class="ui-btn ui-btn--primary hidden" id="fix">Fix</button>
       </div>
-      <p class="bar wb-status warning hidden" id="warning"></p>
+      <p class="bar ui-status warning hidden" id="warning"></p>
 
       <div class="bar statusbar">
-        <p class="wb-status" id="status" role="status"></p>
+        <p class="ui-status" id="status" role="status"></p>
         <span class="where">
-          <button type="button" class="path wb-mono hidden" id="path" title="Copy path"></button>
-          <span class="wb-label wb-mono" id="cursor"></span>
+          <button type="button" class="path ui-mono hidden" id="path" title="Copy path"></button>
+          <span class="ui-label ui-mono" id="cursor"></span>
         </span>
       </div>
     </main>

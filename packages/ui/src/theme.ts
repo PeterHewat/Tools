@@ -1,5 +1,5 @@
 /**
- * Light and dark, shared by every Workbench page.
+ * Light and dark, shared by every Tools page.
  *
  * Until someone chooses, a page follows the browser (`prefers-color-scheme`). The first press of
  * a toggle stores a choice, and from then on it is light or dark: there is deliberately no way
@@ -13,10 +13,10 @@
 
 export type Theme = "light" | "dark";
 
-export const THEME_KEY = "workbench.theme";
+export const THEME_KEY = "tools.theme";
 
 /** Fired on `window` whenever the theme in effect changes, however it changed. */
-export const THEME_EVENT = "workbench:theme";
+export const THEME_EVENT = "tools:theme";
 
 /**
  * Inlined into every page's `<head>` by the Vite plugin, so a stored theme applies before the
@@ -81,7 +81,7 @@ export function setTheme(theme: Theme): void {
 
 let watching = false;
 
-/** Keeps the page in step with the browser's setting and with other open Workbench tabs. */
+/** Keeps the page in step with the browser's setting and with other open Tools tabs. */
 function watch(): void {
   if (watching) return;
   watching = true;
@@ -98,7 +98,7 @@ function watch(): void {
  * Makes `button` switch between light and dark. It shows the theme it would switch *to*, and
  * says so in its label. Any number of buttons can be bound; they all stay in step.
  */
-export function bindThemeToggle(button: HTMLElement, iconClass = "wb-theme-icon"): void {
+export function bindThemeToggle(button: HTMLElement, iconClass = "ui-theme-icon"): void {
   const render = () => {
     const next: Theme = currentTheme() === "dark" ? "light" : "dark";
     const label = `Switch to ${next} theme`;

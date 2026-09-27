@@ -32,7 +32,7 @@ export default defineConfig(
   },
   {
     // Build and scaffold scripts are expected to talk to the terminal.
-    files: ["tools/**/*.ts", "**/*.config.ts", "**/*.config.js"],
+    files: ["scripts/**/*.ts", "**/*.config.ts", "**/*.config.js"],
     rules: { "no-console": "off" },
   },
   {

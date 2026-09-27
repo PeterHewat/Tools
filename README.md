@@ -1,10 +1,10 @@
-# Workbench
+# Tools
 
 Small, self-contained browser tools. Everything runs client-side — your documents and files stay
 in the browser — and each tool keeps working offline once you have opened it. The public site may
 send anonymous page-view analytics to Cloudflare when you are online.
 
-**[peterhewat.github.io/Workbench](https://peterhewat.github.io/Workbench/)**
+**[peterhewat.github.io/Tools](https://peterhewat.github.io/Tools/)**
 
 | Tool                 | What it does                                                                   |
 | -------------------- | ------------------------------------------------------------------------------ |
@@ -22,16 +22,16 @@ bun run dev svg
 
 `bun run dev <slug>` serves one app with hot reload; `bun run dev home` serves the index page.
 Each app is its own Vite root on its own port, and the index's links point at built paths like
-`/Workbench/svg/` that only resolve in a built site — use the build-and-serve below to see
+`/Tools/svg/` that only resolve in a built site — use the build-and-serve below to see
 them joined up.
 
 To build and preview the whole site, including the index page:
 
 ```bash
-WORKBENCH_BASE=/ bun run build && bunx serve dist
+TOOLS_BASE=/ bun run build && bunx serve dist
 ```
 
-On Windows, run that from PowerShell (`$env:WORKBENCH_BASE = '/'; bun run build`) or prefix it
+On Windows, run that from PowerShell (`$env:TOOLS_BASE = '/'; bun run build`) or prefix it
 with `MSYS_NO_PATHCONV=1`. Git Bash rewrites the bare `/` into a Windows path and the build bakes
 that in as the base, which fails quietly: the page loads and every asset 404s.
 
@@ -54,7 +54,7 @@ packages/
   ui/          shared styles, browser helpers, build wiring and the offline service worker
   codec/       pure encoding helpers: base64, hex, UTF-8, JSON with error positions
   tsconfig/    shared TypeScript config
-tools/         build and scaffold scripts
+scripts/       build and scaffold scripts
 docs/          decisions, reference and plans
 ```
 

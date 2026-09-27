@@ -32,8 +32,8 @@ jobs:
       - name: Build
         # `base_path` is "/<repo>" for a project site, or "" behind a custom domain.
         env:
-          WORKBENCH_BASE: ${{ steps.pages.outputs.base_path }}/
-          WORKBENCH_CF_BEACON_TOKEN: ${{ secrets.WORKBENCH_CF_BEACON_TOKEN }}
+          TOOLS_BASE: ${{ steps.pages.outputs.base_path }}/
+          TOOLS_CF_BEACON_TOKEN: ${{ secrets.TOOLS_CF_BEACON_TOKEN }}
         run: bun run build
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

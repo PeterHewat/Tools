@@ -2,7 +2,7 @@ import { getState } from "./state.js";
 import { renderRulers, setRulerOffset } from "./rulers.js";
 import { isCoarsePointer } from "./pointer.js";
 import { writeSessionView, savedView } from "./session.js";
-import { byId, bySelector } from "@workbench/ui";
+import { byId, bySelector } from "@tools/ui";
 
 /** Where the layout turns into the phone one. Keep in step with the media query in styles.css. */
 const NARROW = "(max-width: 720px), (pointer: coarse) and (max-width: 800px)";

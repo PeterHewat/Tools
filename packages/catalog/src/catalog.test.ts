@@ -51,22 +51,22 @@ describe("catalog", () => {
 
 describe("deploy paths", () => {
   test("the default is the project-site path", () => {
-    expect(siteBase({})).toBe("/Workbench/");
+    expect(siteBase({})).toBe("/Tools/");
   });
 
   test("a custom base is honoured and normalised", () => {
-    expect(siteBase({ WORKBENCH_BASE: "/" })).toBe("/");
-    expect(siteBase({ WORKBENCH_BASE: "/thing" })).toBe("/thing/");
-    expect(siteBase({ WORKBENCH_BASE: "thing/" })).toBe("/thing/");
+    expect(siteBase({ TOOLS_BASE: "/" })).toBe("/");
+    expect(siteBase({ TOOLS_BASE: "/thing" })).toBe("/thing/");
+    expect(siteBase({ TOOLS_BASE: "thing/" })).toBe("/thing/");
   });
 
   test("an app sits under the site base", () => {
-    expect(appBase("svg", {})).toBe("/Workbench/svg/");
-    expect(appBase("svg", { WORKBENCH_BASE: "/" })).toBe("/svg/");
+    expect(appBase("svg", {})).toBe("/Tools/svg/");
+    expect(appBase("svg", { TOOLS_BASE: "/" })).toBe("/svg/");
   });
 
   test("the Pages action's empty base_path resolves to the site root", () => {
     // `configure-pages` emits "" behind a custom domain; the workflow appends "/".
-    expect(siteBase({ WORKBENCH_BASE: "/" })).toBe("/");
+    expect(siteBase({ TOOLS_BASE: "/" })).toBe("/");
   });
 });

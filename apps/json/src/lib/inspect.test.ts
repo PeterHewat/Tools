@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { positionAt } from "@workbench/codec";
+import { positionAt } from "@tools/codec";
 import { excerptAt, formatBytes } from "./inspect.js";
 
 describe("excerptAt", () => {

@@ -1,6 +1,6 @@
 # Contributing
 
-Workbench is a set of small tools that run in the browser. A change keeps each app as static files: no runtime framework, and no runtime dependency in the shipped bundle. The decisions behind that are in [docs/adr](./docs/adr). Taking part means following the [Code of Conduct](./CODE_OF_CONDUCT.md).
+Tools is a set of small tools that run in the browser. A change keeps each app as static files: no runtime framework, and no runtime dependency in the shipped bundle. The decisions behind that are in [docs/adr](./docs/adr). Taking part means following the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ## Setup
 
@@ -11,7 +11,7 @@ bun install
 bun run verify
 ```
 
-`bun run verify` is lint, typecheck, format check, tests, and a full site build. CI runs those same steps. The [README](./README.md) covers `bun run dev` and the Windows note about `WORKBENCH_BASE`.
+`bun run verify` is lint, typecheck, format check, tests, and a full site build. CI runs those same steps. The [README](./README.md) covers `bun run dev` and the Windows note about `TOOLS_BASE`.
 
 ## Where to change things
 

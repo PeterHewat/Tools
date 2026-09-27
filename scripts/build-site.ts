@@ -4,7 +4,7 @@
  *
  * Apps come from the catalog, so adding one to `packages/catalog` is all it takes to get it
  * built and listed. Each app's own Vite build emits the shared service worker into its folder
- * (see `@workbench/ui/vite`), since a worker only controls the scope it is served from.
+ * (see `@tools/ui/vite`), since a worker only controls the scope it is served from.
  */
 import { rm, mkdir, copyFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";

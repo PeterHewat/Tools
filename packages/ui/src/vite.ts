@@ -1,7 +1,7 @@
 /**
- * Build-time wiring every Workbench page shares, so an app's `vite.config.ts` is one line:
+ * Build-time wiring every Tools page shares, so an app's `vite.config.ts` is one line:
  *
- *     export default workbenchApp("svg");
+ *     export default toolsApp("svg");
  *
  * From the catalog it sets the base path and output folder, writes the document `<title>`,
  * description and manifest, and emits the offline service worker with the build's file list.
@@ -11,11 +11,11 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite";
-import { APPS, findApp, type WorkbenchApp } from "@workbench/catalog";
-import { SITE, appBase, siteBase } from "@workbench/catalog/site";
+import { APPS, findApp, type ToolsApp } from "@tools/catalog";
+import { SITE, appBase, siteBase } from "@tools/catalog/site";
 // By package name, not "./theme.js": Node loads this file for the Vite config, and it does not
 // map a .js specifier onto the .ts file beside it the way the bundler does.
-import { THEME_BOOT_SCRIPT } from "@workbench/ui/theme";
+import { THEME_BOOT_SCRIPT } from "@tools/ui/theme";
 
 const SW_SOURCE = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "..", "sw.js"),
@@ -28,11 +28,11 @@ const DEV_SW = "self.registration.unregister();\n";
 const ICON = "icon.svg";
 const MANIFEST = "manifest.webmanifest";
 /** Set in CI for production builds; omitted locally and in PR builds. */
-export const CF_BEACON_ENV = "WORKBENCH_CF_BEACON_TOKEN";
+export const CF_BEACON_ENV = "TOOLS_CF_BEACON_TOKEN";
 const CF_BEACON_SRC = "https://static.cloudflareinsights.com/beacon.min.js";
 
 /** Vite config for the app at `apps/<slug>`. Fails the build if the catalog does not list it. */
-export function workbenchApp(slug: string): UserConfig {
+export function toolsApp(slug: string): UserConfig {
   const app = findApp(slug);
   if (!app) throw new Error(`"${slug}" is not in packages/catalog — add it there first`);
   return {
@@ -46,7 +46,7 @@ export function workbenchApp(slug: string): UserConfig {
 }
 
 /** Vite config for the index page, at the site root. Each app is built into a folder beside it. */
-export function workbenchHome(): UserConfig {
+export function toolsHome(): UserConfig {
   return {
     base: siteBase(),
     appType: "mpa",
@@ -64,7 +64,7 @@ export function workbenchHome(): UserConfig {
 function appArtInDev(): Plugin {
   const appsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "apps");
   return {
-    name: "workbench-app-art",
+    name: "tools-app-art",
     apply: "serve",
     configureServer(server) {
       const art = new Map(
@@ -84,7 +84,7 @@ function appArtInDev(): Plugin {
 }
 
 /** The web app manifest for one app, as served next to its page. */
-export function manifestFor(app: WorkbenchApp): Record<string, unknown> {
+export function manifestFor(app: ToolsApp): Record<string, unknown> {
   return {
     name: app.name,
     short_name: app.name,
@@ -98,7 +98,7 @@ export function manifestFor(app: WorkbenchApp): Record<string, unknown> {
   };
 }
 
-/** Cloudflare Web Analytics beacon, when `WORKBENCH_CF_BEACON_TOKEN` is set at build time. */
+/** Cloudflare Web Analytics beacon, when `TOOLS_CF_BEACON_TOKEN` is set at build time. */
 export function cfBeaconTag(
   env: Record<string, string | undefined> = process.env
 ): HtmlTagDescriptor | undefined {
@@ -116,7 +116,7 @@ export function cfBeaconTag(
 
 /** The head tags a page gets from the catalog; `null` is the index page. */
 export function headTags(
-  app: WorkbenchApp | null,
+  app: ToolsApp | null,
   env: Record<string, string | undefined> = process.env
 ): HtmlTagDescriptor[] {
   const base = app ? appBase(app.slug) : siteBase();
@@ -143,9 +143,9 @@ export function headTags(
   return tags.map((t) => ({ ...t, injectTo: "head" }));
 }
 
-function pageHead(app: WorkbenchApp | null): Plugin {
+function pageHead(app: ToolsApp | null): Plugin {
   return {
-    name: "workbench-page-head",
+    name: "tools-page-head",
     transformIndexHtml(html) {
       // One source for the copy: a hand-written title would silently disagree with the catalog.
       if (/<title>|name="description"|rel="manifest"|name="color-scheme"/.test(html)) {
@@ -158,10 +158,10 @@ function pageHead(app: WorkbenchApp | null): Plugin {
   };
 }
 
-function manifest(app: WorkbenchApp): Plugin {
+function manifest(app: ToolsApp): Plugin {
   const body = `${JSON.stringify(manifestFor(app), null, 2)}\n`;
   return {
-    name: "workbench-manifest",
+    name: "tools-manifest",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if ((req.url ?? "").split("?")[0] !== `${appBase(app.slug)}${MANIFEST}`) return next();
@@ -178,7 +178,7 @@ function manifest(app: WorkbenchApp): Plugin {
 function serviceWorker(): Plugin {
   let publicDir = "";
   return {
-    name: "workbench-service-worker",
+    name: "tools-service-worker",
     // After Vite's own HTML plugin, so index.html is already in the bundle when this runs.
     enforce: "post",
     configResolved(config) {

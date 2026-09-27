@@ -1,5 +1,5 @@
 {
-  "name": "@workbench/json",
+  "name": "@tools/json",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@workbench/catalog": "workspace:*",
-    "@workbench/codec": "workspace:*",
-    "@workbench/ui": "workspace:*",
+    "@tools/catalog": "workspace:*",
+    "@tools/codec": "workspace:*",
+    "@tools/ui": "workspace:*",
     "typescript": "~6.0.3",
     "vite": "^8.3.0"
   }

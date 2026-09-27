@@ -22,7 +22,7 @@ import {
   type ImportedDocument,
 } from "./document-files.js";
 import { deepClone, escapeAttr, uid } from "./utils.js";
-import { byId, downloadText, registerServiceWorker } from "@workbench/ui";
+import { byId, downloadText, registerServiceWorker } from "@tools/ui";
 import { type ProjectFile } from "./types.js";
 import { savedView } from "./session.js";
 import { setSectionOpen } from "./layout.js";
@@ -140,15 +140,15 @@ async function refreshDocList(): Promise<void> {
           <span class="acc-title-input doc-title-input doc-name-marks" aria-hidden="true"></span>
         </span>
         <button type="button" class="acc-icon-btn doc-act" data-doc-dup title="Duplicate" aria-label="Duplicate document">
-          <svg class="ui-icon" aria-hidden="true"><use href="#icon-copy" /></svg>
+          <svg class="glyph" aria-hidden="true"><use href="#icon-copy" /></svg>
         </button>
         <button type="button" class="acc-icon-btn doc-act" data-doc-save title="Export document" aria-label="Export document">
-          <svg class="ui-icon" aria-hidden="true"><use href="#icon-export" /></svg>
+          <svg class="glyph" aria-hidden="true"><use href="#icon-export" /></svg>
         </button>
         <button type="button" class="acc-icon-btn acc-move" data-doc-move="-1" title="Move up the list" aria-label="Move document up"${i > 0 ? "" : " disabled"}>▲</button>
         <button type="button" class="acc-icon-btn acc-move" data-doc-move="1" title="Move down the list" aria-label="Move document down"${i < last ? "" : " disabled"}>▼</button>
         <button type="button" class="acc-icon-btn acc-trash doc-del" data-doc-delete title="Delete" aria-label="Delete document">
-          <svg class="ui-icon" aria-hidden="true"><use href="#icon-trash" /></svg>
+          <svg class="glyph" aria-hidden="true"><use href="#icon-trash" /></svg>
         </button>
       </div>
       <p class="doc-tag-hits" hidden></p>
@@ -253,7 +253,7 @@ function applyDocSearch(): void {
   // With text in it, the magnifying glass becomes the way to clear it.
   const icon = query ? "icon-clear" : "icon-search";
   const label = query ? "Clear the search" : "Search";
-  docSearchBtn.innerHTML = `<svg class="ui-icon" aria-hidden="true"><use href="#${icon}" /></svg>`;
+  docSearchBtn.innerHTML = `<svg class="glyph" aria-hidden="true"><use href="#${icon}" /></svg>`;
   docSearchBtn.title = label;
   docSearchBtn.setAttribute("aria-label", label);
   // Leaving a filtered list gives ▲ and ▼ back, which only a rebuild works out.

@@ -1,7 +1,7 @@
-import { listedApps } from "@workbench/catalog";
-import { bindThemeToggle, registerServiceWorker } from "@workbench/ui";
+import { listedApps } from "@tools/catalog";
+import { bindThemeToggle, registerServiceWorker } from "@tools/ui";
 import { pageHtml } from "./render.js";
-import "@workbench/ui/base.css";
+import "@tools/ui/base.css";
 import "./home.css";
 
 // Vite substitutes BASE_URL at build time from the `base` in vite.config.ts, which comes from

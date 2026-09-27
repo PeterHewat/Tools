@@ -3,15 +3,15 @@
 Intent only — nothing here is built unless it appears in the catalog. Slugs are suggestions for
 `bun run new-app`.
 
-Workbench fit: client-only, offline, static output. No "save online", no fetching arbitrary URLs.
+Tools fit: client-only, offline, static output. No "save online", no fetching arbitrary URLs.
 
 ## Shared groundwork (done)
 
-- `@workbench/codec` — base64 / base64url, hex, UTF-8, and JSON parsing with a line and column
+- `@tools/codec` — base64 / base64url, hex, UTF-8, and JSON parsing with a line and column
   for the first error. Pure and tested; JSON, JWT, Codec and Digests all build on it.
-- `@workbench/ui` — `base.css` (tokens, header with a link back to the index, buttons, inputs,
+- `@tools/ui` — `base.css` (tokens, header with a link back to the index, buttons, inputs,
   code areas), DOM helpers (`copyText`, `downloadText`, `pickFiles`, `onFileDrop`), and
-  `workbenchApp(slug)` for the Vite config.
+  `toolsApp(slug)` for the Vite config.
 
 ## Build order
 

@@ -20,7 +20,7 @@
       "port": 5174
     },
     {
-      "name": "workbench-dist",
+      "name": "tools-dist",
       "runtimeExecutable": "bunx",
       "runtimeArgs": ["--bun", "serve", "dist", "-l", "3111"],
       "port": 3111

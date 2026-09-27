@@ -4,7 +4,7 @@
  *
  * Plain functions over strings and parsed values, so they are tested without a DOM.
  */
-import type { JsonPosition } from "@workbench/codec";
+import type { JsonPosition } from "@tools/codec";
 
 export interface Excerpt {
   /** The offending line, clipped around the error when it is long. Tabs shown as one space. */

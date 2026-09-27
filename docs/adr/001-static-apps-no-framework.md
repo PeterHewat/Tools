@@ -4,7 +4,7 @@
 
 ## Context
 
-Workbench holds several unrelated small tools rather than one product. They are used
+Tools holds several unrelated small tools rather than one product. They are used
 occasionally, over years, by one person and whoever finds them. The original SVG app was plain
 ES modules with no build and no dependencies, which is why it ran off any file server.
 

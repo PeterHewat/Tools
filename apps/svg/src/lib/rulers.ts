@@ -1,4 +1,4 @@
-import { THEME_EVENT } from "@workbench/ui";
+import { THEME_EVENT } from "@tools/ui";
 import type { EditorState } from "./types.js";
 
 const SIZE = 20;

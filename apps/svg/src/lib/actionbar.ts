@@ -558,7 +558,7 @@ function build(actions: readonly Action[]): void {
     btn.title = action.label;
     btn.setAttribute("aria-label", action.label);
     if (action.icon) {
-      btn.innerHTML = `<svg class="ui-icon" aria-hidden="true"><use href="#${action.icon}" /></svg>`;
+      btn.innerHTML = `<svg class="glyph" aria-hidden="true"><use href="#${action.icon}" /></svg>`;
     } else {
       btn.textContent = action.glyph ?? "";
       btn.classList.add("tool-btn--text");
