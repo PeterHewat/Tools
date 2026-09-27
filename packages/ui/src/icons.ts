@@ -73,12 +73,23 @@ export const ICON_ATTR = "data-ui-icon";
  * than shipping a blank button.
  */
 export function withIcons(html: string): string {
-  return html.replace(
-    /<(svg|symbol)\b([^>]*\sdata-ui-icon="([^"]*)"[^>]*)>\s*<\/\1>/g,
-    (_all, tag: string, attrs: string, name: string) => {
-      if (!isIconName(name)) throw new Error(`Unknown icon "${name}" in ${ICON_ATTR}`);
-      const box = /\sviewBox=/.test(attrs) ? "" : ' viewBox="0 0 24 24"';
-      return `<${tag}${attrs}${box}>${ICONS[name]}</${tag}>`;
-    }
-  );
+  // A scan in steps, each a pattern with a single unbounded part, rather than one pattern for the
+  // whole element: that one could backtrack for a long time over a tag repeating the attribute.
+  let out = "";
+  let done = 0;
+  for (const open of html.matchAll(/<(svg|symbol)\b([^>]*)>/g)) {
+    const [whole, tag, attrs] = open as unknown as [string, string, string];
+    const name = /\sdata-ui-icon="([^"]*)"/.exec(attrs)?.[1];
+    if (name === undefined) continue;
+    // Only an empty element is filled: nothing but white space before its closing tag.
+    const start = open.index + whole.length;
+    const lt = html.indexOf("<", start);
+    const close = `</${tag}>`;
+    if (lt < 0 || html.slice(start, lt).trim() || !html.startsWith(close, lt)) continue;
+    if (!isIconName(name)) throw new Error(`Unknown icon "${name}" in ${ICON_ATTR}`);
+    const box = /\sviewBox=/.test(attrs) ? "" : ' viewBox="0 0 24 24"';
+    out += `${html.slice(done, open.index)}<${tag}${attrs}${box}>${ICONS[name]}${close}`;
+    done = lt + close.length;
+  }
+  return out + html.slice(done);
 }

@@ -23,6 +23,13 @@ describe("withIcons", () => {
     expect(withIcons(html)).toBe(html);
   });
 
+  test("stays fast on a tag that repeats the attribute many times", () => {
+    const html = `<svg${' data-ui-icon=""'.repeat(50_000)}`;
+    const start = performance.now();
+    expect(withIcons(html)).toBe(html);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
   test("an unknown icon fails the build", () => {
     expect(() => withIcons('<svg data-ui-icon="nope"></svg>')).toThrow(/Unknown icon "nope"/);
   });
