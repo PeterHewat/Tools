@@ -1,7 +1,7 @@
 import { getState, selectedElements, setState } from "./state.js";
 import { fitArtboardInView, fitBoxInView, zoomAt } from "./viewport.js";
 import { unionBox } from "./selection-transform.js";
-import { byId, bySelector } from "@tools/ui";
+import { bindMenu, byId, bySelector } from "@tools/ui";
 
 /**
  * Zoom is one control: it says what the zoom is, and opens a list to set it.
@@ -11,28 +11,25 @@ import { byId, bySelector } from "@tools/ui";
  * the viewport however it changed, so a pinch or a wheel is read back here too.
  */
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.5, 2, 4, 8];
-const zoomWrap = byId("zoom-wrap");
 export const zoomBtn = byId("btn-zoom-level");
 export const zoomMenu = byId("zoom-menu");
 
+const item = (attrs: string, label: string) =>
+  `<li role="option" aria-selected="false"><button type="button" class="ui-menu-item" ${attrs}>${label}</button></li>`;
 zoomMenu.innerHTML =
-  `<li role="option" aria-selected="false"><button type="button" data-fit="artboard" title="Shift+1">Fit artboard</button></li>` +
-  `<li role="option" aria-selected="false"><button type="button" data-fit="selection" title="Shift+2">Fit selection</button></li>` +
-  ZOOM_LEVELS.map(
-    (z) =>
-      `<li role="option" aria-selected="false"><button type="button" data-zoom="${z}">${Math.round(z * 100)}%</button></li>`
-  ).join("");
+  item('data-fit="artboard" title="Shift+1"', "Fit artboard") +
+  item('data-fit="selection" title="Shift+2"', "Fit selection") +
+  ZOOM_LEVELS.map((z) => item(`data-zoom="${z}"`, `${Math.round(z * 100)}%`)).join("");
 
-function closeZoomMenu(): void {
-  zoomMenu.classList.add("hidden");
-  zoomBtn.setAttribute("aria-expanded", "false");
-}
-
-zoomBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const open = zoomMenu.classList.contains("hidden");
-  zoomMenu.classList.toggle("hidden", !open);
-  zoomBtn.setAttribute("aria-expanded", String(open));
+// A menu like every other in Tools: a click outside or Esc closes it, and Esc does only that,
+// rather than also stepping out of a selection.
+const menu = bindMenu(zoomBtn, zoomMenu, {
+  align: "center",
+  onOpen: () => {
+    // Fitting the selection means something only with one.
+    const fit = zoomMenu.querySelector<HTMLButtonElement>('[data-fit="selection"]');
+    if (fit) fit.disabled = !selectedElements().length;
+  },
 });
 
 zoomMenu.addEventListener("click", (e) => {
@@ -40,31 +37,13 @@ zoomMenu.addEventListener("click", (e) => {
   if (fit) {
     if (fit.dataset.fit === "selection") fitSelection();
     else setState({ viewport: fitToView() });
-    closeZoomMenu();
+    menu.close();
     return;
   }
   const target = (e.target as HTMLElement).closest<HTMLElement>("[data-zoom]");
   if (!target) return;
   zoomTo(Number(target.dataset.zoom));
-  closeZoomMenu();
-});
-
-zoomBtn.addEventListener("click", () => {
-  // Fitting the selection means something only with one.
-  const fit = zoomMenu.querySelector<HTMLButtonElement>('[data-fit="selection"]');
-  if (fit) fit.disabled = !selectedElements().length;
-});
-
-document.addEventListener("pointerdown", (e) => {
-  if (!zoomWrap.contains(e.target as Node)) closeZoomMenu();
-});
-
-// Esc closes the open list, and only that: back on its button, not stepping out of a selection.
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape" || zoomMenu.classList.contains("hidden")) return;
-  e.stopPropagation();
-  closeZoomMenu();
-  zoomBtn.focus();
+  menu.close();
 });
 
 /* ---------- Fitting the view ---------- */

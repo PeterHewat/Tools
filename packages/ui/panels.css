@@ -1,0 +1,244 @@
+/*
+ * What opens over the work: a panel docked to one side under the header (Help, the SVG app's
+ * Document panel), and a menu under the button that opened it (Settings, "⋯", zoom). Both are
+ * frosted with the header's --ui-frost-* tokens, so they look alike in every app. Behaviour is in
+ * src/panel.ts (`bindDock`) and src/menu.ts (`bindMenu`).
+ *
+ * base.css imports this. An app with its own tokens and controls (the SVG editor) imports it on
+ * its own; it needs --panel, --panel-2, --border, --text, --muted, --accent, --accent-dim,
+ * --shadow and --scroll.
+ */
+
+/* ---------- Docked panel ---------- */
+
+/* Against the right edge (or the left, with --left), from under the header to the bottom. Its
+   top is set by bindDock, since the header's height changes as it wraps. */
+.ui-dock {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100vw);
+  margin: 0;
+  padding: 10px 12px 14px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: var(--ui-frost-bg);
+  /* Prefixed first: the minifier keeps only the last of the pair. */
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
+  color: var(--text);
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.ui-dock--left {
+  right: auto;
+  left: 0;
+  border-right: 1px solid var(--border);
+  border-left: 0;
+}
+
+.ui-dock[hidden] {
+  display: none;
+}
+
+/* The title row: the title, anything the panel adds, and on a phone the theme switch. */
+.ui-dock-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ui-dock-title {
+  margin: 0 auto 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The body scrolls under a title row that stays put. Room for the scrollbar is kept whether or
+   not it shows, so the text never reflows as it appears. */
+.ui-dock-body {
+  flex: 1;
+  min-height: 0;
+  padding-right: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll) transparent;
+}
+
+/* The theme switch is in the header, except on a phone, where the header has no room for it. */
+.ui-dock-head .ui-theme-toggle {
+  display: none;
+}
+
+/* On a phone the panel covers the work, so it is full width and opaque: text over a blurred
+   drawing or more text does not read. */
+@media (max-width: 720px) {
+  .ui-dock {
+    width: 100%;
+    border-right: 0;
+    border-left: 0;
+    background: var(--panel);
+  }
+
+  .ui-dock-head .ui-theme-toggle {
+    display: inline-grid;
+    flex: none;
+  }
+}
+
+/* Help's text, the same in every app. */
+.ui-help h3 {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ui-help h3:first-child {
+  margin-top: 0;
+}
+
+.ui-help ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ui-help li {
+  margin-bottom: 5px;
+}
+
+.ui-help kbd,
+.ui-help code {
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 11.5px;
+}
+
+.ui-help .ui-keys {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ui-help .ui-keys td {
+  padding: 3px 6px 3px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.ui-help .ui-keys td:first-child {
+  white-space: nowrap;
+}
+
+/* ---------- Menu ---------- */
+
+/* A popover under its button; bindMenu places it. Items are buttons, or rows of a label and a
+   control, in sections headed by a label. */
+.ui-menu {
+  position: fixed;
+  inset: auto;
+  min-width: 180px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--ui-frost-bg);
+  -webkit-backdrop-filter: var(--ui-frost-filter);
+  backdrop-filter: var(--ui-frost-filter);
+  color: var(--text);
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-y: auto;
+}
+
+.ui-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ui-menu-item:hover:not(:disabled),
+.ui-menu-item:focus-visible {
+  outline: none;
+  background: var(--panel-2);
+}
+
+/* The item that is in effect: the zoom level shown, say. */
+.ui-menu-item[aria-current="true"],
+.ui-menu-item.active {
+  background: var(--accent-dim);
+}
+
+.ui-menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ui-menu-item svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.ui-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px;
+}
+
+.ui-menu-label {
+  margin: 6px 10px 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ui-menu-label:first-child {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ui-menu-sep {
+  height: 1px;
+  margin: 3px 4px;
+  border: 0;
+  background: var(--border);
+}
+
+@media (pointer: coarse) {
+  .ui-menu-item {
+    min-height: 40px;
+  }
+}

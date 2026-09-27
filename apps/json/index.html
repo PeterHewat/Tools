@@ -10,7 +10,7 @@
     <!-- "‹ Tools", the name and the beta badge are written in at build time, from the catalog. -->
     <header class="ui-header json-header" id="header" data-tools-header>
       <div class="group" role="group" aria-label="View">
-        <div class="seg views" role="group" aria-label="Show as">
+        <div class="ui-seg views" role="group" aria-label="Show as">
           <button type="button" class="ui-btn" data-view="text" aria-pressed="true">Text</button>
           <button type="button" class="ui-btn" data-view="tree" aria-pressed="false">Tree</button>
           <button type="button" class="ui-btn" data-view="yaml" aria-pressed="false">YAML</button>
@@ -44,23 +44,16 @@
           type="button"
           class="ui-btn icon-btn"
           id="options-btn"
-          popovertarget="options"
-          aria-haspopup="true"
-          aria-expanded="false"
           title="Settings"
           aria-label="Settings"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M18.99 10.26L21.35 10.33L21.35 13.67L18.99 13.74L18.17 15.71L19.79 17.43L17.43 19.79L15.71 18.17L13.74 18.99L13.67 21.35L10.33 21.35L10.26 18.99L8.29 18.17L6.57 19.79L4.21 17.43L5.83 15.71L5.01 13.74L2.65 13.67L2.65 10.33L5.01 10.26L5.83 8.29L4.21 6.57L6.57 4.21L8.29 5.83L10.26 5.01L10.33 2.65L13.67 2.65L13.74 5.01L15.71 5.83L17.43 4.21L19.79 6.57L18.17 8.29ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"
-            />
-          </svg>
+          <svg data-ui-icon="settings" aria-hidden="true"></svg>
         </button>
-        <div class="menu options" id="options" popover aria-label="Settings">
-          <div class="menu-label first">Format with</div>
-          <div class="menu-row">
+        <div class="ui-menu options" id="options" aria-label="Settings">
+          <div class="ui-menu-label">Format with</div>
+          <div class="ui-menu-row">
             <span>Indent</span>
-            <div class="seg small equal" role="group" aria-label="Indent">
+            <div class="ui-seg small equal" role="group" aria-label="Indent">
               <button type="button" class="ui-btn" data-indent="2" aria-pressed="true">2</button>
               <button type="button" class="ui-btn" data-indent="4" aria-pressed="false">4</button>
               <button type="button" class="ui-btn" data-indent="tab" aria-pressed="false">
@@ -68,7 +61,7 @@
               </button>
             </div>
           </div>
-          <div class="menu-row">
+          <div class="ui-menu-row">
             <span>Sort keys</span>
             <button
               type="button"
@@ -79,8 +72,8 @@
               aria-label="Sort keys"
             ></button>
           </div>
-          <div class="menu-label">Display</div>
-          <div class="menu-row">
+          <div class="ui-menu-label">Display</div>
+          <div class="ui-menu-row">
             <span>Colours</span>
             <button
               type="button"
@@ -91,10 +84,10 @@
               aria-label="Syntax colours"
             ></button>
           </div>
-          <div class="menu-label">Paths</div>
-          <div class="menu-row">
+          <div class="ui-menu-label">Paths</div>
+          <div class="ui-menu-row">
             <span>Style</span>
-            <div class="seg small equal" role="group" aria-label="Path style">
+            <div class="ui-seg small equal" role="group" aria-label="Path style">
               <button type="button" class="ui-btn" data-path-style="js" aria-pressed="true">
                 a.b[0]
               </button>
@@ -103,9 +96,13 @@
               </button>
             </div>
           </div>
-          <div class="menu-label">Nested JSON</div>
-          <button type="button" class="menu-item" data-action="unwrap">Unwrap JSON string</button>
-          <button type="button" class="menu-item" data-action="wrap">Wrap value in a string</button>
+          <div class="ui-menu-label">Nested JSON</div>
+          <button type="button" class="ui-menu-item" data-action="unwrap">
+            Unwrap JSON string
+          </button>
+          <button type="button" class="ui-menu-item" data-action="wrap">
+            Wrap value in a string
+          </button>
         </div>
       </div>
 
@@ -118,9 +115,7 @@
             title="Find (Ctrl+F)"
             aria-label="Find (Ctrl+F)"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20" />
-            </svg>
+            <svg data-ui-icon="search" aria-hidden="true"></svg>
           </button>
         </div>
 
@@ -129,19 +124,12 @@
           type="button"
           class="ui-btn icon-btn more-btn"
           id="more-btn"
-          popovertarget="more"
-          aria-haspopup="true"
-          aria-expanded="false"
           title="Import, export, copy, clear"
           aria-label="More"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="5" cy="12" r="1.2" />
-            <circle cx="12" cy="12" r="1.2" />
-            <circle cx="19" cy="12" r="1.2" />
-          </svg>
+          <svg data-ui-icon="more" aria-hidden="true"></svg>
         </button>
-        <div class="menu more-menu" id="more" popover aria-label="File"></div>
+        <div class="ui-menu more-menu" id="more" aria-label="File"></div>
 
         <div class="group file" role="group" aria-label="File">
           <button
@@ -151,9 +139,7 @@
             title="Import JSON — or a CSV file, which opens as JSON"
             aria-label="Import JSON"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-            </svg>
+            <svg data-ui-icon="import" aria-hidden="true"></svg>
           </button>
           <button
             type="button"
@@ -162,9 +148,7 @@
             title="Export JSON"
             aria-label="Export JSON"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />
-            </svg>
+            <svg data-ui-icon="export" aria-hidden="true"></svg>
           </button>
           <button
             type="button"
@@ -173,15 +157,10 @@
             title="Copy JSON to clipboard"
             aria-label="Copy JSON to clipboard"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="9" y="9" width="11" height="11" rx="2" />
-              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
-            </svg>
+            <svg data-ui-icon="copy" aria-hidden="true"></svg>
           </button>
           <button type="button" class="ui-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
-            </svg>
+            <svg data-ui-icon="trash" aria-hidden="true"></svg>
           </button>
         </div>
 
@@ -190,126 +169,141 @@
           type="button"
           class="ui-btn icon-btn"
           id="help-btn"
-          popovertarget="help"
-          aria-expanded="false"
           title="Help — what everything does"
           aria-label="Help"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8.6 8.8a3.5 3.5 0 1 1 4.7 3.3c-.9.4-1.3 1-1.3 1.9v.6" />
-            <circle cx="12" cy="18.4" r="1" />
-          </svg>
+          <svg data-ui-icon="help" aria-hidden="true"></svg>
         </button>
-        <!-- Docked right like the SVG app's: it stays open beside the work until its button closes it. -->
-        <aside class="help" id="help" popover="manual" aria-label="Help">
-          <div class="panel-head">
-            <p class="panel-title">Help</p>
-          </div>
-          <h3>About</h3>
-          <ul>
-            <li>
-              JSON is part of a set of <a href="../">Tools</a> that run entirely in your browser and
-              keep working offline.
-            </li>
-            <li>
-              Nothing you open or paste leaves this page: the draft is kept only for this tab, so a
-              reload keeps it and closing the tab ends it.
-            </li>
-            <li>
-              A new tab opens on a small sample to try things on; <b>Clear</b> empties it, and it
-              does not come back in that tab.
-            </li>
-          </ul>
-
-          <h3>Views</h3>
-          <ul>
-            <li><b>Text</b> — edit the JSON, with colours, line numbers and live checking.</li>
-            <li>
-              <b>Tree</b> — fold objects and arrays. The gutter shows the line each value starts on
-              in the text (the column, when the text is one line). Double-click a row, or press
-              <kbd>Enter</kbd>, to show it in the text. Expand all and Collapse all are at its top
-              right.
-            </li>
-            <li>
-              <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Export
-              and Copy take whatever view is shown.
-            </li>
-            <li>
-              <b>Exact values</b>, above Types and Schema, lists the places that hold only a few
-              different strings. Turn one on and it is typed as those strings (<code
-                >"json" | "svg"</code
-              >, an <code>enum</code> in the schema) rather than any string.
-            </li>
-            <li>
-              <b>CSV</b> makes every array a table — a row per item, a column per key — one after
-              another under their names. The gutter gives each row's line in the JSON. With several
-              tables, Copy and Export take the one the cursor is in. An array inside a table is a
-              cell of it, written as JSON.
-            </li>
-            <li>
-              <b>CSV in</b> — import a <code>.csv</code> or <code>.tsv</code> file and it opens as
-              JSON, one object per row; paste CSV and <b>Convert CSV to JSON</b> offers the same.
-              Numbers, true, false and null become values; everything else stays text.
-            </li>
-          </ul>
-
-          <h3>Editing</h3>
-          <ul>
-            <li>
-              <b>Find</b> (the magnifying glass, or <kbd>Ctrl</kbd> + <kbd>F</kbd>) searches the
-              view shown: the text, the converted views, or the keys and values of the tree. Its
-              button closes it again.
-            </li>
-            <li>
-              <b>Format</b> and <b>Minify</b>, over the text's top right, keep numbers and strings
-              exactly as written, so large IDs are never rounded. The one that matches how the text
-              is laid out stays lit until an edit changes that.
-            </li>
-            <li>
-              <b>Fix</b> appears when the text is almost JSON — comments, trailing commas, single
-              quotes, unquoted keys, NaN, Python's True / None — and corrects just those places.
-            </li>
-            <li>
-              <b>Settings</b> (the cog) — indent and key sorting for Format, syntax colours in every
-              view, the style of the path in the status bar, and turning a string that holds JSON
-              into real JSON, or back.
-            </li>
-            <li>
-              A long document is edited a page of 5,000 lines at a time; everything else works on
-              the whole of it.
-            </li>
-          </ul>
-
-          <h3>Keys</h3>
-          <table class="keys">
-            <tr>
-              <td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td>
-              <td>Format</td>
-            </tr>
-            <tr>
-              <td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
-              <td>Undo / redo, Format and Minify included</td>
-            </tr>
-            <tr>
-              <td><kbd>Ctrl</kbd>+<kbd>F</kbd></td>
-              <td>Find</td>
-            </tr>
-            <tr>
-              <td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>, <kbd>F3</kbd></td>
-              <td>Next / previous match</td>
-            </tr>
-            <tr>
-              <td><kbd>Esc</kbd></td>
-              <td>Close find</td>
-            </tr>
-            <tr>
-              <td>Arrows</td>
-              <td>In the tree: move, open and close rows</td>
-            </tr>
-          </table>
-        </aside>
       </div>
     </header>
+
+    <!-- Docked right under the header, as in every Tools app (@tools/ui bindDock): it stays open
+         beside the work until its button closes it. -->
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <p class="ui-dock-title">Help</p>
+        <!-- The phone's theme switch: its header has no room for one. -->
+        <button type="button" class="ui-theme-toggle" id="theme-toggle-help"></button>
+      </div>
+      <div class="ui-dock-body ui-help">
+        <h3>About</h3>
+        <ul>
+          <li>
+            JSON is part of a set of <a href="../">Tools</a> that run entirely in your browser and
+            keep working offline.
+          </li>
+          <li>
+            Nothing you open or paste leaves this page: the draft is kept only for this tab, so a
+            reload keeps it and closing the tab ends it. The Exact values you turned on are kept
+            with it.
+          </li>
+          <li>
+            A new tab opens on a small sample to try things on; <b>Clear</b> empties it, and it does
+            not come back in that tab.
+          </li>
+          <li>
+            <b>Light / dark</b> — the sun or moon beside Help switches the theme of every tool; on a
+            phone it is at the top of this panel.
+          </li>
+        </ul>
+
+        <h3>Views</h3>
+        <ul>
+          <li><b>Text</b> — edit the JSON, with colours, line numbers and live checking.</li>
+          <li>
+            <b>Tree</b> — fold objects and arrays. The gutter shows the line each value starts on in
+            the text (the column, when the text is one line). Double-click (double-tap) a row<span
+              class="keys-only"
+              >, or press <kbd>Enter</kbd>,</span
+            >
+            to show it in the text. Expand all and Collapse all are at its top right.
+          </li>
+          <li>
+            <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Export
+            and Copy take whatever view is shown.
+          </li>
+          <li>
+            <b>Exact values</b>, above Types and Schema, lists the places that hold only a few
+            different strings. Turn one on and it is typed as those strings (<code
+              >"json" | "svg"</code
+            >, an <code>enum</code> in the schema) rather than any string.
+          </li>
+          <li>
+            <b>CSV</b> makes every array a table — a row per item, a column per key — one after
+            another under their names. The gutter gives each row's line in the JSON. With several
+            tables, Copy and Export take the one the cursor is in. An array inside a table is a cell
+            of it, written as JSON.
+          </li>
+          <li>
+            <b>CSV in</b> — import a <code>.csv</code> or <code>.tsv</code> file and it opens as
+            JSON, one object per row; paste CSV and <b>Convert CSV to JSON</b> offers the same.
+            Numbers, true, false and null become values; everything else stays text.
+          </li>
+        </ul>
+
+        <h3>Editing</h3>
+        <ul>
+          <li>
+            <b>Find</b> (the magnifying glass<span class="keys-only"
+              >, or <kbd>Ctrl</kbd> + <kbd>F</kbd></span
+            >) searches the view shown: the text, the converted views, or the keys and values of the
+            tree. Its button closes it again.
+          </li>
+          <li>
+            <b>Format</b> and <b>Minify</b>, over the text's top right, keep numbers and strings
+            exactly as written, so large IDs are never rounded. The one that matches how the text is
+            laid out stays lit until an edit changes that.
+          </li>
+          <li>
+            <b>Fix</b> appears when the text is almost JSON — comments, trailing commas, single
+            quotes, unquoted keys, NaN, Python's True / None — and corrects just those places.
+          </li>
+          <li>
+            <b>Settings</b> (the cog) — indent and key sorting for Format, syntax colours in every
+            view, the style of the path in the status bar, and turning a string that holds JSON into
+            real JSON, or back.
+          </li>
+          <li>
+            A long document is edited a page of 5,000 lines at a time; everything else works on the
+            whole of it.
+          </li>
+          <li class="phone-only">
+            <b>Status</b> — on a phone the status bar folds away behind the round button at the
+            bottom right, green while the text is valid and red when it is not. Tap it to open the
+            status, the error and Fix over the editor, and again to fold them away.
+          </li>
+        </ul>
+
+        <!-- Nothing to press on a touch-only screen (see styles.css). -->
+        <h3 class="keys-only">Keys</h3>
+        <table class="ui-keys keys-only">
+          <tr>
+            <td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td>
+            <td>Format</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
+            <td>Undo / redo, Format and Minify included</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd>+<kbd>F</kbd></td>
+            <td>Find</td>
+          </tr>
+          <tr>
+            <td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>, <kbd>F3</kbd></td>
+            <td>Next / previous match</td>
+          </tr>
+          <tr>
+            <td><kbd>Esc</kbd></td>
+            <td>Close find</td>
+          </tr>
+          <tr>
+            <td>Arrows</td>
+            <td>In the tree: move, open and close rows</td>
+          </tr>
+        </table>
+      </div>
+    </aside>
 
     <main class="json-main">
       <div class="bar findbar hidden" id="findbar" role="search">
@@ -332,24 +326,26 @@
         >
           Aa
         </button>
-        <button
-          type="button"
-          class="ui-btn icon-btn"
-          id="find-prev"
-          title="Previous match (Shift+Enter)"
-          aria-label="Previous match (Shift+Enter)"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
-        </button>
-        <button
-          type="button"
-          class="ui-btn icon-btn"
-          id="find-next"
-          title="Next match (Enter)"
-          aria-label="Next match (Enter)"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-        </button>
+        <div class="ui-seg find-steps" role="group" aria-label="Matches">
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="find-prev"
+            title="Previous match (Shift+Enter)"
+            aria-label="Previous match (Shift+Enter)"
+          >
+            <svg data-ui-icon="chevron-up" aria-hidden="true"></svg>
+          </button>
+          <button
+            type="button"
+            class="ui-btn icon-btn"
+            id="find-next"
+            title="Next match (Enter)"
+            aria-label="Next match (Enter)"
+          >
+            <svg data-ui-icon="chevron-down" aria-hidden="true"></svg>
+          </button>
+        </div>
         <button
           type="button"
           class="ui-btn icon-btn"
@@ -357,13 +353,13 @@
           title="Close (Esc)"
           aria-label="Close (Esc)"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          <svg data-ui-icon="close" aria-hidden="true"></svg>
         </button>
       </div>
 
       <!-- The text, with its own buttons floating at its top right: they only apply to it. -->
       <div class="text-area">
-        <div class="view-tools seg" role="group" aria-label="Layout">
+        <div class="view-tools ui-seg" role="group" aria-label="Layout">
           <button
             type="button"
             class="ui-btn"
@@ -395,7 +391,7 @@
       </div>
       <!-- The tree, with its own buttons floating at its top right: they only apply to it. -->
       <div class="tree-area">
-        <div class="view-tools seg" role="group" aria-label="Tree">
+        <div class="view-tools ui-seg" role="group" aria-label="Tree">
           <button
             type="button"
             class="ui-btn icon-btn"
@@ -403,9 +399,7 @@
             title="Expand all"
             aria-label="Expand all"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M17 16l-5 5-5-5M7 8l5-5 5 5" />
-            </svg>
+            <svg data-ui-icon="expand-all" aria-hidden="true"></svg>
           </button>
           <button
             type="button"
@@ -414,9 +408,7 @@
             title="Collapse all"
             aria-label="Collapse all"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 20l5-5 5 5M17 4l-5 5-5-5" />
-            </svg>
+            <svg data-ui-icon="collapse-all" aria-hidden="true"></svg>
           </button>
         </div>
         <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
@@ -457,7 +449,7 @@
           title="Previous page"
           aria-label="Previous page"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+          <svg data-ui-icon="chevron-left" aria-hidden="true"></svg>
         </button>
         <label class="ui-label">
           Page
@@ -477,7 +469,7 @@
           title="Next page"
           aria-label="Next page"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+          <svg data-ui-icon="chevron-right" aria-hidden="true"></svg>
         </button>
         <span class="ui-label" id="page-lines"></span>
       </div>
@@ -497,9 +489,11 @@
 
         <div class="bar statusbar" id="statusbar">
           <p class="ui-status" id="status" role="status"></p>
+          <!-- Line and column in a slot of their own width, then the path, which therefore always
+               starts in the same place (see styles.css). -->
           <span class="where">
-            <button type="button" class="path ui-mono hidden" id="path" title="Copy path"></button>
-            <span class="ui-label ui-mono" id="cursor"></span>
+            <span class="ui-label cursor" id="cursor"></span>
+            <button type="button" class="path hidden" id="path" title="Copy path"></button>
           </span>
         </div>
       </footer>
@@ -514,7 +508,7 @@
         title="Show status"
         aria-label="Show status"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+        <svg data-ui-icon="chevron-up" aria-hidden="true"></svg>
       </button>
     </main>
     <script type="module" src="/src/main.ts"></script>

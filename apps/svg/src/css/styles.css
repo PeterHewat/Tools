@@ -1,5 +1,7 @@
 /* "‹ Tools" and the app's name, which start the top bar as they start every Tools app. */
 @import "@tools/ui/header.css";
+/* The docked panels (Document, Help) and the zoom menu, as in every Tools app. */
+@import "@tools/ui/panels.css";
 
 *,
 *::before,
@@ -167,44 +169,13 @@ body {
   border-color: var(--accent);
 }
 
-.menu-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 100;
-  min-width: 180px;
-  margin-top: 4px;
-  padding: 4px;
-  background: var(--ui-frost-bg);
-  /* Prefixed first: the minifier keeps only the last of the pair. */
-  -webkit-backdrop-filter: var(--ui-frost-filter);
-  backdrop-filter: var(--ui-frost-filter);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px var(--shadow);
-}
-
-.menu-dropdown--panel {
-  width: 300px;
-  padding: 10px 12px;
-}
-
 .primitive-empty {
   padding: 8px 4px;
   font-size: 12px;
 }
 
-.menu-dropdown--panel .field-row input {
+.doc-panel .field-row input {
   max-width: 120px;
-}
-
-.menu-panel-title {
-  margin: 0 0 10px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
 }
 
 .tool-group {
@@ -258,13 +229,12 @@ body {
 }
 
 /* In the top bar, sized by the shared header (header.css), so the bar matches every other app's.
-   The phone's floating bar below makes them bigger again, for fingers. */
+   A phone makes them bigger again, for fingers. Joined groups (.ui-seg) round only their ends. */
 .top-bar .tool-btn,
 .top-bar .menu-trigger--icon {
   min-width: var(--ui-control);
   min-height: var(--ui-control);
   padding: 0 5px;
-  border-radius: 6px;
 }
 
 .top-bar .tool-btn .glyph,
@@ -275,6 +245,11 @@ body {
 
 .top-bar .tool-group {
   gap: var(--ui-group-gap);
+}
+
+/* The drawing tools and the snap switches: two joined groups, as far apart as any two groups. */
+#tool-group-tools {
+  gap: 8px;
 }
 
 .tool-btn:hover {
@@ -731,48 +706,25 @@ body {
   pointer-events: none;
 }
 
-.menu-panel-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.menu-panel-toolbar .menu-panel-title {
-  margin: 0;
-}
-
 .menu-panel-toolbar-actions {
   display: flex;
   gap: 4px;
   margin-left: auto;
 }
 
-/* SVG panel docked to the left, full height */
-.menu-dropdown--docked {
-  position: fixed;
-  left: 0;
-  top: 48px;
-  bottom: 0;
+/* The Document panel, docked left (panels.css): wider than Help, in the app's own type, and
+   scrolled as a whole rather than under a fixed title row. */
+.doc-panel {
   width: 480px;
   max-width: 92vw;
-  max-height: none;
-  margin: 0;
-  z-index: 90;
-  border-radius: 0;
-  border-width: 0 1px 0 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   /* Room for the scrollbar is kept whether or not it shows, so opening a row never reflows. */
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--scroll) transparent;
-  flex-direction: column;
-}
-
-.menu-dropdown--docked:not(.hidden) {
-  display: flex;
+  font-size: inherit;
+  line-height: normal;
 }
 
 /* Collapsible sections of the Document panel */
@@ -1341,25 +1293,11 @@ body {
   cursor: default;
 }
 
-/* Help panel: docked right */
-.help-panel {
-  left: auto;
-  right: 0;
-  width: 420px;
-  border-width: 0 0 0 1px;
-}
-
-/* The light/dark switch lives in the top bar, except on a phone, where it is in this panel. */
-.theme-btn--panel {
-  display: none;
-}
-
 /* Help answers for one pointer at a time. It is a switch rather than a media query because a
    laptop with a touch screen is both, and because the other half is often what you want to read. */
 .help-mode {
   display: flex;
   gap: 4px;
-  margin-left: auto;
 }
 
 .help-mode-btn {
@@ -1388,62 +1326,7 @@ body {
   display: none;
 }
 
-.help-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  padding-right: 6px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scroll) transparent;
-}
-
-.help-body h3 {
-  margin: 16px 0 6px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-.help-body h3:first-child {
-  margin-top: 0;
-}
-
-.help-body ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.help-body li {
-  margin-bottom: 5px;
-}
-
-.help-body kbd,
-.help-body code {
-  padding: 0 4px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--field);
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 11.5px;
-}
-
-.help-keys {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.help-keys td {
-  padding: 3px 6px 3px 0;
-  vertical-align: top;
-  border-bottom: 1px solid var(--border);
-}
-
 .help-keys td:first-child {
-  white-space: nowrap;
   font-family: ui-monospace, Consolas, monospace;
   font-size: 11.5px;
 }
@@ -1497,64 +1380,24 @@ body {
 }
 
 .zoom-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  z-index: 120;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 84px;
-  margin: 0;
-  padding: 4px;
+  min-width: 96px;
   list-style: none;
-  transform: translateX(-50%);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--panel) 92%, transparent);
-  /* Prefixed first: the minifier keeps only the last of the pair. */
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 8px 24px var(--shadow);
 }
 
-.zoom-menu button {
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 12.5px;
-  text-align: right;
+/* The levels line up on the right, as numbers do; the two fits lead, set off below them. */
+.zoom-menu .ui-menu-item {
+  justify-content: flex-end;
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
 }
 
-.zoom-menu button:hover {
-  background: var(--hover);
-}
-
-.zoom-menu button.active {
-  background: var(--accent-dim);
-}
-
-/* Fit artboard and fit selection lead the list, set off from the levels below them. */
-.zoom-menu button[data-fit] {
-  text-align: left;
-  white-space: nowrap;
+.zoom-menu .ui-menu-item[data-fit] {
+  justify-content: flex-start;
 }
 
 .zoom-menu li:nth-child(2) {
   padding-bottom: 3px;
   margin-bottom: 1px;
   border-bottom: 1px solid var(--border);
-}
-
-.zoom-menu button:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 
 .grid-step-input {
@@ -1872,10 +1715,10 @@ body {
   display: block;
 }
 
-/* ---------- Narrow screens: tools at the bottom, view controls behind one button ----------
+/* ---------- Narrow screens: the tools at the bottom ----------
    A phone toolbar wrapped to four rows and ate a fifth of the screen. The tools move to a bar
-   under the canvas, where thumbs are; the grid and view controls collapse into a menu; and the
-   cursor readout, which is a mouse idea, goes away. */
+   over the bottom of the canvas, where thumbs are, and the cursor readout, which is a mouse
+   idea, goes away. */
 
 .tool-slot {
   display: contents;
@@ -1888,36 +1731,28 @@ body {
 /* With a mouse the bar needs about 700px; 720 leaves room for fonts that set wider. Touch targets
    are 44px rather than 34px, so a touch screen needs about 760px and switches before it wraps. */
 @media (max-width: 720px), (pointer: coarse) and (max-width: 800px) {
-  /* Both bars float over the canvas instead of taking a strip of it: on a phone the artboard
-     is the scarce thing. The top one starts below the ruler, which it must not cover, and the
-     bar itself is transparent and click-through - only the buttons take the pointer, so the
-     canvas between them still pans. */
+  /* The header stays where it is on every screen, a solid row above the rulers, as in every
+     Tools app. Only the tools float, in a bar over the bottom of the canvas where thumbs are. */
+  /* 48px like every screen's: the 40px finger-sized buttons fit inside it, centred, rather than
+     growing it by the bar's padding. */
   .top-bar {
-    position: fixed;
-    top: calc(var(--ruler-h) + 6px);
-    right: 0;
-    left: 0;
-    z-index: 95;
     flex-wrap: nowrap;
     gap: 6px;
-    min-height: 0;
-    /* Clear of the left ruler as well as the top one. */
-    padding: 0 8px 0 calc(var(--ruler-h) + 6px);
-    border-bottom: 0;
-    background: transparent;
-    pointer-events: none;
+    height: 48px;
+    padding-block: 0;
+    padding-inline: 8px;
   }
 
-  .top-bar > * {
-    pointer-events: auto;
+  /* Undo | Redo in the middle of the free space, well clear of Document on one side and zoom on
+     the other, so a thumb aimed at either never undoes by accident. */
+  #group-history {
+    margin-inline: auto;
   }
 
-  /* Each floating cluster carries its own pill. It goes on the buttons and groups rather than
-     on the .menu wrappers, because backdrop-filter would make one a containing block and the
-     docked panel inside it is positioned against the viewport. */
-  .top-bar > .tool-group,
-  .top-bar .menu-trigger--icon,
-  .top-bar > .help-btn,
+  #group-view {
+    margin-left: 0;
+  }
+
   .tool-bar {
     padding: 3px;
     border: 1px solid var(--border);
@@ -1930,38 +1765,26 @@ body {
     box-shadow: 0 6px 20px var(--shadow);
   }
 
-  /* A single-button pill matches a grouped one: the group's padding makes it taller, so the
-     lone buttons take that size rather than sitting 6px shorter beside it. */
-  .top-bar .menu-trigger--icon,
-  .top-bar > .help-btn {
-    min-width: 46px;
-    min-height: 46px;
-    margin-left: 0;
-  }
-
   .cursor-readout,
   .top-bar > .theme-btn {
     display: none;
   }
 
-  .theme-btn--panel {
-    display: inline-flex;
-    flex: 0 0 auto;
+  /* In Help's title row instead, as in every app on a phone (panels.css shows it there below
+     720px; a touch screen gets this layout up to 800px). */
+  .ui-dock-head .ui-theme-toggle {
+    display: inline-grid;
+    flex: none;
   }
 
-  /* "‹ Tools  SVG" reduces to "‹": a floating button like Help, its words kept for
-     screen readers. */
+  /* "‹ Tools  SVG" reduces to "‹", its words kept for screen readers (header.css does this
+     below 720px; a touch screen gets this layout up to 800px). */
   .top-bar > .ui-home {
     flex: 0 0 auto;
     justify-content: center;
-    min-width: 46px;
-    min-height: 46px;
+    min-width: 40px;
+    min-height: 40px;
     padding: 0;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--panel) 86%, transparent);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
-    box-shadow: 0 6px 20px var(--shadow);
   }
 
   .top-bar > .ui-home::before {
@@ -2009,15 +1832,8 @@ body {
     gap: 4px;
   }
 
-  /* The pill background comes later in the file than the pressed rule, so it has to restate it
-     or a toggled button and an open panel would read as unpressed on a phone only. */
-  .top-bar .menu-trigger[aria-expanded="true"],
-  .top-bar .tool-btn[aria-expanded="true"],
-  .top-bar .tool-btn.active[aria-pressed="true"],
-  .tool-bar .tool-btn.active[aria-pressed="true"],
-  .tool-bar .tool-btn.active {
-    background: var(--accent-dim);
-    border-color: var(--accent);
+  #tool-group-tools {
+    gap: 6px;
   }
 
   .tool-bar {
@@ -2032,18 +1848,17 @@ body {
     transform: translateX(-50%);
   }
 
-  .menu-dropdown--docked {
+  .ui-dock {
     width: 100%;
     max-width: none;
     bottom: calc(66px + env(safe-area-inset-bottom));
-    border-right-width: 0;
+    border-right: 0;
+    border-left: 0;
   }
 }
 
 /* A phone with a panel open: the panel covers the canvas, so the rulers and the cursor readout
-   go, and the bar takes the panel's background from the top edge down, reading as its header.
-   The background is on a pseudo-element so the bar's own box stays as it is: the docked panels
-   inside it are positioned against the viewport. */
+   go with it. */
 @media (max-width: 720px), (pointer: coarse) and (max-width: 800px) {
   .panel-open .ruler,
   .panel-open .ruler-corner,
@@ -2051,25 +1866,8 @@ body {
     display: none;
   }
 
-  .panel-open .top-bar {
-    top: 0;
-    padding-top: calc(var(--ruler-h) + 6px);
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-    pointer-events: auto;
-  }
-
-  .panel-open .top-bar::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: var(--panel);
-  }
-
-  /* Opaque, both of them: a see-through panel over the whole canvas shows a different drawing
-     behind the bar than behind the panel, and the two would never look like one surface. */
-  .panel-open .menu-dropdown--docked {
+  /* Opaque: text over a blurred drawing does not read. */
+  .panel-open .ui-dock {
     bottom: 0;
     background: var(--panel);
   }

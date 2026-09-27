@@ -1,8 +1,7 @@
 import { getState } from "./state.js";
 import { renderRulers, setRulerOffset } from "./rulers.js";
 import { isCoarsePointer } from "./pointer.js";
-import { writeSessionView, savedView } from "./session.js";
-import { byId, bySelector } from "@tools/ui";
+import { bindDock, byId } from "@tools/ui";
 
 /** Where the layout turns into the phone one. Keep in step with the media query in styles.css. */
 const NARROW = "(max-width: 720px), (pointer: coarse) and (max-width: 800px)";
@@ -21,58 +20,48 @@ function placeTools(): void {
 placeTools();
 narrowQuery.addEventListener("change", () => {
   placeTools();
-  if (!docPanel.classList.contains("hidden")) setHelpVisible(false);
+  if (docDock.isOpen()) helpDock.setOpen(false);
   layoutPanels();
 });
 
-/* ---------- Document panel: docked left, full height, toggled by its button ---------- */
-const docPanel = byId("menu-document");
-const docBtn = byId("menu-document-btn");
-const helpPanel = byId("help-panel");
-const helpBtn = byId("btn-help");
-
-function layoutPanels(): void {
-  // On a phone an open panel covers the canvas: the rulers go, and the bar joins the panel.
-  const anyOpen = !docPanel.classList.contains("hidden") || !helpPanel.classList.contains("hidden");
-  document.body.classList.toggle("panel-open", narrowQuery.matches && anyOpen);
-  const top = bySelector<HTMLElement>(".top-bar").getBoundingClientRect().bottom;
-  docPanel.style.top = `${top}px`;
-  helpPanel.style.top = `${top}px`;
-  setRulerOffset(docPanel.classList.contains("hidden") ? 0 : docPanel.offsetWidth);
-  renderRulers(getState());
-}
+/* ---------- The Document panel docked left, Help docked right (@tools/ui bindDock) ---------- */
 
 /**
  * On a phone either panel covers the canvas and the two would sit on top of each other, so opening
  * one closes the other. On a wider screen they dock on opposite sides and can both stay open.
  */
-function setDocPanelVisible(visible: boolean): void {
-  if (visible && narrowQuery.matches) setHelpVisible(false);
-  docPanel.classList.toggle("hidden", !visible);
-  docBtn.setAttribute("aria-expanded", String(visible));
-  writeSessionView({ docPanel: visible });
-  layoutPanels();
+function closeOtherOnPhone(other: () => ReturnType<typeof bindDock>) {
+  return (open: boolean) => {
+    if (open && narrowQuery.matches) other().setOpen(false);
+    layoutPanels();
+  };
 }
 
-function setHelpVisible(visible: boolean): void {
-  if (visible && narrowQuery.matches) setDocPanelVisible(false);
-  helpPanel.classList.toggle("hidden", !visible);
-  helpBtn.setAttribute("aria-expanded", String(visible));
-  writeSessionView({ help: visible });
-  layoutPanels();
-}
-
-docBtn.addEventListener("click", () => setDocPanelVisible(docPanel.classList.contains("hidden")));
-window.addEventListener("resize", layoutPanels);
-
-helpBtn.addEventListener("click", () => {
-  setHelpVisible(helpPanel.classList.contains("hidden"));
+const docDock = bindDock(byId("menu-document"), byId("menu-document-btn"), {
+  key: "svg.panel.document",
+  onToggle: closeOtherOnPhone(() => helpDock),
 });
+const helpDock = bindDock(byId("help-panel"), byId("btn-help"), {
+  key: "svg.panel.help",
+  onToggle: closeOtherOnPhone(() => docDock),
+});
+
+function layoutPanels(): void {
+  // On a phone an open panel covers the canvas, and the rulers go with it.
+  const anyOpen = docDock.isOpen() || helpDock.isOpen();
+  document.body.classList.toggle("panel-open", narrowQuery.matches && anyOpen);
+  docDock.place();
+  helpDock.place();
+  setRulerOffset(docDock.isOpen() ? docDock.panel.offsetWidth : 0);
+  renderRulers(getState());
+}
+
+window.addEventListener("resize", layoutPanels);
 
 /** Reopens what was open when the page was last shown. Needs the rulers and render set up. */
 export function restoreLayout(): void {
-  if (savedView.docPanel) setDocPanelVisible(true);
-  if (savedView.help) setHelpVisible(true);
+  docDock.restore();
+  helpDock.restore();
 }
 
 /**
@@ -115,7 +104,7 @@ try {
 }
 
 function applySections(): void {
-  docPanel.querySelectorAll<HTMLElement>(".doc-section").forEach((sec) => {
+  docDock.panel.querySelectorAll<HTMLElement>(".doc-section").forEach((sec) => {
     sec.classList.toggle("collapsed", !sectionOpen[sec.dataset.section ?? ""]);
   });
 }
@@ -130,7 +119,7 @@ export function setSectionOpen(key: string, open: boolean): void {
   }
 }
 
-docPanel.querySelectorAll<HTMLElement>(".doc-toggle").forEach((btn) => {
+docDock.panel.querySelectorAll<HTMLElement>(".doc-toggle").forEach((btn) => {
   const key = btn.closest<HTMLElement>(".doc-section")?.dataset.section;
   if (key) btn.addEventListener("click", () => setSectionOpen(key, !sectionOpen[key]));
 });

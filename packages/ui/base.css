@@ -13,6 +13,8 @@
 
 /* The header every app starts with. On its own too, for an app with its own tokens and controls. */
 @import "./header.css";
+/* Docked panels and menus: Help, Settings, "⋯". */
+@import "./panels.css";
 
 :root {
   --bg: #1a1b1e;
@@ -227,31 +229,6 @@ pre.ui-code {
   .ui-switch::after {
     transition: none;
   }
-}
-
-/* The light/dark switch (see theme.ts): an icon button that shows the theme it switches to,
-   drawn like every other icon button beside it. */
-.ui-theme-toggle {
-  display: inline-grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel-2);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.ui-theme-toggle:hover,
-.ui-theme-toggle:focus-visible {
-  border-color: var(--accent);
-}
-
-.ui-theme-icon {
-  width: 22px;
-  height: 22px;
 }
 
 /* ---------- Layout pieces ---------- */
