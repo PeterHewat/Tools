@@ -1,24 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { parseJson, positionAt } from "@workbench/codec";
-import { byteSize, excerptAt, formatBytes, shapeOf } from "./inspect.js";
-
-describe("shapeOf", () => {
-  test("counts every value and the nesting depth", () => {
-    expect(shapeOf(1)).toEqual({ values: 1, depth: 0, unsafeIntegers: 0 });
-    expect(shapeOf([1])).toEqual({ values: 2, depth: 1, unsafeIntegers: 0 });
-    expect(shapeOf({ a: [1, 2], b: {} })).toEqual({ values: 5, depth: 2, unsafeIntegers: 0 });
-  });
-
-  test("flags integers JSON.parse had to round", () => {
-    const r = parseJson('{"id": 12345678901234567890, "ok": 9007199254740991, "f": 1e400}');
-    expect(r.ok && shapeOf(r.value).unsafeIntegers).toBe(1);
-  });
-
-  test("survives nesting deeper than the call stack", () => {
-    const deep = "[".repeat(20_000) + "]".repeat(20_000);
-    expect(shapeOf(JSON.parse(deep)).depth).toBe(20_000);
-  });
-});
+import { positionAt } from "@workbench/codec";
+import { byteSize, excerptAt, formatBytes } from "./inspect.js";
 
 describe("excerptAt", () => {
   test("puts the caret under the error's column", () => {

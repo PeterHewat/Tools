@@ -1,4 +1,4 @@
-import { formatJson, parseJson, type JsonResult } from "@workbench/codec";
+import { parseJson, positionAt, type JsonPosition } from "@workbench/codec";
 import {
   bindThemeToggle,
   byId,
@@ -9,7 +9,9 @@ import {
   registerServiceWorker,
 } from "@workbench/ui";
 import "@workbench/ui/base.css";
-import { byteSize, excerptAt, formatBytes, shapeOf } from "./lib/inspect.js";
+import { applyEdits, parse, type Edit, type ParseResult, type RepairKind } from "./lib/ast.js";
+import { byteSize, excerptAt, formatBytes } from "./lib/inspect.js";
+import { printJson } from "./lib/print.js";
 import "./styles.css";
 
 const editor = byId<HTMLTextAreaElement>("editor");
@@ -25,6 +27,8 @@ const cursor = byId("cursor");
 const warning = byId("warning");
 const problem = byId("problem");
 const excerpt = byId("excerpt");
+const fixBtn = byId<HTMLButtonElement>("fix");
+const fixNote = byId("fix-note");
 
 /** The draft and options, kept across reloads. A convenience: the page works without it. */
 const STORAGE_KEY = "workbench.json.draft";
@@ -38,7 +42,11 @@ interface Saved {
 }
 
 let fileName = "data.json";
-let result: JsonResult | null = null;
+type Doc = Extract<ParseResult, { ok: true }>;
+/** The parsed document while the text is strict JSON; null otherwise. */
+let doc: Doc | null = null;
+/** Why the text is not JSON, and the edits that would make it JSON when there are some. */
+let fault: { message: string; position: JsonPosition; edits: Edit[] | null } | null = null;
 
 function restore(): void {
   try {
@@ -68,46 +76,87 @@ function indent(): number | "\t" {
   return indentSel.value === "tab" ? "\t" : Number(indentSel.value);
 }
 
+const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+
+const REPAIR_WORDS: Record<RepairKind, string> = {
+  comment: "comment",
+  "trailing comma": "trailing comma",
+  "single quotes": "single-quoted string",
+  "unquoted key": "unquoted key",
+  "string escape": "non-JSON string escape",
+  number: "non-JSON number",
+  "NaN or Infinity": "NaN or Infinity (becomes null)",
+  literal: "Python or JavaScript literal",
+  whitespace: "non-JSON space",
+};
+
+/** "3 comments, 1 trailing comma": what a Fix would change, most common first. */
+function describeEdits(edits: readonly Edit[]): string {
+  const counts = new Map<RepairKind, number>();
+  for (const e of edits) counts.set(e.kind, (counts.get(e.kind) ?? 0) + 1);
+  return [...counts]
+    .sort((a, b) => b[1] - a[1])
+    .map(([kind, n]) => plural(n, REPAIR_WORDS[kind]))
+    .join(", ");
+}
+
 function validate(): void {
   const text = editor.value;
   const empty = !text.trim();
-  result = empty ? null : parseJson(text);
+  const parsed = empty ? null : parse(text);
+  doc = parsed?.ok && !parsed.edits.length ? parsed : null;
+  fault = null;
+  if (parsed && !doc) {
+    // The strict parser words errors best; the lenient one knows whether a Fix exists.
+    const strict = parseJson(text);
+    const edits = parsed.ok ? parsed.edits : null;
+    fault = !strict.ok
+      ? { message: strict.message, position: strict.position, edits }
+      : !parsed.ok
+        ? { message: parsed.message, position: positionAt(text, parsed.offset), edits }
+        : null;
+  }
 
-  for (const b of [formatBtn, minifyBtn, copyBtn, downloadBtn, clearBtn]) b.disabled = empty;
-  formatBtn.disabled = minifyBtn.disabled = !result?.ok;
-  status.classList.toggle("wb-status--error", result?.ok === false);
-  status.classList.toggle("wb-status--ok", result?.ok === true);
-  problem.classList.toggle("hidden", result?.ok !== false);
+  for (const b of [copyBtn, downloadBtn, clearBtn]) b.disabled = empty;
+  formatBtn.disabled = minifyBtn.disabled = !doc;
+  status.classList.toggle("wb-status--error", !!fault);
+  status.classList.toggle("wb-status--ok", !!doc);
+  problem.classList.toggle("hidden", !fault);
   warning.classList.add("hidden");
 
-  if (!result) {
+  if (empty) {
     status.textContent = "Paste JSON, open a file or drop one on the editor.";
-  } else if (result.ok) {
-    const shape = shapeOf(result.value);
-    const plural = (n: number, word: string) =>
-      `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+  } else if (doc) {
     // Sizes of both forms, not of the text as it stands, so Format and Minify leave the line
     // unchanged: it describes the document, and only an edit or a new file changes that.
-    const formatted = byteSize(formatJson(result.value, { indent: indent() }));
-    const minified = byteSize(formatJson(result.value, { indent: 0 }));
+    const formatted = byteSize(printJson(doc.root, { indent: indent() }));
+    const minified = byteSize(printJson(doc.root, { indent: 0 }));
     status.textContent =
-      `Valid JSON · ${plural(shape.values, "value")} · ${plural(shape.depth, "level")} deep` +
+      `Valid JSON · ${plural(doc.values, "value")} · ${plural(doc.depth, "level")} deep` +
       ` · ${formatBytes(formatted)} Formatted · ${formatBytes(minified)} Minified`;
-    if (shape.unsafeIntegers) {
+    const [first, ...more] = doc.duplicates;
+    if (first) {
       warning.textContent =
-        `${plural(shape.unsafeIntegers, "integer")} ${shape.unsafeIntegers === 1 ? "is" : "are"}` +
-        " too large to hold exactly. Format and Minify will round " +
-        (shape.unsafeIntegers === 1 ? "it." : "them.");
+        `Duplicate key "${first.key}" on line ${positionAt(text, first.offset).line}` +
+        (more.length ? `, and ${plural(more.length, "more")}` : "") +
+        ". Formatting keeps every copy; JSON.parse would keep only the last.";
       warning.classList.remove("hidden");
     }
-  } else {
-    const { line, column } = result.position;
-    status.textContent = `Line ${line}, column ${column}: ${result.message}`;
-    const { line: code, caret } = excerptAt(text, result.position);
+  } else if (fault) {
+    const { line, column } = fault.position;
+    status.textContent = `Line ${line}, column ${column}: ${fault.message}`;
+    const { line: code, caret } = excerptAt(text, fault.position);
     const caretEl = document.createElement("span");
     caretEl.className = "caret";
     caretEl.textContent = caret;
-    excerpt.replaceChildren(`${code}\n`, caretEl);
+    excerpt.replaceChildren(
+      `${code}
+`,
+      caretEl
+    );
+    fixBtn.classList.toggle("hidden", !fault.edits);
+    fixNote.classList.toggle("hidden", !fault.edits);
+    fixNote.textContent = fault.edits ? `Almost JSON: ${describeEdits(fault.edits)}.` : "";
   }
   save();
 }
@@ -165,11 +214,14 @@ function stepHistory(back: boolean): boolean {
 let minified = false;
 
 function rewrite(minify: boolean): void {
-  if (!result?.ok) return;
+  if (!doc) return;
   minified = minify;
-  replaceText(
-    formatJson(result.value, { indent: minify ? 0 : indent(), sortKeys: sortKeys.checked })
-  );
+  replaceText(printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: sortKeys.checked }));
+}
+
+/** Makes almost-JSON strict in place, keeping the layout: only the offending bits change. */
+function fix(): void {
+  if (fault?.edits) replaceText(applyEdits(editor.value, fault.edits));
 }
 
 function showCursor(): void {
@@ -180,8 +232,8 @@ function showCursor(): void {
 }
 
 function goToError(): void {
-  if (!result || result.ok) return;
-  const { offset, line } = result.position;
+  if (!fault) return;
+  const { offset, line } = fault.position;
   editor.focus();
   editor.setSelectionRange(offset, Math.min(offset + 1, editor.value.length));
   const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 20;
@@ -221,9 +273,10 @@ formatBtn.addEventListener("click", () => rewrite(false));
 minifyBtn.addEventListener("click", () => rewrite(true));
 // Picking an option means "show it like this", so it applies at once (and Ctrl+Z takes it back).
 // With nothing valid to rewrite, validate() still refreshes the formatted size and saves.
-sortKeys.addEventListener("change", () => (result?.ok ? rewrite(minified) : save()));
-indentSel.addEventListener("change", () => (result?.ok ? rewrite(false) : validate()));
+sortKeys.addEventListener("change", () => (doc ? rewrite(minified) : save()));
+indentSel.addEventListener("change", () => (doc ? rewrite(false) : validate()));
 byId("goto").addEventListener("click", goToError);
+fixBtn.addEventListener("click", fix);
 
 byId("open").addEventListener("click", async () => {
   const [file] = await pickFiles(".json,application/json,text/plain");

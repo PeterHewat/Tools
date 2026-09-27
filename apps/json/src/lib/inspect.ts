@@ -1,41 +1,10 @@
 /**
- * What the JSON tool says about a document, beyond "valid": its size and shape, where an error
- * sits on its line, and which numbers `JSON.parse` could not hold exactly.
+ * What the JSON tool says about a document beyond "valid": where an error sits on its line,
+ * and how big the text is.
  *
  * Plain functions over strings and parsed values, so they are tested without a DOM.
  */
 import type { JsonPosition } from "@workbench/codec";
-
-export interface Shape {
-  /** Every value, containers included: `{"a":[1,2]}` has four. */
-  values: number;
-  /** Levels of nesting: 0 for a bare scalar, 1 for `[1]`. */
-  depth: number;
-  /**
-   * Integers outside ±2^53 − 1. `JSON.parse` rounds them to the nearest double, so formatting
-   * writes back a different number (64-bit IDs are the usual victims).
-   */
-  unsafeIntegers: number;
-}
-
-/** Walks a parsed value with an explicit stack, so deeply nested input cannot overflow it. */
-export function shapeOf(root: unknown): Shape {
-  const shape: Shape = { values: 0, depth: 0, unsafeIntegers: 0 };
-  const stack: [unknown, number][] = [[root, 0]];
-  while (stack.length) {
-    const [value, level] = stack.pop()!;
-    shape.values += 1;
-    if (typeof value === "number") {
-      if (Number.isInteger(value) && !Number.isSafeInteger(value)) shape.unsafeIntegers += 1;
-      continue;
-    }
-    if (!value || typeof value !== "object") continue;
-    shape.depth = Math.max(shape.depth, level + 1);
-    const children = Array.isArray(value) ? value : Object.values(value);
-    for (const child of children) stack.push([child, level + 1]);
-  }
-  return shape;
-}
 
 export interface Excerpt {
   /** The offending line, clipped around the error when it is long. Tabs shown as one space. */
