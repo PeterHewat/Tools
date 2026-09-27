@@ -365,15 +365,13 @@ function showExport(): void {
 
 // ---------- Options: indent, sort keys, path style, nested JSON ----------
 
-/** Shows the options as they are, and which can apply to the document as it is. */
+/**
+ * Shows the settings as they are. Settings can always be changed: they apply to the text at
+ * once when it is laid out that way (formatted, for the indent), and otherwise wait for Format.
+ */
 function showOptions(): void {
-  for (const b of indentButtons) {
-    setPressed(b, b.dataset.indent === indentChoice);
-    // Minified text has no indent to change, so the choice waits, disabled, until Format.
-    b.disabled = !doc || minified;
-  }
+  for (const b of indentButtons) setPressed(b, b.dataset.indent === indentChoice);
   sortKeys.textContent = isPressed(sortKeys) ? "On" : "Off";
-  sortKeys.disabled = !doc;
   for (const b of pathStyleButtons) setPressed(b, b.dataset.pathStyle === pathStyle);
 
   const chain = contextChain();
@@ -764,6 +762,8 @@ async function load(file: File): Promise<void> {
   editor.setSelectionRange(0, 0);
   editor.scrollTop = 0;
   validate();
+  // A file opens as it is, in the text: what was opened is what you see first.
+  setMode("text");
 }
 
 /** What Copy and Download hand over, and under which name. */
@@ -861,6 +861,15 @@ options.addEventListener("beforetoggle", (e) => {
   const r = optionsBtn.getBoundingClientRect();
   options.style.top = `${r.bottom + 4}px`;
   options.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 288))}px`;
+});
+
+const help = byId("help");
+help.addEventListener("beforetoggle", (e) => {
+  if ((e as ToggleEvent).newState !== "open") return;
+  // Opens under its button, against the right edge of the window.
+  const r = byId("help-btn").getBoundingClientRect();
+  help.style.top = `${r.bottom + 4}px`;
+  help.style.right = `${Math.max(8, innerWidth - r.right)}px`;
 });
 
 let findTimer = 0;

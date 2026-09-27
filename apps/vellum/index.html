@@ -893,6 +893,10 @@
 
     <div id="app">
       <header class="top-bar" role="toolbar" aria-label="Main toolbar">
+        <!-- Back to the index, then the app's name: how every Workbench page starts. On a phone
+             the bar has no room for them, and the button moves into the Help panel. -->
+        <a class="wb-home" href="../" title="All tools">Workbench</a>
+        <h1 class="app-name">Vellum</h1>
         <div class="menu" id="menu-document-wrap">
           <button
             type="button"
@@ -1302,6 +1306,7 @@
             </button>
             <button type="button" class="help-mode-btn" data-help-mode="touch">Touch</button>
           </div>
+          <a class="wb-home wb-home--panel" href="../" title="All tools">Workbench</a>
           <button
             type="button"
             class="tool-btn theme-btn theme-btn--panel"

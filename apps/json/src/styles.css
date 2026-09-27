@@ -50,6 +50,11 @@ body {
   gap: 6px;
 }
 
+/* Text buttons a little tighter than elsewhere, so the whole bar fits one row on a laptop. */
+.json-header .wb-btn:not(.icon-btn) {
+  padding-inline: 9px;
+}
+
 .group + .group {
   padding-left: 8px;
   border-left: 1px solid var(--border);
@@ -72,8 +77,17 @@ body {
   border-radius: 0;
 }
 
+/* Neighbours overlap by their shared border; the one whose border shows (pressed, hovered,
+   focused) is lifted above the next, or that button would cover its right edge. */
 .seg .wb-btn + .wb-btn {
   margin-left: -1px;
+}
+
+.seg .wb-btn:hover,
+.seg .wb-btn:focus-visible,
+.seg .wb-btn[aria-pressed="true"] {
+  position: relative;
+  z-index: 1;
 }
 
 .seg .wb-btn:first-child {
@@ -158,6 +172,73 @@ body {
   margin-top: 2px;
   padding-top: 0;
   border-top: 0;
+}
+
+/* Help: what everything does, in a panel under its button. */
+.help {
+  position: fixed;
+  inset: auto;
+  width: min(440px, calc(100vw - 16px));
+  max-height: calc(100dvh - 80px);
+  margin: 0;
+  padding: 4px 18px 14px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+  font-size: 0.9rem;
+}
+
+.help h2 {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}
+
+.help h3 {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.help p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.help ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.help li + li {
+  margin-top: 6px;
+}
+
+.help .keys {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.help dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  font-family: var(--mono);
+  font-size: 0.8em;
 }
 
 /* YAML, CSV, Types, Schema: the document converted, read-only, as the text view shows JSON. */
@@ -542,7 +623,7 @@ body {
   height: 18px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.75;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }

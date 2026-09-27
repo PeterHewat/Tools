@@ -66,14 +66,16 @@
           id="options-btn"
           popovertarget="options"
           aria-haspopup="true"
-          title="Options"
-          aria-label="Options"
+          title="Settings"
+          aria-label="Settings"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4" />
+            <path
+              d="M18.99 10.26L21.35 10.33L21.35 13.67L18.99 13.74L18.17 15.71L19.79 17.43L17.43 19.79L15.71 18.17L13.74 18.99L13.67 21.35L10.33 21.35L10.26 18.99L8.29 18.17L6.57 19.79L4.21 17.43L5.83 15.71L5.01 13.74L2.65 13.67L2.65 10.33L5.01 10.26L5.83 8.29L4.21 6.57L6.57 4.21L8.29 5.83L10.26 5.01L10.33 2.65L13.67 2.65L13.74 5.01L15.71 5.83L17.43 4.21L19.79 6.57L18.17 8.29ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"
+            />
           </svg>
         </button>
-        <div class="menu options" id="options" popover aria-label="Options">
+        <div class="menu options" id="options" popover aria-label="Settings">
           <div class="menu-label first">Format with</div>
           <div class="menu-row">
             <span>Indent</span>
@@ -139,7 +141,7 @@
             aria-label="Open a file"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
             </svg>
           </button>
           <button type="button" class="wb-btn icon-btn" id="copy" title="Copy" aria-label="Copy">
@@ -156,7 +158,7 @@
             aria-label="Download"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+              <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />
             </svg>
           </button>
           <button type="button" class="wb-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
@@ -167,6 +169,78 @@
         </div>
 
         <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="help-btn"
+          popovertarget="help"
+          title="Help — what everything does"
+          aria-label="Help"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.6 8.8a3.5 3.5 0 1 1 4.7 3.3c-.9.4-1.3 1-1.3 1.9v.6" />
+            <circle cx="12" cy="18.4" r="1" />
+          </svg>
+        </button>
+        <aside class="help" id="help" popover aria-label="Help">
+          <h2>JSON</h2>
+          <p>
+            Part of <a href="../">Workbench</a>, a set of tools that run entirely in your browser
+            and keep working offline. Nothing you open or paste leaves this page: the draft is kept
+            only for this tab, so a reload keeps it and closing the tab ends it.
+          </p>
+
+          <h3>Views</h3>
+          <ul>
+            <li><b>Text</b> — edit the JSON, with colours, line numbers and live checking.</li>
+            <li>
+              <b>Tree</b> — fold objects and arrays. The gutter shows the line each value starts on
+              in the text (the column, when the text is one line). Double-click a row, or press
+              <kbd>Enter</kbd>, to show it in the text.
+            </li>
+            <li>
+              <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Copy
+              and Download take whatever view is shown. CSV uses the array around the cursor (or
+              selected in the tree), else the document's first array.
+            </li>
+          </ul>
+
+          <h3>Editing</h3>
+          <ul>
+            <li>
+              <b>Format</b> and <b>Minify</b> keep numbers and strings exactly as written, so large
+              IDs are never rounded.
+            </li>
+            <li>
+              <b>Fix</b> appears when the text is almost JSON — comments, trailing commas, single
+              quotes, unquoted keys, NaN, Python's True / None — and corrects just those places.
+            </li>
+            <li>
+              <b>Settings</b> (the cog) — indent and key sorting for Format, the style of the path
+              in the status bar, and turning a string that holds JSON into real JSON, or back.
+            </li>
+            <li>
+              A long document is edited a page of 5,000 lines at a time; everything else works on
+              the whole of it.
+            </li>
+          </ul>
+
+          <h3>Keys</h3>
+          <dl class="keys">
+            <dt><kbd>Ctrl</kbd>+<kbd>Enter</kbd></dt>
+            <dd>Format</dd>
+            <dt><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></dt>
+            <dd>Undo / redo, Format and Minify included</dd>
+            <dt><kbd>Ctrl</kbd>+<kbd>F</kbd></dt>
+            <dd>Find</dd>
+            <dt><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>, <kbd>F3</kbd></dt>
+            <dd>Next / previous match</dd>
+            <dt><kbd>Esc</kbd></dt>
+            <dd>Close find</dd>
+            <dt>Arrows</dt>
+            <dd>In the tree: move, open and close rows</dd>
+          </dl>
+        </aside>
       </div>
     </header>
 

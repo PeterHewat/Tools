@@ -107,28 +107,34 @@ a {
   font-weight: 600;
 }
 
+/* Back to the index: a regular button, its "‹" drawn in CSS so every page's markup is just
+   "Workbench". */
 .wb-home {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  text-decoration: none;
+  gap: 8px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: var(--text);
   font-size: 0.9rem;
+  text-decoration: none;
 }
 
-/* "‹", drawn: a corner of two borders turned to point back. */
 .wb-home::before {
   content: "";
   width: 7px;
   height: 7px;
-  border-bottom: 1.75px solid currentColor;
-  border-left: 1.75px solid currentColor;
+  margin-left: 3px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
   transform: rotate(45deg);
 }
 
 .wb-home:hover,
 .wb-home:focus-visible {
-  color: var(--text);
+  border-color: var(--accent);
 }
 
 .wb-main {

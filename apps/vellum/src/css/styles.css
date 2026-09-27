@@ -1340,6 +1340,48 @@ body {
   display: none;
 }
 
+/* Back to the index, as a regular button: the same one every Workbench page starts with (the
+   shared base.css draws it for the other apps). Like the theme switch, it moves into the Help
+   panel on a phone. */
+.wb-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.wb-home::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: 3px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.wb-home:hover,
+.wb-home:focus-visible {
+  border-color: var(--accent);
+}
+
+.wb-home--panel {
+  display: none;
+}
+
+.app-name {
+  margin: 0 4px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 /* Help answers for one pointer at a time. It is a switch rather than a media query because a
    laptop with a touch screen is both, and because the other half is often what you want to read. */
 .help-mode {
@@ -1926,11 +1968,14 @@ body {
   }
 
   .cursor-readout,
-  .top-bar > .theme-btn {
+  .top-bar > .theme-btn,
+  .top-bar > .wb-home,
+  .top-bar > .app-name {
     display: none;
   }
 
-  .theme-btn--panel {
+  .theme-btn--panel,
+  .wb-home--panel {
     display: inline-flex;
     flex: 0 0 auto;
   }
