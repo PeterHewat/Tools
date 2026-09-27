@@ -98,7 +98,7 @@ export function createTree(container: HTMLElement, handlers: TreeHandlers): Tree
     el.setAttribute("aria-level", String(level + 1));
 
     const count = countOf(node);
-    const fold = span("tw", count ? "▸" : "");
+    const fold = span(count ? "tw can-fold" : "tw", "");
     fold.setAttribute("aria-hidden", "true"); // the row's aria-expanded says it already
     row.append(fold);
     if (seg !== null) {

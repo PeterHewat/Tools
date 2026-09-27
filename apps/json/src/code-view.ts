@@ -3,22 +3,27 @@
  *
  * The textarea stays the editor — typing, selection, undo, IME and spellcheck-off all native —
  * with its text made transparent. Underneath it, a `<pre>` shows the same lines coloured, and a
- * gutter beside it numbers them. Only the lines on screen are drawn, and both layers are moved
- * to match the textarea's scroll, so a document of any length costs the same few dozen lines.
+ * gutter beside it numbers them. Only what is on screen is drawn: the visible lines, and of a
+ * very long line only the visible stretch. Both layers move with the textarea's scroll, so a
+ * document of any size costs the same small amount of drawing.
  */
-import { highlightHtml } from "./lib/highlight.js";
+import { highlightHtml, highlightLine, type Token } from "./lib/highlight.js";
 
 export interface CodeView {
   /** Redraw after the text was set from code (typing and scrolling redraw by themselves). */
   refresh(): void;
-  /** Mark a line (1-based) in the gutter, or clear the mark. */
+  /** Mark a line in the gutter, numbered as the whole document counts, or clear the mark. */
   setErrorLine(line: number | null): void;
+  /** The document line number of the textarea's first line: 1, or a later page's start. */
+  setFirstLine(line: number): void;
 }
 
 /** Past this, colouring is skipped: the text shows plain, and stays fast. */
-const MAX_COLOURED = 5_000_000;
-/** A line longer than this is drawn uncoloured: thousands of spans on one line cost too much. */
-const MAX_LINE = 10_000;
+const MAX_COLOURED = 20_000_000;
+/** Lines longer than this are coloured only around the visible columns. */
+const LONG_LINE = 2_000;
+/** Characters coloured either side of the visible ones on a long line. */
+const COLUMN_OVERSCAN = 400;
 /** Lines drawn above and below the visible ones, so fast scrolling does not show gaps. */
 const OVERSCAN = 3;
 
@@ -31,20 +36,39 @@ export function createCodeView(
   let lines: string[] = [];
   let linesOf: string | null = null;
   let errorLine: number | null = null;
+  let firstLine = 1;
   let lineHeight = 0;
+  let charWidth = 0;
+  /** Tokens of the long lines on screen, by content, so scrolling along one does not re-lex it. */
+  let longTokens = new Map<string, Token[]>();
 
   const measure = () => {
-    lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 19.5;
+    const style = getComputedStyle(textarea);
+    lineHeight = parseFloat(style.lineHeight) || 19.5;
+    const probe = document.createElement("span");
+    probe.textContent = "0".repeat(100);
+    highlight.append(probe);
+    charWidth = probe.getBoundingClientRect().width / 100 || 7.8;
+    probe.remove();
   };
 
-  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const tokensOf = (line: string) => {
+    let tokens = longTokens.get(line);
+    if (!tokens) {
+      if (longTokens.size > 16) longTokens = new Map();
+      tokens = highlightLine(line);
+      longTokens.set(line, tokens);
+    }
+    return tokens;
+  };
 
   function render(): void {
     const value = textarea.value;
     if (value !== linesOf) {
       lines = value.split("\n");
       linesOf = value;
-      root.style.setProperty("--gutter-digits", String(Math.max(2, String(lines.length).length)));
+      const lastNumber = firstLine + lines.length - 1;
+      root.style.setProperty("--gutter-digits", String(Math.max(2, String(lastNumber).length)));
     }
     const plain = value.length > MAX_COLOURED;
     root.classList.toggle("plain", plain);
@@ -57,18 +81,25 @@ export function createCodeView(
       Math.ceil((top + textarea.clientHeight) / lineHeight) + OVERSCAN
     );
     const y = first * lineHeight - top;
+    const left = textarea.scrollLeft;
+    const from = Math.max(0, Math.floor(left / charWidth) - COLUMN_OVERSCAN);
+    const to = Math.ceil((left + textarea.clientWidth) / charWidth) + COLUMN_OVERSCAN;
 
-    highlight.style.transform = `translate(${-textarea.scrollLeft}px, ${y}px)`;
+    highlight.style.transform = `translate(${-left}px, ${y}px)`;
     highlight.innerHTML = plain
       ? ""
       : lines
           .slice(first, last)
-          .map((line) => (line.length > MAX_LINE ? escape(line) : highlightHtml(line)))
+          .map((line) =>
+            line.length > LONG_LINE
+              ? highlightHtml(line, from, to, tokensOf(line))
+              : highlightHtml(line)
+          )
           .join("\n");
 
     gutter.style.transform = `translateY(${y}px)`;
     let numbers = "";
-    for (let n = first + 1; n <= last; n++) {
+    for (let n = firstLine + first; n < firstLine + last; n++) {
       numbers += (n === errorLine ? `<span class="err">${n}</span>` : n) + "\n";
     }
     gutter.innerHTML = numbers;
@@ -88,6 +119,12 @@ export function createCodeView(
     setErrorLine(line) {
       if (line === errorLine) return;
       errorLine = line;
+      render();
+    },
+    setFirstLine(line) {
+      if (line === firstLine) return;
+      firstLine = line;
+      linesOf = null; // the gutter width depends on it
       render();
     },
   };

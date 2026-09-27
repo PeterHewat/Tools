@@ -84,13 +84,38 @@ body {
   outline-offset: -1px;
 }
 
-/* The fold arrow: a fixed-width cell, turned down when the row is open. */
+/*
+ * The fold arrow: a CSS triangle centred in a square cell, turned down when the row is open.
+ * Drawn rather than a ▸ glyph, whose ink sits off the centre of its box, so it would swing
+ * around the rotation point instead of turning in place.
+ */
 .tw {
-  display: inline-block;
-  width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  vertical-align: -2px;
   color: var(--muted);
-  cursor: pointer;
   transition: transform 0.1s;
+}
+
+.tw.can-fold {
+  cursor: pointer;
+}
+
+.tw.can-fold::before {
+  content: "";
+  /* Nudged right by a third of its width, so its centre of mass sits on the cell's centre. */
+  margin-left: 2px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid currentColor;
+}
+
+.row:hover .tw.can-fold {
+  color: var(--text);
 }
 
 .ti[aria-expanded="true"] > .row > .tw {
