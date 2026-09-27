@@ -1,0 +1,76 @@
+/* JSON's own layout. Tokens and controls come from @workbench/ui/base.css. */
+
+.json-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toolbar-gap {
+  flex: 1;
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The editor takes the height the page has left, but never gets too short to use. */
+.editor {
+  height: calc(100dvh - 230px);
+  min-height: 16rem;
+}
+
+.statusbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.statusbar .wb-status {
+  margin: 0;
+}
+
+.warning {
+  margin: 0;
+  color: var(--warn);
+}
+
+.problem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.excerpt {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.excerpt .caret {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .toolbar-gap {
+    display: none;
+  }
+
+  .editor {
+    height: 50dvh;
+  }
+}

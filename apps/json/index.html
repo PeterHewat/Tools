@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <header class="wb-header">
+      <a class="wb-home" href="../">← Workbench</a>
+      <h1>JSON</h1>
+      <button type="button" class="wb-theme-toggle" id="theme-toggle"></button>
+    </header>
+    <main class="wb-main json-main">
+      <div class="wb-row toolbar">
+        <button
+          type="button"
+          class="wb-btn wb-btn--primary"
+          id="format"
+          title="Format (Ctrl+Enter)"
+        >
+          Format
+        </button>
+        <button type="button" class="wb-btn" id="minify">Minify</button>
+        <label class="wb-label option">
+          <input type="checkbox" id="sort-keys" />
+          Sort keys
+        </label>
+        <label class="wb-label option">
+          Indent
+          <select class="wb-select" id="indent">
+            <option value="2">2 spaces</option>
+            <option value="4">4 spaces</option>
+            <option value="tab">Tab</option>
+          </select>
+        </label>
+        <span class="toolbar-gap"></span>
+        <button type="button" class="wb-btn" id="open">Open…</button>
+        <button type="button" class="wb-btn" id="copy">Copy</button>
+        <button type="button" class="wb-btn" id="download">Download</button>
+        <button type="button" class="wb-btn" id="clear">Clear</button>
+      </div>
+
+      <textarea
+        class="wb-code editor"
+        id="editor"
+        aria-label="JSON"
+        placeholder="Paste JSON here, or drop a .json file"
+        spellcheck="false"
+        autocomplete="off"
+        autocapitalize="off"
+      ></textarea>
+
+      <div class="statusbar">
+        <p class="wb-status" id="status" role="status"></p>
+        <span class="wb-label wb-mono" id="cursor"></span>
+      </div>
+      <p class="wb-status warning hidden" id="warning"></p>
+      <div class="problem hidden" id="problem">
+        <pre class="excerpt" id="excerpt"></pre>
+        <button type="button" class="wb-btn" id="goto">Go to error</button>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

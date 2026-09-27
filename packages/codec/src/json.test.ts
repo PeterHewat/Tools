@@ -87,6 +87,10 @@ describe("formatJson", () => {
     expect(formatJson({ a: [1] }, { indent: 0 })).toBe('{"a":[1]}');
   });
 
+  test("indents with tabs when asked", () => {
+    expect(formatJson({ a: 1 }, { indent: "\t" })).toBe('{\n\t"a": 1\n}');
+  });
+
   test("sorts keys at every depth, leaving arrays in order", () => {
     expect(formatJson({ b: 1, a: { d: 1, c: [3, 1] } }, { indent: 0, sortKeys: true })).toBe(
       '{"a":{"c":[3,1],"d":1},"b":1}'

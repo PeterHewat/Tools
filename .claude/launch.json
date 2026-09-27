@@ -2,16 +2,28 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "workbench-dist",
-      "runtimeExecutable": "bunx",
-      "runtimeArgs": ["--bun", "serve", "dist", "-l", "3111"],
-      "port": 3111
+      "name": "home-dev",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev", "home", "--port", "5170", "--strictPort"],
+      "port": 5170
     },
     {
       "name": "vellum-dev",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "--filter", "@workbench/vellum", "dev"],
+      "runtimeArgs": ["run", "dev", "vellum", "--port", "5173", "--strictPort"],
       "port": 5173
+    },
+    {
+      "name": "json-dev",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev", "json", "--port", "5174", "--strictPort"],
+      "port": 5174
+    },
+    {
+      "name": "workbench-dist",
+      "runtimeExecutable": "bunx",
+      "runtimeArgs": ["--bun", "serve", "dist", "-l", "3111"],
+      "port": 3111
     }
   ]
 }

@@ -40,8 +40,8 @@ export function parseJson(text: string): JsonResult {
 }
 
 export interface FormatOptions {
-  /** Spaces per level, or 0 for one line. Defaults to 2. */
-  indent?: number;
+  /** Spaces per level, "\t" for tabs, or 0 for one line. Defaults to 2. */
+  indent?: number | "\t";
   /** Sort object keys alphabetically, recursively. */
   sortKeys?: boolean;
 }
