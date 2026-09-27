@@ -7,7 +7,7 @@
  * very long line only the visible stretch. Both layers move with the textarea's scroll, so a
  * document of any size costs the same small amount of drawing.
  */
-import { highlightHtml, highlightLine, type Token } from "./lib/highlight.js";
+import { highlightHtml, highlightLine, type Mark, type Token } from "./lib/highlight.js";
 
 export interface CodeView {
   /** Redraw after the text was set from code (typing and scrolling redraw by themselves). */
@@ -16,6 +16,8 @@ export interface CodeView {
   setErrorLine(line: number | null): void;
   /** The document line number of the textarea's first line: 1, or a later page's start. */
   setFirstLine(line: number): void;
+  /** Marks stretches of the textarea's text (sorted offsets), e.g. find results. */
+  setMarks(marks: readonly Mark[]): void;
 }
 
 /** Past this, colouring is skipped: the text shows plain, and stays fast. */
@@ -34,6 +36,9 @@ export function createCodeView(
   gutter: HTMLElement
 ): CodeView {
   let lines: string[] = [];
+  /** Offset where each line starts, for placing marks. */
+  let starts: number[] = [];
+  let marks: readonly Mark[] = [];
   let linesOf: string | null = null;
   let errorLine: number | null = null;
   let firstLine = 1;
@@ -62,11 +67,36 @@ export function createCodeView(
     return tokens;
   };
 
+  /** The marks touching a line, in that line's offsets. */
+  function marksOn(index: number): Mark[] {
+    if (!marks.length) return [];
+    const start = starts[index];
+    const end = start + lines[index].length;
+    let lo = 0;
+    let hi = marks.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (marks[mid].end <= start) lo = mid + 1;
+      else hi = mid;
+    }
+    const out: Mark[] = [];
+    for (let k = lo; k < marks.length && marks[k].start < end; k++) {
+      const m = marks[k];
+      out.push({ start: Math.max(0, m.start - start), end: m.end - start, current: m.current });
+    }
+    return out;
+  }
+
   function render(): void {
     const value = textarea.value;
     if (value !== linesOf) {
       lines = value.split("\n");
       linesOf = value;
+      starts = new Array<number>(lines.length);
+      for (let k = 0, at = 0; k < lines.length; k++) {
+        starts[k] = at;
+        at += lines[k].length + 1;
+      }
       const lastNumber = firstLine + lines.length - 1;
       root.style.setProperty("--gutter-digits", String(Math.max(2, String(lastNumber).length)));
     }
@@ -90,11 +120,12 @@ export function createCodeView(
       ? ""
       : lines
           .slice(first, last)
-          .map((line) =>
-            line.length > LONG_LINE
-              ? highlightHtml(line, from, to, tokensOf(line))
-              : highlightHtml(line)
-          )
+          .map((line, k) => {
+            const lineMarks = marksOn(first + k);
+            return line.length > LONG_LINE
+              ? highlightHtml(line, from, to, tokensOf(line), lineMarks)
+              : highlightHtml(line, 0, Infinity, undefined, lineMarks);
+          })
           .join("\n");
 
     gutter.style.transform = `translateY(${y}px)`;
@@ -119,6 +150,10 @@ export function createCodeView(
     setErrorLine(line) {
       if (line === errorLine) return;
       errorLine = line;
+      render();
+    },
+    setMarks(next) {
+      marks = next;
       render();
     },
     setFirstLine(line) {

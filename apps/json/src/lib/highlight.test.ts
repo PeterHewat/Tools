@@ -75,6 +75,20 @@ describe("highlightHtml over a range", () => {
   });
 });
 
+test("highlightHtml marks find results inside and across tokens", () => {
+  const html = highlightHtml('"ab": "cab"', 0, Infinity, undefined, [
+    { start: 1, end: 3 },
+    { start: 8, end: 10, current: true },
+  ]);
+  expect(html).toBe(
+    '<span class="t-key">"<mark>ab</mark>"</span><span class="t-punct">:</span> ' +
+      '<span class="t-string">"c<mark class="cur">ab</mark>"</span>'
+  );
+  const across = highlightHtml("[1, 2]", 0, Infinity, undefined, [{ start: 1, end: 5 }]);
+  expect(across.replace(/<[^>]+>/g, "")).toBe("[1, 2]");
+  expect(across.match(/<mark>/g)).toHaveLength(4); // one per token: "1", ",", " ", "2"
+});
+
 test("highlightHtml escapes markup", () => {
   expect(highlightHtml('"<b>&"')).toBe('<span class="t-string">"&lt;b>&amp;"</span>');
   expect(highlightHtml("  x")).toBe("  x");

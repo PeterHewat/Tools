@@ -43,6 +43,17 @@
         <button
           type="button"
           class="wb-btn icon-btn"
+          id="find-open"
+          title="Find (Ctrl+F)"
+          aria-label="Find (Ctrl+F)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
           id="open"
           title="Open a file"
           aria-label="Open a file"
@@ -72,6 +83,49 @@
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
           </svg>
+        </button>
+      </div>
+      <div class="findbar hidden" id="findbar" role="search">
+        <input
+          class="wb-input find-input"
+          id="find-input"
+          type="search"
+          placeholder="Find"
+          aria-label="Find"
+          spellcheck="false"
+        />
+        <span class="wb-label find-count" id="find-count" aria-live="polite"></span>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="find-prev"
+          title="Previous match (Shift+Enter)"
+          aria-label="Previous match (Shift+Enter)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+        </button>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="find-next"
+          title="Next match (Enter)"
+          aria-label="Next match (Enter)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </button>
+        <label class="wb-label option">
+          <input type="checkbox" id="find-case" />
+          Match case
+        </label>
+        <span class="toolbar-gap"></span>
+        <button
+          type="button"
+          class="wb-btn icon-btn"
+          id="find-close"
+          title="Close (Esc)"
+          aria-label="Close (Esc)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
       </div>
 

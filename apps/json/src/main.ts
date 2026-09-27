@@ -22,6 +22,7 @@ import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { lineCount, pageAt, pageOf } from "./lib/pages.js";
 import { printJson, printedSize } from "./lib/print.js";
+import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
 import { createTree } from "./tree.js";
 import "./styles.css";
 
@@ -54,6 +55,10 @@ const pageCountEl = byId("page-count");
 const pageLines = byId("page-lines");
 const pagePrev = byId<HTMLButtonElement>("page-prev");
 const pageNext = byId<HTMLButtonElement>("page-next");
+const findBar = byId("findbar");
+const findInput = byId<HTMLInputElement>("find-input");
+const findCount = byId("find-count");
+const findCase = byId<HTMLInputElement>("find-case");
 const view = createCodeView(codeEl, editor, byId("highlight"), byId("gutter"));
 const tree = createTree(treeEl, {
   select: (path) => showPath(path),
@@ -169,6 +174,7 @@ function showDocument(text: string, index = 0): void {
   editor.value = p.body;
   view.setFirstLine(p.firstLine);
   showPager();
+  showMarks();
 }
 
 function showPager(): void {
@@ -196,13 +202,13 @@ function turnPage(index: number): void {
 }
 
 /** Selects a stretch of the document, turning to its page, and scrolls it to the middle. */
-function selectInDocument(start: number, end: number): void {
+function selectInDocument(start: number, end: number, focus = true): void {
   const text = documentText();
   const index = pageAt(text, start);
   if (index !== page.index) showDocument(text, index);
   const offset = aside.before.length;
   const length = editor.value.length;
-  editor.focus();
+  if (focus) editor.focus();
   editor.setSelectionRange(
     Math.min(Math.max(0, start - offset), length),
     Math.min(Math.max(0, end - offset), length)
@@ -212,6 +218,114 @@ function selectInDocument(start: number, end: number): void {
   editor.scrollTop = Math.max(0, (line - 1) * lineHeight - editor.clientHeight / 2);
   view.refresh();
   showCursor();
+}
+
+// ---------- Find ----------
+
+/** Bumped whenever the text changes, so find results know when they are out of date. */
+let findVersion = 0;
+let findKey = "";
+let textMatches: number[] = [];
+let treeMatches: NodeMatch[] = [];
+let findIndex = -1;
+
+const findOpen = () => !findBar.classList.contains("hidden");
+
+/** Searches again when the query, the options, the view or the text changed. */
+function refreshFind(): void {
+  const query = findInput.value;
+  const key = [query, findCase.checked, mode, findVersion].join("\u0000");
+  if (key === findKey) return;
+  findKey = key;
+  const options = { matchCase: findCase.checked };
+  textMatches = mode === "text" ? findInText(documentText(), query, options) : [];
+  treeMatches = mode === "tree" && doc && !stale ? findInTree(doc.root, query, options) : [];
+  findIndex = Math.min(findIndex, matchCount() - 1);
+  showFindCount();
+  showMarks();
+}
+
+const matchCount = () => (mode === "text" ? textMatches.length : treeMatches.length);
+
+function showFindCount(): void {
+  const n = matchCount();
+  const capped = n >= MAX_MATCHES ? "+" : "";
+  findCount.textContent = !findInput.value
+    ? ""
+    : !n
+      ? "No matches"
+      : findIndex < 0
+        ? `${n.toLocaleString()}${capped} matches`
+        : `${(findIndex + 1).toLocaleString()} of ${n.toLocaleString()}${capped}`;
+  findBar.classList.toggle("no-match", !!findInput.value && !n);
+}
+
+/** Marks the matches on the page the editor shows; the current one stands out. */
+function showMarks(): void {
+  if (!findOpen() || mode !== "text" || !textMatches.length) {
+    view.setMarks([]);
+    return;
+  }
+  const offset = aside.before.length;
+  const end = offset + editor.value.length;
+  const size = findInput.value.length;
+  let k = 0;
+  while (k < textMatches.length && textMatches[k] + size <= offset) k++;
+  const marks = [];
+  for (; k < textMatches.length && textMatches[k] < end; k++) {
+    const start = textMatches[k] - offset;
+    marks.push({ start, end: start + size, current: k === findIndex });
+  }
+  view.setMarks(marks);
+}
+
+/** Moves to the next (1) or previous (-1) match; 0 picks the first at or after the caret. */
+function findStep(delta: number): void {
+  refreshFind();
+  const n = matchCount();
+  if (!n) {
+    findIndex = -1;
+    showFindCount();
+    return;
+  }
+  if (findIndex < 0 || delta === 0) {
+    const caret = aside.before.length + editor.selectionStart;
+    const after =
+      mode === "text"
+        ? textMatches.findIndex((m) => m >= caret)
+        : treeMatches.findIndex((m) => m.node.start >= caret);
+    findIndex = after < 0 ? 0 : after;
+    if (delta < 0) findIndex = (findIndex - 1 + n) % n;
+  } else {
+    findIndex = (findIndex + delta + n) % n;
+  }
+  if (mode === "text") {
+    const start = textMatches[findIndex];
+    selectInDocument(start, start + findInput.value.length, false);
+  } else {
+    tree.reveal(treeMatches[findIndex].indices);
+  }
+  showFindCount();
+  showMarks();
+}
+
+function openFind(): void {
+  findBar.classList.remove("hidden");
+  const selected = editor.value.slice(editor.selectionStart, editor.selectionEnd);
+  if (mode === "text" && selected && selected.length < 200 && !selected.includes("\n")) {
+    findInput.value = selected;
+  }
+  findInput.focus();
+  findInput.select();
+  findKey = "";
+  refreshFind();
+}
+
+function closeFind(): void {
+  findBar.classList.add("hidden");
+  view.setMarks([]);
+  if (mode === "text") editor.focus();
+  else tree.focus();
 }
 
 function validate(): void {
@@ -277,6 +391,8 @@ function validate(): void {
   view.setErrorLine(fault?.position.line ?? null);
   view.refresh();
   showPager();
+  findVersion++;
+  if (!findBar.classList.contains("hidden")) refreshFind();
   treeStale = true;
   if (mode === "tree") showTree();
   showCursor();
@@ -395,6 +511,10 @@ function setMode(next: ViewMode): void {
   collapseAllBtn.classList.toggle("hidden", !inTree);
   cursor.classList.toggle("hidden", inTree);
   showPager();
+  if (findOpen()) {
+    findIndex = -1;
+    refreshFind();
+  }
   viewTextBtn.setAttribute("aria-pressed", String(!inTree));
   viewTreeBtn.setAttribute("aria-pressed", String(inTree));
   if (inTree) {
@@ -466,6 +586,38 @@ viewTextBtn.addEventListener("click", () => setMode("text"));
 viewTreeBtn.addEventListener("click", () => setMode("tree"));
 expandAllBtn.addEventListener("click", () => tree.expandAll());
 collapseAllBtn.addEventListener("click", () => tree.collapseAll());
+let findTimer = 0;
+findInput.addEventListener("input", () => {
+  clearTimeout(findTimer);
+  findTimer = window.setTimeout(() => findStep(0), 120);
+});
+findInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    clearTimeout(findTimer);
+    findStep(e.shiftKey ? -1 : 1);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    closeFind();
+  }
+});
+findCase.addEventListener("change", () => findStep(0));
+byId("find-prev").addEventListener("click", () => findStep(-1));
+byId("find-next").addEventListener("click", () => findStep(1));
+byId("find-close").addEventListener("click", closeFind);
+byId("find-open").addEventListener("click", openFind);
+// Ctrl+F opens this find rather than the browser's, which cannot see other pages of a long
+// document; F3 steps through matches like most editors.
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+    e.preventDefault();
+    openFind();
+  } else if (e.key === "F3") {
+    e.preventDefault();
+    if (!findOpen()) openFind();
+    else findStep(e.shiftKey ? -1 : 1);
+  }
+});
 pagePrev.addEventListener("click", () => turnPage(page.index - 1));
 pageNext.addEventListener("click", () => turnPage(page.index + 1));
 pageInput.addEventListener("change", () => {

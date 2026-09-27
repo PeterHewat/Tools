@@ -51,6 +51,38 @@ body {
   color: var(--accent);
 }
 
+/* Find: a bar under the toolbar, and marks drawn in the coloured layer. */
+.findbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.find-input {
+  width: min(24rem, 100%);
+}
+
+.findbar.no-match .find-input {
+  border-color: var(--danger);
+}
+
+.find-count {
+  min-width: 6.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+.highlight mark {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--warn) 30%, transparent);
+  color: inherit;
+}
+
+.highlight mark.cur {
+  background: color-mix(in srgb, var(--warn) 60%, transparent);
+  outline: 1px solid var(--warn);
+}
+
 /* A long document's pages: shown under the editor only when there is more than one. */
 .pager {
   display: flex;
