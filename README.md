@@ -6,10 +6,10 @@ send anonymous page-view analytics to Cloudflare when you are online.
 
 **[peterhewat.github.io/Tools](https://peterhewat.github.io/Tools/)**
 
-| Tool                 | What it does                                                                   |
-| -------------------- | ------------------------------------------------------------------------------ |
-| [SVG](./apps/svg/)   | Trace reference images and export clean, pure SVG.                             |
-| [JSON](./apps/json/) | Format, minify and validate JSON, with errors pinned to their line and column. |
+| Tool                 | What it does                                                                                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [SVG](./apps/svg/)   | Trace images with a Bézier pen and shapes; combine, align, group and fill with gradients. A searchable library of drawings, exported as clean SVG or PNG. |
+| [JSON](./apps/json/) | Format, minify and validate JSON, and fix almost-JSON. Explore it as a tree, or convert it to YAML, CSV, TypeScript types or a JSON Schema.               |
 
 ## Running it
 

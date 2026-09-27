@@ -14,11 +14,14 @@ body {
   padding: 72px 0 40px;
 }
 
-/* Top right on every width: the masthead has the room, and on a phone it is still in reach. */
+/* Pinned to the window's top right on every width, and there while the page scrolls: over a
+   card it keeps a shadow, so it never reads as part of one. */
 .masthead .ui-theme-toggle {
-  position: absolute;
+  position: fixed;
   top: 16px;
-  right: 0;
+  right: 16px;
+  z-index: 10;
+  box-shadow: 0 4px 14px var(--shadow);
 }
 
 .masthead h1 {
