@@ -6,6 +6,18 @@ const kinds = (line: string) =>
     .filter((t) => t.text.trim())
     .map((t): [Token["kind"], string] => [t.kind, t.text]);
 
+/** The text the HTML shows: every tag skipped. Only for comparing output this module made. */
+function textOf(html: string): string {
+  let text = "";
+  let inTag = false;
+  for (const c of html) {
+    if (c === "<") inTag = true;
+    else if (c === ">" && inTag) inTag = false;
+    else if (!inTag) text += c;
+  }
+  return text;
+}
+
 describe("highlightLine", () => {
   test("tells keys from string values", () => {
     expect(kinds('  "name": "a:b",')).toEqual([
@@ -61,7 +73,7 @@ describe("highlightHtml over a range", () => {
   });
 
   test("the plain prefix plus the coloured tokens start at the true column", () => {
-    const plain = highlightHtml(line, 13, 14).replace(/<[^>]+>/g, "");
+    const plain = textOf(highlightHtml(line, 13, 14));
     expect(line.startsWith(plain)).toBe(true);
     expect(plain.length).toBeGreaterThanOrEqual(14);
   });
@@ -85,7 +97,7 @@ test("highlightHtml marks find results inside and across tokens", () => {
       '<span class="t-string">"c<mark class="cur">ab</mark>"</span>'
   );
   const across = highlightHtml("[1, 2]", 0, Infinity, undefined, [{ start: 1, end: 5 }]);
-  expect(across.replace(/<[^>]+>/g, "")).toBe("[1, 2]");
+  expect(textOf(across)).toBe("[1, 2]");
   expect(across.match(/<mark>/g)).toHaveLength(4); // one per token: "1", ",", " ", "2"
 });
 
