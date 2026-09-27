@@ -28,6 +28,10 @@
   --swatch-ring: rgba(255, 255, 255, 0.3);
   --scroll: #4a4e59;
   --shadow: rgba(0, 0, 0, 0.4);
+  /* Heavier than the shared frost: under a menu lie a drawing's shapes and the grid, not text
+     worth reading through, and a light frost lets them fight the menu's own words. */
+  --ui-frost-bg: color-mix(in srgb, var(--panel) 72%, transparent);
+  --ui-frost-filter: blur(16px) saturate(140%);
   --ruler-tick: #5a5f6c;
   --ruler-h: 20px;
   --panel-w: 320px;
