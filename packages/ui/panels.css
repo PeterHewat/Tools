@@ -141,6 +141,12 @@
 
 /* A popover under its button; bindMenu places it. Items are buttons, or rows of a label and a
    control, in sections headed by a label. */
+/* Hidden until bindMenu makes it a popover (which the browser then shows and hides): the
+   stylesheet paints before the script runs, and a menu would show as a plain box until then. */
+.ui-menu:not([popover]) {
+  display: none;
+}
+
 .ui-menu {
   position: fixed;
   inset: auto;

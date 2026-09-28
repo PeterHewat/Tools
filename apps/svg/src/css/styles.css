@@ -252,7 +252,7 @@ body {
 
 /* The drawing tools and the snap switches: two joined groups, as far apart as any two groups. */
 #tool-group-tools {
-  gap: 8px;
+  gap: var(--ui-header-gap);
 }
 
 .tool-btn:hover {
@@ -1645,21 +1645,9 @@ body {
 @media (width < 591px) {
   /* The header stays where it is on every screen, a solid row above the rulers, as in every
      Tools app, with the same buttons. Only the tools float, in a bar over the bottom of the
-     canvas where thumbs are. One row, 6px apart like the JSON app's phone header, which fits
-     all eight controls down to 320px. */
+     canvas where thumbs are. One row, spaced as at every other width. */
   .top-bar {
     flex-wrap: nowrap;
-    gap: 6px;
-  }
-
-  /* Undo | Redo in the middle of the free space, well clear of Document on one side and zoom on
-     the other, so a thumb aimed at either never undoes by accident. */
-  #group-history {
-    margin-inline: auto;
-  }
-
-  #group-view {
-    margin-left: 0;
   }
 
   .tool-bar {

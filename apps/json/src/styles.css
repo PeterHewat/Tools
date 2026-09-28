@@ -397,17 +397,10 @@ body:not([data-view="json"]) .text-area {
 
 /* Third level, when even that does not fit: a phone's layout. */
 @media (width < 476px) {
-  /* The groups' buttons flow straight into the header's rows, so everything wraps as single
-     buttons rather than as whole groups leaving gaps. */
-  .json-header .group {
-    display: contents;
-  }
-
-  /* One row: ‹, the views as a dropdown, Settings, Find, then "⋯" for the file actions and
-     Help at the far end. */
+  /* One row: ‹, the views as a dropdown, Settings, Find, then "⋯" for the file actions, the
+     theme switch and Help at the far end. The spacing is the header's at every width. */
   .json-header {
     flex-wrap: nowrap;
-    gap: 6px;
   }
 
   .json-header .group.file {
