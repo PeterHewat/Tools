@@ -3,12 +3,12 @@
  * (its line break included), dragging down or up the gutter selects every line passed over, and
  * Shift+click extends the selection to the clicked line from where it started.
  *
- * It starts on pointerdown, so a finger starts it as a mouse does. A mouse or pen then follows
- * pointer moves. A finger follows touch moves instead: the browser can take a touch over for a
- * gesture of its own and cancel its pointer part (dev tools' touch emulation does), while touch
- * moves keep coming to the element first touched, and cancelling them stops the page scrolling
- * under the drag. The theme also turns touch scrolling off there (`touch-action: none` on
- * `.cm-lineNumbers`).
+ * A mouse or pen starts on pointerdown and follows pointer moves. A finger starts on touchstart,
+ * which the gutter always listens for (not passively), and claims the touch there: cancelling
+ * touchstart is what reliably keeps the browser from scrolling or starting a gesture of its own,
+ * whatever it was doing before (a caret just placed in the text, for one). It then follows touch
+ * moves, which keep coming to the element first touched. The theme also turns touch scrolling off
+ * there (`touch-action: none` on `.cm-lineNumbers`).
  */
 import { EditorSelection } from "@codemirror/state";
 import type { BlockInfo, EditorView } from "@codemirror/view";
@@ -29,15 +29,9 @@ export function linesBetween(
     : { anchor: anchor.from, head: head.to };
 }
 
-/**
- * The line-number gutter's pointerdown: selects lines, and follows the pointer or finger while
- * it is down. Handled (true), so the browser sends no mouse events after it and CodeMirror does
- * not place a caret of its own.
- */
-export function selectLinesFromGutter(view: EditorView, line: BlockInfo, event: Event): boolean {
-  const e = event as PointerEvent;
-  if (e.button !== 0) return false;
-  const anchor = e.shiftKey
+/** Selects from the anchor line to the line at `block`, and returns a selector for later lines. */
+function startSelecting(view: EditorView, line: BlockInfo, extend: boolean) {
+  const anchor = extend
     ? lineSpan(view, view.lineBlockAt(view.state.selection.main.anchor))
     : lineSpan(view, line);
   const select = (block: BlockInfo) => {
@@ -48,15 +42,24 @@ export function selectLinesFromGutter(view: EditorView, line: BlockInfo, event: 
       userEvent: "select.pointer",
     });
   };
-  const selectAt = (clientY: number) => select(view.lineBlockAtHeight(clientY - view.documentTop));
   view.focus();
   select(line);
+  return (clientY: number) => select(view.lineBlockAtHeight(clientY - view.documentTop));
+}
 
-  if (e.pointerType === "touch") {
-    const move = (t: TouchEvent) => {
-      const touch = t.touches[0];
+/**
+ * The line-number gutter's pointerdown and touchstart. Handled (true), so the default is
+ * prevented: no mouse events after it, no caret of CodeMirror's own, and for a touch no scroll.
+ */
+export function selectLinesFromGutter(view: EditorView, line: BlockInfo, event: Event): boolean {
+  if (event.type === "touchstart") {
+    const t = event as TouchEvent;
+    if (t.touches.length !== 1) return false;
+    const selectAt = startSelecting(view, line, false);
+    const move = (m: TouchEvent) => {
+      const touch = m.touches[0];
       if (!touch) return;
-      if (t.cancelable) t.preventDefault();
+      if (m.cancelable) m.preventDefault();
       selectAt(touch.clientY);
     };
     const end = () => {
@@ -70,6 +73,10 @@ export function selectLinesFromGutter(view: EditorView, line: BlockInfo, event: 
     return true;
   }
 
+  const e = event as PointerEvent;
+  // A finger is handled on its touchstart, which comes just after this.
+  if (e.pointerType === "touch" || e.button !== 0) return false;
+  const selectAt = startSelecting(view, line, e.shiftKey);
   const move = (m: PointerEvent) => {
     if (m.pointerId === e.pointerId) selectAt(m.clientY);
   };

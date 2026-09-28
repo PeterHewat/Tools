@@ -461,7 +461,7 @@ function numbers(labels: readonly (number | string | null)[] | null): Extension 
     ...(labels && {
       formatNumber: (n: number) => (labels[n - 1] == null ? "" : String(labels[n - 1])),
     }),
-    domEventHandlers: { pointerdown: selectLinesFromGutter },
+    domEventHandlers: { pointerdown: selectLinesFromGutter, touchstart: selectLinesFromGutter },
   });
 }
 
