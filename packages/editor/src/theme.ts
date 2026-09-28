@@ -89,19 +89,36 @@ export const siteTheme = EditorView.theme({
   },
   ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--border)" },
   ".cm-panels.cm-panels-top": { borderBottom: "1px solid var(--border)" },
-  ".cm-panel input": {
-    font: "inherit",
+  // Go to line and the other dialogs: the site's fields and buttons, not CodeMirror's light
+  // gradients (which do not follow the theme).
+  ".cm-panel": { padding: "6px 10px", fontFamily: "system-ui, sans-serif", fontSize: "13px" },
+  ".cm-panel label": { display: "inline-flex", alignItems: "center", gap: "6px" },
+  ".cm-panel .cm-textfield": {
+    margin: "0",
+    padding: "3px 6px",
+    font: "13px var(--mono)",
     color: "var(--text)",
     backgroundColor: "var(--bg)",
     border: "1px solid var(--border)",
     borderRadius: "4px",
   },
-  ".cm-panel button": {
+  ".cm-panel .cm-textfield:focus": { outline: "none", borderColor: "var(--accent)" },
+  ".cm-panel .cm-button": {
+    margin: "0 0 0 6px",
+    padding: "3px 10px",
     font: "inherit",
     color: "var(--text)",
     backgroundColor: "var(--panel-2)",
+    backgroundImage: "none",
     border: "1px solid var(--border)",
     borderRadius: "4px",
+    cursor: "pointer",
+  },
+  ".cm-panel .cm-button:hover": { borderColor: "var(--muted)" },
+  ".cm-panel .cm-dialog-close, .cm-panel [name=close]": {
+    color: "var(--muted)",
+    fontSize: "18px",
+    cursor: "pointer",
   },
   ".cm-tooltip": {
     backgroundColor: "var(--panel)",

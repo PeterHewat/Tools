@@ -101,6 +101,8 @@ const editor = createEditor(codeEl, {
   ],
   onChange: (user) => {
     textCache = null;
+    findVersion++;
+    if (restored) droppedDraft = false;
     if (!user) return;
     stale = true;
     validateSoon();
@@ -156,6 +158,12 @@ const DRAFT_KEY = "tools.json.draft";
 const EXACT_KEY = "tools.json.exact";
 /** Past this, a draft is not worth the storage quota it would eat. */
 const MAX_SAVED = 2_000_000;
+/** Set when the draft was too large to keep, so a reload can say why the editor is empty. */
+const DROPPED_KEY = "tools.json.dropped";
+/** The tab reloaded after dropping a draft too large to keep: said until the next change. */
+let droppedDraft = false;
+/** The draft is back in the editor: changes from here on are new ones. */
+let restored = false;
 
 interface Prefs {
   indent: Indent;
@@ -185,6 +193,7 @@ function restore(): void {
   try {
     // A tab with no draft yet opens on the sample. Cleared, the draft is "" and stays empty.
     showDocument(sessionStorage.getItem(DRAFT_KEY) ?? SAMPLE);
+    droppedDraft = sessionStorage.getItem(DROPPED_KEY) === "1";
   } catch {
     /* storage refused: the sample, as for a new tab */
     showDocument(SAMPLE);
@@ -216,7 +225,10 @@ function save(): void {
   }
   try {
     const text = documentText();
-    sessionStorage.setItem(DRAFT_KEY, text.length > MAX_SAVED ? "" : text);
+    const tooLarge = text.length > MAX_SAVED;
+    sessionStorage.setItem(DRAFT_KEY, tooLarge ? "" : text);
+    // Kept while the empty draft still stands for the large one, so every reload says so.
+    if (tooLarge || !droppedDraft) sessionStorage.setItem(DROPPED_KEY, tooLarge ? "1" : "");
     sessionStorage.setItem(EXACT_KEY, JSON.stringify([...exactPlaces]));
   } catch {
     /* storage refused or full */
@@ -477,10 +489,12 @@ function showExport(): void {
   if (result.ok) {
     exportView.setColours(colours ? EXPORTS[mode].lexer : null);
     exportView.setLineLabels(mode === "csv" ? sheetLabels : null);
-    // Only when it changed: an edit elsewhere must not throw the reader back to the top.
+    // Only when it changed, and only what changed, so the reader keeps their place.
     if (exportShown !== result.text) {
       exportShown = result.text;
-      exportView.setText(result.text, "new");
+      exportView.setText(result.text, "sync");
+      findVersion++;
+      if (findOpen()) refreshFind();
     }
   } else {
     exportMessage.textContent = result.message;
@@ -612,11 +626,9 @@ function selectInExport(start: number, end: number): void {
 function openFind(): void {
   findBar.classList.remove("hidden");
   findOpenBtn.setAttribute("aria-expanded", "true");
-  const { from, to } = editor.selection;
-  const selected = to - from < 200 ? documentText().slice(from, to) : "";
-  if (mode === "json" && selected && selected.length < 200 && !selected.includes("\n")) {
-    findInput.value = selected;
-  }
+  const { from, to } = isExport(mode) ? exportView.selection : editor.selection;
+  const selected = to - from < 200 ? searchedText().slice(from, to) : "";
+  if (selected && !selected.includes("\n")) findInput.value = selected;
   findInput.focus();
   findInput.select();
   findKey = "";
@@ -662,6 +674,11 @@ function validate(): void {
 
   if (empty) {
     status.textContent = "Paste JSON, open a file or drop one on the editor.";
+    if (droppedDraft) {
+      warning.textContent =
+        "The last document was over 2 MB, too large to keep across a reload: open it again.";
+      warning.classList.remove("hidden");
+    }
   } else if (doc) {
     // Sizes of both forms, not of the text as it stands, so Format and Minify leave the line
     // unchanged: it describes the document, and only an edit or a new file changes that.
@@ -1064,14 +1081,17 @@ clearBtn.addEventListener("click", () => {
   replaceText("");
 });
 
-onFileDrop(editor.dom, ([file]) => {
-  if (file) void load(file);
-});
+for (const view of [editor, exportView]) {
+  onFileDrop(view.dom, ([file]) => {
+    if (file) void load(file);
+  });
+}
 
 // The header's, and on a phone the one in Help's title row.
 bindThemeToggle(byId("theme-toggle"));
 bindThemeToggle(byId("theme-toggle-help"));
 restore();
+restored = true;
 editor.setIndent(indent());
 showColours();
 validate();
