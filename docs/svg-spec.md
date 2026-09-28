@@ -18,8 +18,9 @@ chrome.
 
 ## 2. Technical approach
 
-- Static files: TypeScript compiled by Vite into HTML, CSS and ES modules. No runtime framework and
-  no runtime dependency. Geometry, undo and path maths live in the app.
+- Static files: TypeScript compiled by Vite into HTML, CSS and ES modules. No runtime framework;
+  the one bundled library is CodeMirror, in the SVG source panel, through `@tools/editor` (ADR
+  003). Geometry, undo and path maths live in the app.
 - The document layer is real SVG in the DOM, drawn from the scene graph in `state.ts`. Everything
   else is drawn in layers of its own that are never exported:
 
@@ -265,7 +266,7 @@ fold, and which are open is remembered for the tab.
 - **Reference images:** one row per image (§4).
 - **SVG:** artboard size, grid visibility and step, background, and the live SVG source, with
   import, export and copy buttons, and **Export PNG** (`png-export.ts`): the artboard's size, one pixel to a unit,
-  drawn from the exported SVG so it shows exactly what that does. Named `Name.png`. The source is editable: about half a second after typing stops,
+  drawn from the exported SVG so it shows exactly what that does. Named `Name.png`. The source is the shared code editor (`@tools/editor`: XML colours, folding, bracket and tag matching, its own undo while it has focus). It is editable: about half a second after typing stops,
   or on blur, it is re-imported with its ids kept (`importSvgFile(text, { keepIds: true })`);
   invalid markup shows an error and changes nothing. Shapes whose markup did not change keep their
   exact geometry. Putting the cursor in a shape's line selects it; selected shapes' lines are
@@ -286,10 +287,15 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   undo/redo and the tools on the left; fit, zoom and Final SVG on the right beside the theme switch
   and Help. The cursor position floats over the canvas at the top right. Rulers are always on,
   starting right of the Document panel.
-- **Phones** (below 720px, or 800px on a touch screen): both bars float over the canvas; the tools
-  and snap switches move to a bottom bar under the thumb. An open panel covers the canvas, so
-  opening one closes the other, and the rulers and cursor readout are hidden. The Tools button
-  reduces to its "‹" and the name is left out; the theme switch moves into the Help panel.
+- **Narrow screens** (665px and below, where the full header stops fitting): the Tools button
+  reduces to its "‹" and the name is left out. From 720px down an open panel is full width and
+  covers the canvas, so opening one closes the other, and the rulers and cursor readout are
+  hidden.
+- **Phones** (590px and below, where even that header stops fitting): the tools and snap
+  switches move to a bar floating over the bottom of the canvas, under the thumb; the theme
+  switch stays in the header, which fits all eight controls down to 320px. The layout and the buttons' size follow the width alone, the
+  same with a finger as with a mouse; only what happens on the canvas (handle targets, drag
+  thresholds) adapts to touch.
 - **Zoom** is one control: a button reading the level that opens a list - fit the artboard, fit
   the selection, then presets (25%–800%); wheel and pinch go from 10% to 1600%.
 - **Touch:** handles have ~44px targets (shrunk where points crowd), a drag starts only past a
@@ -301,8 +307,9 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   selected on a touch screen it offers select everything and paste. Up to seven buttons sit in one
   row, as many as fit across a 360px phone; more split into even rows, eight as two of four, never parting backward from forward. These switches are
   session state (`modes.ts`), so undo never flips them.
-- **Help** (`?`) explains everything for the pointer it detects, switchable between mouse and
-  touch, and carries an About section.
+- **Help** (`?`) explains everything for what the device has: touch on a phone or tablet, mouse
+  and keyboard on a computer, both on a laptop with a touch screen (`any-pointer`). It carries
+  an About section.
 - **Light and dark** follow the browser until the theme switch is pressed (see AGENTS.md).
 
 ## 12. Documents and files

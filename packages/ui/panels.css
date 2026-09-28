@@ -78,11 +78,6 @@
   scrollbar-color: var(--scroll) transparent;
 }
 
-/* The theme switch is in the header, except on a phone, where the header has no room for it. */
-.ui-dock-head .ui-theme-toggle {
-  display: none;
-}
-
 /* On a phone the panel covers the work, so it is full width and opaque: text over a blurred
    drawing or more text does not read. */
 @media (max-width: 720px) {
@@ -91,11 +86,6 @@
     border-right: 0;
     border-left: 0;
     background: var(--panel);
-  }
-
-  .ui-dock-head .ui-theme-toggle {
-    display: inline-grid;
-    flex: none;
   }
 }
 
@@ -151,6 +141,12 @@
 
 /* A popover under its button; bindMenu places it. Items are buttons, or rows of a label and a
    control, in sections headed by a label. */
+/* Hidden until bindMenu makes it a popover (which the browser then shows and hides): the
+   stylesheet paints before the script runs, and a menu would show as a plain box until then. */
+.ui-menu:not([popover]) {
+  display: none;
+}
+
 .ui-menu {
   position: fixed;
   inset: auto;
@@ -235,10 +231,4 @@
   margin: 3px 4px;
   border: 0;
   background: var(--border);
-}
-
-@media (pointer: coarse) {
-  .ui-menu-item {
-    min-height: 40px;
-  }
 }

@@ -13,6 +13,7 @@
   "devDependencies": {
     "@tools/catalog": "workspace:*",
     "@tools/codec": "workspace:*",
+    "@tools/editor": "workspace:*",
     "@tools/ui": "workspace:*",
     "typescript": "~6.0.3",
     "vite": "^8.3.1"

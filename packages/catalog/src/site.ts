@@ -10,7 +10,7 @@ export const SITE = {
   name: "Tools",
   tagline: "Small, self-contained browser tools.",
   description:
-    "A collection of small, dependency-free browser tools. Everything runs client-side; nothing is uploaded.",
+    "A collection of small, self-contained browser tools. Everything runs client-side and works offline; nothing is uploaded.",
   repo: "https://github.com/PeterHewat/Tools",
   author: "Peter Hewat",
   /** Page background, for the browser chrome and installed-app splash. Matches the shared CSS. */

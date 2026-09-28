@@ -23,15 +23,17 @@ svg.addEventListener(
   () => {
     if (isTextEditing()) endTextEdit(true);
     const a = document.activeElement as HTMLElement | null;
-    if (a && a !== document.body && a.matches?.("input, select, textarea")) a.blur();
+    if (a && a !== document.body && (a.matches?.("input, select, textarea") || a.isContentEditable))
+      a.blur();
     if (window.getSelection()?.toString()) window.getSelection()?.removeAllRanges();
   },
   true
 );
 
-/* Clipboard: our own JSON between sessions, plain SVG markup accepted on paste. */
+/* Clipboard: our own JSON between sessions, plain SVG markup accepted on paste. The SVG source
+   editor is contenteditable: what is copied, cut or pasted there is its text. */
 const inField = (t: EventTarget | null) =>
-  !!(t as HTMLElement | null)?.closest?.("input, textarea, select");
+  !!(t as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable]");
 document.addEventListener("copy", (e) => {
   if (inField(e.target) || window.getSelection()?.toString()) return;
   const text = copySelectionText();

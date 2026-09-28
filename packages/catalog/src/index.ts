@@ -25,6 +25,12 @@ export interface ToolsApp {
    * Its background should be translucent or absent, so it sits on the card in either theme.
    */
   readonly art?: boolean;
+  /**
+   * Widest screen (px) at which the header's start reduces from "‹ Tools  Name" to "‹": the
+   * width the header needs with the words, so it collapses as soon as they stop fitting.
+   * 720 when not given.
+   */
+  readonly compactHeader?: number;
   readonly status: AppStatus;
   /** Hidden from the index while false. Still built. */
   readonly listed: boolean;
@@ -41,6 +47,7 @@ export const APPS: readonly ToolsApp[] = [
     icon: "M6 18.5c3-10 6-13 8-13s2 3 0 6-5 4-7 4 8 1 11-4",
     tags: ["svg", "vector", "drawing", "tracing"],
     art: true,
+    compactHeader: 665,
     status: "stable",
     listed: true,
   },
@@ -48,11 +55,12 @@ export const APPS: readonly ToolsApp[] = [
     slug: "json",
     name: "JSON",
     blurb:
-      "Format, minify and validate JSON, and fix almost-JSON. Explore it as a tree, or convert it to YAML, CSV, TypeScript types or a JSON Schema.",
+      "Format, minify, fold and validate JSON, and fix almost-JSON. Convert it to YAML, CSV, TypeScript types or a JSON Schema.",
     icon: "M8 4C6 4 5.5 5 5.5 7v2.5C5.5 11 4.5 12 3.5 12c1 0 2 1 2 2.5V17c0 2 .5 3 2.5 3M16 4c2 0 2.5 1 2.5 3v2.5c0 1.5 1 2.5 2 2.5-1 0-2 1-2 2.5V17c0 2-.5 3-2.5 3",
-    tags: ["json", "format", "validate", "convert", "developer"],
+    tags: ["json", "format", "validate", "fold", "convert", "developer"],
     art: true,
-    status: "beta",
+    compactHeader: 730,
+    status: "stable",
     listed: true,
   },
 ];

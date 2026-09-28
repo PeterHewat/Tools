@@ -228,17 +228,20 @@ body {
   min-height: 34px;
 }
 
-/* In the top bar, sized by the shared header (header.css), so the bar matches every other app's.
-   A phone makes them bigger again, for fingers. Joined groups (.ui-seg) round only their ends. */
+/* In the top bar and the phone's tool bar, sized by the shared header (header.css), so they
+   match every other app's at every width. Joined groups (.ui-seg) round only their ends. */
 .top-bar .tool-btn,
-.top-bar .menu-trigger--icon {
+.top-bar .menu-trigger--icon,
+.tool-bar .tool-btn {
   min-width: var(--ui-control);
   min-height: var(--ui-control);
   padding: 0 5px;
+  border-radius: 6px;
 }
 
 .top-bar .tool-btn .glyph,
-.top-bar .menu-trigger--icon .glyph {
+.top-bar .menu-trigger--icon .glyph,
+.tool-bar .tool-btn .glyph {
   width: var(--ui-glyph);
   height: var(--ui-glyph);
 }
@@ -249,7 +252,7 @@ body {
 
 /* The drawing tools and the snap switches: two joined groups, as far apart as any two groups. */
 #tool-group-tools {
-  gap: 8px;
+  gap: var(--ui-header-gap);
 }
 
 .tool-btn:hover {
@@ -433,25 +436,10 @@ body {
   font-size: 12px;
 }
 
-.svg-preview {
-  margin: 0;
-  padding: 8px;
-  overflow: auto;
-  background: var(--field);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: min(50vh, 360px);
-  min-height: 120px;
-}
-
-.svg-line {
-  border-radius: 3px;
-}
-
+/* The selected shapes' lines in the SVG source: tinted, with a bar at the start. */
 .svg-line--selected {
-  color: var(--sel-text);
+  background: color-mix(in srgb, var(--sel-text) 13%, transparent);
+  box-shadow: inset 2px 0 var(--sel-text);
 }
 
 .hidden {
@@ -815,55 +803,24 @@ body {
   flex: 0 0 auto;
 }
 
-.svg-preview,
-.svg-input {
-  position: absolute;
-  inset: 0;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 8px;
+/* The SVG source (@tools/editor): the editor fills the box, framed like the other fields. */
+.svg-editor {
+  --editor-font: 12px / 1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.svg-editor > .cm-editor {
+  height: 100%;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.45;
-  letter-spacing: normal;
-  white-space: pre-wrap;
-  word-break: break-all;
-  tab-size: 2;
-}
-
-.svg-preview {
-  max-height: none;
-  min-height: 0;
   overflow: hidden;
-  pointer-events: none;
+  background: var(--field);
 }
 
-.svg-input {
-  resize: none;
-  overflow-y: auto;
-  background: transparent;
-  color: transparent;
-  caret-color: var(--text);
-  scrollbar-width: none;
-  outline: none;
-}
-
-.svg-input::-webkit-scrollbar {
-  display: none;
-}
-
-.svg-input::selection {
-  background: rgba(91, 141, 239, 0.35);
-  color: transparent;
-}
-
-.svg-input:focus {
+.svg-editor > .cm-editor.cm-focused {
   border-color: var(--accent);
 }
 
-.svg-input.invalid {
+.svg-editor > .cm-editor.invalid {
   border-color: var(--danger);
 }
 
@@ -1293,37 +1250,18 @@ body {
   cursor: default;
 }
 
-/* Help answers for one pointer at a time. It is a switch rather than a media query because a
-   laptop with a touch screen is both, and because the other half is often what you want to read. */
-.help-mode {
-  display: flex;
-  gap: 4px;
+/* Help says how to work with what the device has: touch on a phone or tablet, mouse and keyboard
+   on a computer, both on a laptop with a touch screen. With neither detected, the mouse's. */
+@media not (any-pointer: coarse) {
+  .help-body [data-help="touch"] {
+    display: none;
+  }
 }
 
-.help-mode-btn {
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.help-mode-btn:hover {
-  border-color: var(--accent);
-}
-
-.help-mode-btn.active {
-  color: var(--text);
-  background: var(--accent-dim);
-  border-color: var(--accent);
-}
-
-.help-body.help--mouse [data-help="touch"],
-.help-body.help--touch [data-help="mouse"] {
-  display: none;
+@media (any-pointer: coarse) and (not (any-pointer: fine)) {
+  .help-body [data-help="mouse"] {
+    display: none;
+  }
 }
 
 .help-keys td:first-child {
@@ -1645,34 +1583,6 @@ body {
   color: var(--danger);
 }
 
-/* Touch: every control gets at least the usual 44px target. */
-@media (pointer: coarse) {
-  .tool-btn,
-  .menu-trigger--icon,
-  .icon-btn {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .doc-act,
-  .doc-del,
-  .acc-icon-btn,
-  .acc-trash,
-  .btn-visibility {
-    min-width: 40px;
-    min-height: 40px;
-  }
-
-  .doc-size-row {
-    --ctl-h: 40px;
-  }
-
-  .help-mode-btn {
-    min-height: 36px;
-    padding: 0 10px;
-  }
-}
-
 /* A phone-width panel: at 375px the 74px colour preview and four 40px buttons left the name
    field 15px wide. The preview becomes a 22px square - it still shows stroke and fill - and the
    row buttons give up a little of their target, so the name can be read and edited. */
@@ -1728,29 +1638,16 @@ body {
   display: none;
 }
 
-/* With a mouse the bar needs about 700px; 720 leaves room for fonts that set wider. Touch targets
-   are 44px rather than 34px, so a touch screen needs about 760px and switches before it wraps. */
-@media (max-width: 720px), (pointer: coarse) and (max-width: 800px) {
+/* The second level (the first, "‹" alone, comes from the catalog's compactHeader): the header
+   needs 587px once it is down to "‹", so the tools move below that. By width alone, on a touch
+   screen as with a mouse, so the layout does not change with the pointer (layout.ts moves the
+   tools at the same width). */
+@media (width < 591px) {
   /* The header stays where it is on every screen, a solid row above the rulers, as in every
-     Tools app. Only the tools float, in a bar over the bottom of the canvas where thumbs are. */
-  /* 48px like every screen's: the 40px finger-sized buttons fit inside it, centred, rather than
-     growing it by the bar's padding. */
+     Tools app, with the same buttons. Only the tools float, in a bar over the bottom of the
+     canvas where thumbs are. One row, spaced as at every other width. */
   .top-bar {
     flex-wrap: nowrap;
-    gap: 6px;
-    height: 48px;
-    padding-block: 0;
-    padding-inline: 8px;
-  }
-
-  /* Undo | Redo in the middle of the free space, well clear of Document on one side and zoom on
-     the other, so a thumb aimed at either never undoes by accident. */
-  #group-history {
-    margin-inline: auto;
-  }
-
-  #group-view {
-    margin-left: 0;
   }
 
   .tool-bar {
@@ -1765,75 +1662,8 @@ body {
     box-shadow: 0 6px 20px var(--shadow);
   }
 
-  .cursor-readout,
-  .top-bar > .theme-btn {
+  .cursor-readout {
     display: none;
-  }
-
-  /* In Help's title row instead, as in every app on a phone (panels.css shows it there below
-     720px; a touch screen gets this layout up to 800px). */
-  .ui-dock-head .ui-theme-toggle {
-    display: inline-grid;
-    flex: none;
-  }
-
-  /* "‹ Tools  SVG" reduces to "‹", its words kept for screen readers (header.css does this
-     below 720px; a touch screen gets this layout up to 800px). */
-  .top-bar > .ui-home {
-    flex: 0 0 auto;
-    justify-content: center;
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0;
-  }
-
-  .top-bar > .ui-home::before {
-    margin-left: 4px;
-  }
-
-  .ui-home-label,
-  .top-bar > .ui-app-name {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  /* Seven controls on one line at 360px, so none of them is behind a menu. They shrink to fit
-     rather than being sized to the narrowest phone and left small on every other one. */
-  .top-bar .tool-btn,
-  .top-bar .menu-trigger--icon,
-  .tool-bar .tool-btn {
-    flex: 0 1 40px;
-    box-sizing: border-box;
-    width: 40px;
-    min-width: 32px;
-    height: 40px;
-    min-height: 40px;
-    padding: 0;
-  }
-
-  .top-bar .zoom-level {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 46px;
-    padding: 0 4px;
-  }
-
-  .top-bar,
-  .tool-bar {
-    gap: 4px;
-  }
-
-  .top-bar > .tool-group,
-  .tool-group {
-    gap: 4px;
-  }
-
-  #tool-group-tools {
-    gap: 6px;
   }
 
   .tool-bar {
@@ -1859,7 +1689,7 @@ body {
 
 /* A phone with a panel open: the panel covers the canvas, so the rulers and the cursor readout
    go with it. */
-@media (max-width: 720px), (pointer: coarse) and (max-width: 800px) {
+@media (max-width: 720px) {
   .panel-open .ruler,
   .panel-open .ruler-corner,
   .panel-open .cursor-readout {

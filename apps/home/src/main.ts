@@ -1,8 +1,6 @@
 import { listedApps } from "@tools/catalog";
 import { bindThemeToggle, registerServiceWorker } from "@tools/ui";
 import { pageHtml } from "./render.js";
-import "@tools/ui/base.css";
-import "./home.css";
 
 // Vite substitutes BASE_URL at build time from the `base` in vite.config.ts, which comes from
 // `siteBase()`. Reading it here rather than calling siteBase() again keeps the links correct

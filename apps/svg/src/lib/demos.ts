@@ -30,9 +30,19 @@ export const DEMOS: readonly Demo[] = [
 export const BACKDROP_NAME = "backdrop";
 
 /**
- * A demo's file as a document, ready to store. Its backdrop comes locked, so taking the drawing
- * apart never grabs the sea behind it; the lock is the document's, as the SVG cannot carry one.
- * Throws when the file cannot be read.
+ * The drawing with its backdrop locked, so taking it apart never grabs what is behind it. The
+ * lock is the document's, as the SVG cannot carry one: every drawing the app ships (the demos,
+ * the welcome workbench) comes through here.
+ */
+export function withBackdropLocked<T extends { name: string; locked?: boolean }>(
+  elements: readonly T[]
+): T[] {
+  return elements.map((e) => (e.name === BACKDROP_NAME ? { ...e, locked: true } : e));
+}
+
+/**
+ * A demo's file as a document, ready to store, its backdrop locked. Throws when the file cannot
+ * be read.
  */
 export function demoDocument(svg: string): ProjectFile {
   const { artboard, background, elements, groupNames } = importSvgFile(svg);
@@ -41,7 +51,7 @@ export function demoDocument(svg: string): ProjectFile {
     ...base,
     artboard: artboard ?? base.artboard,
     background: background ?? base.background,
-    elements: elements.map((e) => (e.name === BACKDROP_NAME ? { ...e, locked: true } : e)),
+    elements: withBackdropLocked(elements),
     groupNames,
   });
 }

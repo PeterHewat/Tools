@@ -4,6 +4,7 @@ import { SITE, appBase, siteBase } from "@tools/catalog/site";
 import { THEME_BOOT_SCRIPT, THEME_KEY } from "./theme.js";
 import {
   cfBeaconTag,
+  COMPACT_HEADER,
   headTags,
   headerStartHtml,
   manifestFor,
@@ -37,6 +38,16 @@ describe("page head", () => {
     expect(tags.find((t) => t.tag === "title")?.children).toBe("SVG — Tools");
     expect(attr(tags, "name", "description")?.attrs?.content).toBe(svg.description!);
     expect(attr(tags, "rel", "manifest")).toBeDefined();
+  });
+
+  test('each app\'s header reduces to "‹" at the width its catalog entry gives, first in the head', () => {
+    const style = (app: typeof svg) => headTags(app).find((t) => t.tag === "style");
+    expect(style(svg)?.children).toContain(`@media (width < ${svg.compactHeader! + 1}px)`);
+    expect(style(svg)?.injectTo).toBe("head-prepend");
+    expect(style({ ...svg, compactHeader: undefined })?.children).toContain(
+      `(width < ${COMPACT_HEADER + 1}px)`
+    );
+    expect(headTags(null).some((t) => t.tag === "style")).toBe(false);
   });
 
   test("the icon is the app's own, addressed from its base rather than from the page", () => {

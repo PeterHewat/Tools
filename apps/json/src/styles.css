@@ -1,4 +1,5 @@
 /* JSON's own layout. Tokens and controls come from @tools/ui/base.css. */
+@import "@tools/ui/base.css";
 
 /* The page is the editor: header on top, then the tool filling every pixel left. */
 body {
@@ -67,7 +68,7 @@ body {
   background: var(--panel);
 }
 
-/* Buttons joined into one control (Text | Tree | …, indent, path style) are @tools/ui's .ui-seg. */
+/* Buttons joined into one control (JSON | YAML | …, indent, path style) are @tools/ui's .ui-seg. */
 
 /* The views as one dropdown, for a phone (see the media query below); drawn as a header button
    with its own chevron, since the native arrow differs on every platform. */
@@ -127,7 +128,7 @@ body {
   }
 }
 
-@media (min-width: 641px) {
+@media (width >= 476px) {
   .phone-only {
     display: none;
   }
@@ -194,49 +195,7 @@ body {
   }
 }
 
-/*
- * Matches in a solid highlighter yellow, the way the SVG app marks its search: every match
- * tinted, the current one filled, with dark text so it reads in either theme. The same marks
- * in the text, the converted views and the tree.
- */
-.highlight mark,
-.tree mark {
-  border-radius: 2px;
-  background: rgb(255 210 31 / 38%);
-  box-shadow: 0 0 0 1px rgb(255 210 31 / 70%);
-  color: inherit;
-}
-
-.highlight mark.cur,
-.tree .row.sel mark {
-  background: #ffd21f;
-  box-shadow: 0 0 0 1px #ffd21f;
-}
-
-.highlight mark.cur,
-.highlight mark.cur *,
-.tree .row.sel mark {
-  color: #1d1f24;
-}
-
-/* A long document's pages: shown under the editor only when there is more than one. */
-.pager {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.page-input {
-  width: 5.5em;
-  margin: 0 4px;
-  padding: 3px 6px;
-}
-
-/* ---------- Tree ---------- */
-
-/* The text and the tree, each with its own buttons: only there in its own view. */
-.text-area,
-.tree-area {
+.text-area {
   position: relative;
   display: flex;
   flex: 1;
@@ -244,14 +203,12 @@ body {
   min-height: 0;
 }
 
-body:not([data-view="text"]) .text-area,
-body:not([data-view="tree"]) .tree-area {
+body:not([data-view="json"]) .text-area {
   display: none;
 }
 
-/* Format | Minify over the text, Expand all | Collapse all over the tree: joined like the
-   views, floating at the top right clear of the scrollbar, frosted like the SVG app's
-   floating controls. */
+/* Format | Minify | Unfold all | Fold all over the text: joined like the views, floating at
+   the top right clear of the scrollbar, frosted like the SVG app's floating controls. */
 .view-tools {
   position: absolute;
   top: 8px;
@@ -274,132 +231,6 @@ body:not([data-view="tree"]) .tree-area {
   font-size: 13px;
 }
 
-/*
- * The tree has a gutter like the text: each row's cell holds the text line its value starts
- * on, and the background draws the gutter on down past the last row.
- */
-.tree {
-  --ln-width: calc(var(--ln-digits, 2) * 1ch + 20px);
-
-  flex: 1;
-  min-height: 8rem;
-  overflow: auto;
-  background: linear-gradient(
-    to right,
-    var(--panel) calc(var(--ln-width) - 1px),
-    var(--border) calc(var(--ln-width) - 1px) var(--ln-width),
-    var(--bg) var(--ln-width)
-  );
-  font: 13px / 1.6 var(--mono);
-}
-
-.tree .row {
-  padding-right: 12px;
-  white-space: pre;
-  cursor: default;
-}
-
-/* Stays put when the tree scrolls sideways; its right margin indents the row by depth. */
-.tree .ln {
-  position: sticky;
-  left: 0;
-  display: inline-block;
-  width: var(--ln-width);
-  margin-right: calc(var(--level) * 18px + 8px);
-  padding: 0 8px 0 12px;
-  border-right: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--muted);
-  text-align: right;
-  user-select: none;
-}
-
-.tree .row:hover {
-  background: var(--panel-2);
-}
-
-/* Translucent, so every syntax colour stays readable on it. */
-.tree .row.sel {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-}
-
-.tree .row:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: -1px;
-}
-
-/*
- * The fold arrow: a CSS triangle centred in a square cell, turned down when the row is open.
- * Drawn rather than a ▸ glyph, whose ink sits off the centre of its box, so it would swing
- * around the rotation point instead of turning in place.
- */
-.tw {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-right: 4px;
-  vertical-align: -2px;
-  color: var(--muted);
-  transition: transform 0.1s;
-}
-
-.tw.can-fold {
-  cursor: pointer;
-}
-
-.tw.can-fold::before {
-  content: "";
-  /* Nudged right by a third of its width, so its centre of mass sits on the cell's centre. */
-  margin-left: 2px;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 6px solid currentColor;
-}
-
-.row:hover .tw.can-fold {
-  color: var(--text);
-}
-
-.ti[aria-expanded="true"] > .row > .tw {
-  transform: rotate(90deg);
-}
-
-.t-index {
-  color: var(--muted);
-}
-
-.tree .more {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  text-align: left;
-  white-space: pre;
-  cursor: pointer;
-}
-
-/* Lines up with the rows' text, past where their fold arrow sits. */
-.more-text {
-  padding-left: 18px;
-}
-
-.tree .more:hover .more-text {
-  text-decoration: underline;
-}
-
-.tree-empty {
-  display: block;
-  padding: 24px;
-  color: var(--muted);
-  font-family: system-ui, sans-serif;
-  text-align: center;
-}
-
 /* ---------- Where the caret is: line and column, then the path ---------- */
 
 /* One block of a fixed width, in monospace: the line and column at its start, the path against
@@ -412,7 +243,7 @@ body:not([data-view="tree"]) .tree-area {
   flex: none;
   width: min(64ch, 100%);
   min-width: 0;
-  /* A line tall even while the line and column are empty (a page opened on the tree). */
+  /* A line tall even while the line and column are empty (a converted view is shown). */
   min-height: 1.5em;
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -471,16 +302,8 @@ body:not([data-view="tree"]) .tree-area {
   color: var(--ok);
 }
 
-/*
- * The editor: a gutter of line numbers, then the text. The textarea's own text is transparent;
- * what shows is the coloured copy underneath (code-view.ts). Both layers must lay text out
- * identically, so they share font, size, line height, padding and tab size, and the colours
- * never change weight or style: bold or italic glyphs can be wider and would drift.
- */
+/* The editor (@tools/editor) fills the view; its colours come from the site's tokens. */
 .code {
-  --code-font: 13px / 1.5 var(--mono);
-  --code-pad: 6px 10px;
-
   display: flex;
   flex: 1;
   min-height: 8rem;
@@ -488,113 +311,15 @@ body:not([data-view="tree"]) .tree-area {
   background: var(--bg);
 }
 
-.gutter {
-  flex: none;
-  width: calc(var(--gutter-digits, 2) * 1ch + 20px);
-  padding: 6px 8px 6px 12px;
-  overflow: hidden;
-  border-right: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--muted);
-  font: var(--code-font);
-  text-align: right;
-  user-select: none;
-}
-
-.gutter-lines {
-  white-space: pre;
-}
-
-.gutter .err {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.code-body {
-  position: relative;
+.code > .cm-editor {
   flex: 1;
   min-width: 0;
+  height: auto;
 }
 
-.highlight,
-.editor {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: var(--code-pad);
-  font: var(--code-font);
-  tab-size: 2;
-  white-space: pre;
-}
-
-.highlight {
-  overflow: hidden;
-  color: var(--text);
-  pointer-events: none;
-}
-
-.editor {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: transparent;
-  caret-color: var(--text);
-  resize: none;
-}
-
-.editor::selection {
-  background: color-mix(in srgb, var(--accent) 35%, transparent);
-  color: transparent;
-}
-
-.editor::placeholder {
-  color: var(--muted);
-}
-
-.editor.dragging {
+.code > .cm-editor.dragging {
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
-}
-
-/* Too big to colour: the textarea shows its own text. */
-.code.plain .editor,
-.code.plain .editor::selection {
-  color: var(--text);
-}
-
-.t-key {
-  color: var(--accent);
-}
-
-.t-string {
-  color: var(--ok);
-}
-
-.t-number {
-  color: var(--warn);
-}
-
-.t-literal {
-  color: var(--violet);
-}
-
-/* TypeScript's type names. */
-.t-type {
-  color: var(--ok);
-}
-
-/* Colours off (a setting): the tree shows its values in the text colour too. The code views
-   switch to plain text themselves. */
-.no-colour .tree :is(.t-key, .t-string, .t-number, .t-literal, .t-index) {
-  color: inherit;
-}
-
-.t-comment,
-.t-punct {
-  color: var(--muted);
 }
 
 /* Open, Copy, Download, Clear: actions everyone knows by their picture. */
@@ -659,21 +384,25 @@ body:not([data-view="tree"]) .tree-area {
   display: none;
 }
 
-@media (max-width: 640px) {
-  /* The groups' buttons flow straight into the header's rows, so everything wraps as single
-     buttons rather than as whole groups leaving gaps. */
-  .json-header .group {
-    display: contents;
+/* Second level, when "‹" alone no longer leaves room for the views: they become a dropdown. */
+@media (width < 646px) {
+  .json-header .ui-seg.views {
+    display: none;
   }
 
-  /* One row: ‹, the views as a dropdown, Settings, Find, then "⋯" for the file actions and
-     Help at the far end. */
+  .view-select {
+    display: block;
+  }
+}
+
+/* Third level, when even that does not fit: a phone's layout. */
+@media (width < 476px) {
+  /* One row: ‹, the views as a dropdown, Settings, Find, then "⋯" for the file actions, the
+     theme switch and Help at the far end. The spacing is the header's at every width. */
   .json-header {
     flex-wrap: nowrap;
-    gap: 6px;
   }
 
-  .json-header .ui-seg.views,
   .json-header .group.file {
     display: none;
   }
@@ -685,15 +414,6 @@ body:not([data-view="tree"]) .tree-area {
   .json-header .more-btn {
     display: inline-flex;
     margin-left: auto;
-  }
-
-  /* In Help's title row instead, as in every app on a phone. */
-  .json-header .ui-theme-toggle {
-    display: none;
-  }
-
-  .view-select {
-    display: block;
   }
 
   /* "Valid JSON · … deep" on one line, the sizes on the next. */
@@ -770,17 +490,6 @@ body:not([data-view="tree"]) .tree-area {
     padding: 8px 64px calc(8px + env(safe-area-inset-bottom)) 12px;
     align-content: center;
   }
-
-  /* Clear of the button, which floats over the bars' right end. */
-  .pager {
-    padding-right: 64px;
-  }
-}
-
-/* Moved by transform as the textarea scrolls; a block, so the transform applies. */
-.highlight code {
-  display: block;
-  font: inherit;
 }
 
 /* CSV: what the tables are, above the view, and which one Copy and Export take. */

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parse, type JsonNode } from "./ast.js";
-import { childrenOf, jsPath, jsonPointer, nodeAt } from "./path.js";
+import { jsPath, jsonPointer, nodeAt } from "./path.js";
 
 const TEXT = '{"data": {"shapes": [{"id": "a"}, {"id": "b"}]}, "a b": 1}';
 
@@ -28,14 +28,6 @@ test("nodeAt follows positions, so a repeated key finds the right copy", () => {
     ["a", 1],
     [1, 1],
   ]);
-});
-
-test("childrenOf pairs each child with its key or index", () => {
-  const r = root('{"a": [true]}');
-  const [a] = childrenOf(r);
-  expect(a.seg).toBe("a");
-  expect(childrenOf(a.node).map((c) => c.seg)).toEqual([0]);
-  expect(childrenOf(childrenOf(a.node)[0].node)).toEqual([]);
 });
 
 describe("path formats", () => {

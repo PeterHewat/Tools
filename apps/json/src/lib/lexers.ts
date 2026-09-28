@@ -34,8 +34,6 @@ function lex(line: string, rules: readonly Rule[]): Token[] {
   return tokens;
 }
 
-const plain = (line: string): Token[] => (line ? [{ kind: "plain", text: line }] : []);
-
 // ---------- YAML ----------
 
 const YAML_KEY = /(?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s:#"'\-{}[\],][^:#]*?)(?=:(?:\s|$))/y;
@@ -132,5 +130,3 @@ export function lexTypeScript(line: string): Token[] {
     [/[{}()[\];:|?=<>,.&]/y, "punct"],
   ]);
 }
-
-export { plain as lexPlain };

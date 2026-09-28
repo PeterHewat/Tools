@@ -1033,17 +1033,8 @@
                     </button>
                   </div>
                 </div>
-                <div class="svg-editor">
-                  <pre id="svg-preview" class="svg-preview mono" aria-hidden="true"></pre>
-                  <textarea
-                    id="svg-input"
-                    class="svg-input mono"
-                    spellcheck="false"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    aria-label="SVG source (editable)"
-                  ></textarea>
-                </div>
+                <!-- The editor (@tools/editor) is created in here. -->
+                <div class="svg-editor" id="svg-editor"></div>
                 <p id="svg-error" class="svg-error hidden" role="status"></p>
               </div>
             </section>
@@ -1233,16 +1224,8 @@
       <aside class="ui-dock help-panel" id="help-panel" role="dialog" aria-label="Help" hidden>
         <div class="ui-dock-head">
           <p class="ui-dock-title">Help</p>
-          <div class="help-mode" role="group" aria-label="Show help for">
-            <button type="button" class="help-mode-btn" data-help-mode="mouse">
-              Mouse &amp; keyboard
-            </button>
-            <button type="button" class="help-mode-btn" data-help-mode="touch">Touch</button>
-          </div>
-          <!-- The phone's theme switch: its bar has no room for one. -->
-          <button type="button" class="ui-theme-toggle" data-theme-toggle></button>
         </div>
-        <div class="ui-dock-body ui-help help-body help--mouse" id="help-body">
+        <div class="ui-dock-body ui-help help-body" id="help-body">
           <h3>About</h3>
           <ul>
             <li>
@@ -1712,10 +1695,9 @@
               >. Beside it, the eye (<b>Final SVG</b>: hides the grid, guides and reference images).
             </li>
             <li data-help="touch">
-              Nothing in the bar is behind a menu: Document, undo, redo, zoom, Final SVG and Help
-              all fit across the top, and the tools and the snap switches float over the bottom of
-              the canvas, where your thumb is. On a phone the light / dark switch is here, at the
-              top of this panel.
+              Nothing in the bar is behind a menu: Document, undo, redo, zoom, Final SVG, the light
+              / dark switch and Help all fit across the top, and on a phone the tools and the snap
+              switches float over the bottom of the canvas, where your thumb is.
             </li>
             <li>
               <b>Light / dark</b> — the sun or moon beside Help switches the theme. Until you use

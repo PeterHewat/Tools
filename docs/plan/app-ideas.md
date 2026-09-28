@@ -12,6 +12,8 @@ Tools fit: client-only, offline, static output. No "save online", no fetching ar
 - `@tools/ui` — `base.css` (tokens, header with a link back to the index, buttons, inputs,
   code areas), DOM helpers (`copyText`, `downloadText`, `pickFiles`, `onFileDrop`), and
   `toolsApp(slug)` for the Vite config.
+- `@tools/editor` — the code editor (CodeMirror 6): folding, errors in place, find marks, the
+  site's colours. JSON's views and the SVG source use it; JWT, Diff and Icon Check would too.
 
 ## Build order
 

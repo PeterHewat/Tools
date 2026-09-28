@@ -1,22 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { highlightHtml, highlightLine, type Token } from "./highlight.js";
+import { highlightLine, type Token } from "./highlight.js";
 
 const kinds = (line: string) =>
   highlightLine(line)
     .filter((t) => t.text.trim())
     .map((t): [Token["kind"], string] => [t.kind, t.text]);
-
-/** The text the HTML shows: every tag skipped. Only for comparing output this module made. */
-function textOf(html: string): string {
-  let text = "";
-  let inTag = false;
-  for (const c of html) {
-    if (c === "<") inTag = true;
-    else if (c === ">" && inTag) inTag = false;
-    else if (!inTag) text += c;
-  }
-  return text;
-}
 
 describe("highlightLine", () => {
   test("tells keys from string values", () => {
@@ -61,47 +49,4 @@ describe("highlightLine", () => {
         .join("")
     ).toBe(line);
   });
-});
-
-describe("highlightHtml over a range", () => {
-  const line = '"a": 1, "b": 2, "c": 3';
-
-  test("colours only the tokens in range, keeping the prefix as plain text", () => {
-    const html = highlightHtml(line, 8, 12);
-    expect(html.startsWith('"a": 1, <span class="t-key">"b"</span>')).toBe(true);
-    expect(html).not.toContain('"c"');
-  });
-
-  test("the plain prefix plus the coloured tokens start at the true column", () => {
-    const plain = textOf(highlightHtml(line, 13, 14));
-    expect(line.startsWith(plain)).toBe(true);
-    expect(plain.length).toBeGreaterThanOrEqual(14);
-  });
-
-  test("a long line costs its range, not its length", () => {
-    const long = '"k": "' + "x".repeat(200_000) + '", ' + '"n": 1, '.repeat(100_000);
-    const started = performance.now();
-    const html = highlightHtml(long, 150_000, 150_100);
-    expect(performance.now() - started).toBeLessThan(500);
-    expect(html.length).toBeLessThan(long.length);
-  });
-});
-
-test("highlightHtml marks find results inside and across tokens", () => {
-  const html = highlightHtml('"ab": "cab"', 0, Infinity, undefined, [
-    { start: 1, end: 3 },
-    { start: 8, end: 10, current: true },
-  ]);
-  expect(html).toBe(
-    '<span class="t-key">"<mark>ab</mark>"</span><span class="t-punct">:</span> ' +
-      '<span class="t-string">"c<mark class="cur">ab</mark>"</span>'
-  );
-  const across = highlightHtml("[1, 2]", 0, Infinity, undefined, [{ start: 1, end: 5 }]);
-  expect(textOf(across)).toBe("[1, 2]");
-  expect(across.match(/<mark>/g)).toHaveLength(4); // one per token: "1", ",", " ", "2"
-});
-
-test("highlightHtml escapes markup", () => {
-  expect(highlightHtml('"<b>&"')).toBe('<span class="t-string">"&lt;b>&amp;"</span>');
-  expect(highlightHtml("  x")).toBe("  x");
 });

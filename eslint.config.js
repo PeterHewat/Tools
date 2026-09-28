@@ -36,6 +36,21 @@ export default defineConfig(
     rules: { "no-console": "off" },
   },
   {
+    // CodeMirror is reached only through @tools/editor (docs/adr/003).
+    files: ["**/*.ts"],
+    ignores: ["packages/editor/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            { group: ["@codemirror/*", "@lezer/*"], message: "Import from @tools/editor." },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.test.ts"],
     languageOptions: { globals: { ...globals.node } },
   },

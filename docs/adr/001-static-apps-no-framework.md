@@ -23,6 +23,7 @@ toolchain vanished.
 ## Consequences
 
 - No React/Svelte/Vue in an app. UI is built with the DOM directly.
-- A dependency is acceptable in `devDependencies`; in the shipped bundle it needs a real reason.
+- A dependency is acceptable in `devDependencies`; in the shipped bundle it needs a real reason,
+  recorded in an ADR ([ADR 003](003-codemirror-for-code-editing.md): CodeMirror for code editing).
 - Shared code goes in `packages/`, not into a runtime library an app links against at runtime.
 - Apps stay small enough to read, which is the point of the collection.

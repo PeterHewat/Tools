@@ -1,11 +1,19 @@
 import { getState } from "./state.js";
 import { renderRulers, setRulerOffset } from "./rulers.js";
-import { isCoarsePointer } from "./pointer.js";
 import { bindDock, byId } from "@tools/ui";
 
-/** Where the layout turns into the phone one. Keep in step with the media query in styles.css. */
-const NARROW = "(max-width: 720px), (pointer: coarse) and (max-width: 800px)";
-const narrowQuery = window.matchMedia(NARROW);
+/**
+ * Where the tools move to the bottom bar: the phone layout's media query in styles.css, which
+ * shows that bar. The two must match, or the tools land in a bar that is not shown.
+ */
+const PHONE = "(width < 591px)";
+const phoneQuery = window.matchMedia(PHONE);
+/**
+ * Where a side panel goes full width and covers the canvas (panels.css, and the `.panel-open`
+ * media query in styles.css): wider than the phone layout, since the panels need more room.
+ */
+const COVER = "(max-width: 720px)";
+const narrowQuery = window.matchMedia(COVER);
 const toolGroup = byId("tool-group-tools");
 
 /**
@@ -14,13 +22,13 @@ const toolGroup = byId("tool-group-tools");
  * than up among the view controls.
  */
 function placeTools(): void {
-  const home = narrowQuery.matches ? byId("tool-bar") : byId("tool-slot");
+  const home = phoneQuery.matches ? byId("tool-bar") : byId("tool-slot");
   if (toolGroup.parentElement !== home) home.appendChild(toolGroup);
 }
 placeTools();
+phoneQuery.addEventListener("change", placeTools);
 narrowQuery.addEventListener("change", () => {
-  placeTools();
-  if (docDock.isOpen()) helpDock.setOpen(false);
+  if (narrowQuery.matches && docDock.isOpen()) helpDock.setOpen(false);
   layoutPanels();
 });
 
@@ -63,31 +71,6 @@ export function restoreLayout(): void {
   docDock.restore();
   helpDock.restore();
 }
-
-/**
- * Help answers for the pointer you are using. The starting side is the one detected, but it is a
- * switch rather than a rule: a laptop with a touch screen is both, and the other side is often
- * exactly what you wanted to read.
- */
-const helpBody = byId("help-body");
-
-function setHelpMode(mode: "mouse" | "touch"): void {
-  helpBody.classList.toggle("help--mouse", mode === "mouse");
-  helpBody.classList.toggle("help--touch", mode === "touch");
-  helpBody.scrollTop = 0;
-  document.querySelectorAll<HTMLElement>("[data-help-mode]").forEach((btn) => {
-    const on = btn.dataset.helpMode === mode;
-    btn.classList.toggle("active", on);
-    btn.setAttribute("aria-pressed", String(on));
-  });
-}
-
-document.querySelectorAll<HTMLElement>("[data-help-mode]").forEach((btn) => {
-  btn.addEventListener("click", () =>
-    setHelpMode(btn.dataset.helpMode === "touch" ? "touch" : "mouse")
-  );
-});
-setHelpMode(isCoarsePointer() ? "touch" : "mouse");
 
 /* Collapsible sections (remembered). */
 const SECTIONS_KEY = "svg.sections";
