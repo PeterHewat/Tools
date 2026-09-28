@@ -2,7 +2,7 @@
  * A JSON parser that keeps positions and the source text of every value.
  *
  * `JSON.parse` returns plain values, which loses what this tool needs: where each value sits
- * (for the tree, the cursor path and jumping between them), and the exact text of numbers and
+ * (for the cursor path, the CSV view's line numbers and the error), and the exact text of numbers and
  * strings (so formatting never rounds a 64-bit ID or rewrites `1.0` as `1`).
  *
  * It is lenient on purpose. Comments, trailing commas, single quotes, unquoted keys, `NaN`,

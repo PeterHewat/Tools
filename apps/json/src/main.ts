@@ -38,8 +38,7 @@ import { printJson, printedSize } from "./lib/print.js";
 import { SAMPLE } from "./lib/sample.js";
 import { csvToJson, looksLikeCsv } from "./lib/csv-read.js";
 import { csvSheet, tablesIn, type CsvSheet } from "./lib/tables.js";
-import { findInText, findInTree, MAX_MATCHES, type NodeMatch } from "./lib/search.js";
-import { createTree } from "./tree.js";
+import { findInText, MAX_MATCHES } from "./lib/search.js";
 import "./styles.css";
 
 const formatBtn = byId<HTMLButtonElement>("format");
@@ -59,7 +58,6 @@ const fixBtn = byId<HTMLButtonElement>("fix");
 const fixNote = byId("fix-note");
 const fromCsvBtn = byId<HTMLButtonElement>("from-csv");
 const codeEl = byId("code");
-const treeEl = byId("tree");
 const exportEl = byId("export");
 const exportMessage = byId("export-message");
 const csvBar = byId("csvbar");
@@ -67,8 +65,6 @@ const csvNote = byId("csv-note");
 const exactBar = byId("exactbar");
 const exactList = byId("exact-list");
 const coloursBtn = byId<HTMLButtonElement>("colours");
-const expandAllBtn = byId<HTMLButtonElement>("expand-all");
-const collapseAllBtn = byId<HTMLButtonElement>("collapse-all");
 const pathBtn = byId<HTMLButtonElement>("path");
 const whereEl = pathBtn.parentElement!;
 const foldAllBtn = byId<HTMLButtonElement>("fold-all");
@@ -122,18 +118,10 @@ const exportView = createEditor(exportEl, {
     showFileControls();
   },
 });
-const tree = createTree(treeEl, {
-  select: (path, _node, indices) => {
-    treeSelection = indices;
-    showPath(path);
-  },
-  open: (node) => showInText(node),
-});
-
 // ---------- State ----------
 
-/** Text and Tree edit the document; the others show it converted, read-only. */
-type ViewMode = "text" | "tree" | ExportKind;
+/** JSON edits the document; the others show it converted, read-only. */
+type ViewMode = "json" | ExportKind;
 type ExportKind = "yaml" | "csv" | "ts" | "schema";
 type PathStyle = "js" | "pointer";
 type Indent = "2" | "4" | "tab";
@@ -146,19 +134,13 @@ let doc: Doc | null = null;
 let stale = false;
 /** The editor's text, read once per change: a long document is costly to join into a string. */
 let textCache: string | null = null;
-/** Child positions of the row selected in the tree. */
-let treeSelection: number[] = [];
 /** Valid and on one line: sorting keeps it minified, and there is no indent to choose. */
 let minified = false;
-let mode: ViewMode = "text";
-/** Where "the value you are on" is: the text's caret or the tree's selection, whichever was last. */
-let place: "text" | "tree" = "text";
+let mode: ViewMode = "json";
 let indentChoice: Indent = "2";
 let pathStyle: PathStyle = "js";
 /** Syntax colours in every view: a setting, on until someone turns it off. */
 let colours = true;
-/** The tree shows an older document until it is next opened. */
-let treeStale = true;
 /** Why the text is not JSON, and the edits that would make it JSON when there are some. */
 let fault: { message: string; position: JsonPosition; edits: Edit[] | null } | null = null;
 
@@ -183,7 +165,7 @@ interface Prefs {
   colours: boolean;
 }
 
-const VIEWS: readonly ViewMode[] = ["text", "tree", "yaml", "csv", "ts", "schema"];
+const VIEWS: readonly ViewMode[] = ["json", "yaml", "csv", "ts", "schema"];
 
 function restore(): void {
   try {
@@ -303,10 +285,10 @@ function atCursor(): ReturnType<typeof nodeAt> | null {
   return doc && !stale ? nodeAt(doc.root, editor.selection.from) : null;
 }
 
-/** The values from the root down to the one under the caret, or selected in the tree. */
+/** The values from the root down to the one under the caret. */
 function contextChain(): JsonNode[] {
   if (!doc || stale) return [];
-  const indices = place === "tree" ? treeSelection : (atCursor()?.indices ?? []);
+  const indices = atCursor()?.indices ?? [];
   const chain: JsonNode[] = [doc.root];
   for (const k of indices) {
     const node = chain.at(-1)!;
@@ -472,7 +454,9 @@ function showExport(): void {
   if (!doc) {
     result = {
       ok: false,
-      message: fault ? "Not valid JSON: switch to Text to fix it." : "Nothing to convert yet.",
+      message: fault
+        ? "Not valid JSON: switch to the JSON view to fix it."
+        : "Nothing to convert yet.",
     };
   } else {
     try {
@@ -504,11 +488,10 @@ function showExport(): void {
   showFileControls();
 }
 
-/** Turns syntax colours on or off everywhere: the text, the converted views and the tree. */
+/** Turns syntax colours on or off everywhere: the text and the converted views. */
 function showColours(): void {
   editor.setColours(colours ? highlightLine : null);
   if (isExport(mode)) exportView.setColours(colours ? EXPORTS[mode].lexer : null);
-  document.body.classList.toggle("no-colour", !colours);
 }
 
 // ---------- Options: indent, sort keys, path style, nested JSON ----------
@@ -526,7 +509,7 @@ function showOptions(): void {
   const node = chain.at(-1);
   unwrapBtn.disabled = !node || unwrapString(documentText(), node, indent()) === null;
   unwrapBtn.title = unwrapBtn.disabled
-    ? "Put the cursor on (or select in the tree) a string that holds a JSON object or array"
+    ? "Put the cursor on a string that holds a JSON object or array"
     : "";
   wrapBtn.disabled = !node;
   wrapBtn.textContent = chain.length > 1 ? "Wrap value in a string" : "Wrap document in a string";
@@ -546,7 +529,6 @@ function runNested(action: string): void {
 let findVersion = 0;
 let findKey = "";
 let textMatches: number[] = [];
-let treeMatches: NodeMatch[] = [];
 let findIndex = -1;
 
 const findOpen = () => !findBar.classList.contains("hidden");
@@ -558,21 +540,17 @@ function refreshFind(): void {
   if (key === findKey) return;
   findKey = key;
   const matchCase = { matchCase: isPressed(findCase) };
-  textMatches = mode === "tree" ? [] : findInText(searchedText(), query, matchCase);
-  treeMatches = mode === "tree" && doc && !stale ? findInTree(doc.root, query, matchCase) : [];
-  findIndex = Math.min(findIndex, matchCount() - 1);
-  tree.setQuery(mode === "tree" ? query : "", matchCase.matchCase);
+  textMatches = findInText(searchedText(), query, matchCase);
+  findIndex = Math.min(findIndex, textMatches.length - 1);
   showFindCount();
   showMarks();
 }
 
-/** What find searches outside the tree: the document, or the conversion on screen. */
+/** What find searches: the document, or the conversion on screen. */
 const searchedText = () => (isExport(mode) ? (exported ?? "") : documentText());
 
-const matchCount = () => (mode === "tree" ? treeMatches.length : textMatches.length);
-
 function showFindCount(): void {
-  const n = matchCount();
+  const n = textMatches.length;
   const capped = n >= MAX_MATCHES ? "+" : "";
   findCount.textContent = !findInput.value
     ? ""
@@ -589,18 +567,17 @@ function showFindCount(): void {
 /** Marks the matches in the view shown; the current one stands out. */
 function showMarks(): void {
   const size = findInput.value.length;
-  const marks =
-    findOpen() && mode !== "tree"
-      ? textMatches.map((m, k) => ({ start: m, end: m + size, current: k === findIndex }))
-      : [];
-  editor.setMarks(mode === "text" ? marks : []);
+  const marks = findOpen()
+    ? textMatches.map((m, k) => ({ start: m, end: m + size, current: k === findIndex }))
+    : [];
+  editor.setMarks(mode === "json" ? marks : []);
   exportView.setMarks(isExport(mode) ? marks : []);
 }
 
 /** Moves to the next (1) or previous (-1) match; 0 picks the first at or after the caret. */
 function findStep(delta: number): void {
   refreshFind();
-  const n = matchCount();
+  const n = textMatches.length;
   if (!n) {
     findIndex = -1;
     showFindCount();
@@ -608,24 +585,15 @@ function findStep(delta: number): void {
   }
   if (findIndex < 0 || delta === 0) {
     const caret = isExport(mode) ? exportView.selection.from : editor.selection.from;
-    const after =
-      mode === "tree"
-        ? treeMatches.findIndex((m) => m.node.start >= caret)
-        : textMatches.findIndex((m) => m >= caret);
+    const after = textMatches.findIndex((m) => m >= caret);
     findIndex = after < 0 ? 0 : after;
     if (delta < 0) findIndex = (findIndex - 1 + n) % n;
   } else {
     findIndex = (findIndex + delta + n) % n;
   }
-  if (mode === "text") {
-    const start = textMatches[findIndex];
-    selectInDocument(start, start + findInput.value.length, false);
-  } else if (mode === "tree") {
-    tree.reveal(treeMatches[findIndex].indices);
-  } else {
-    const start = textMatches[findIndex];
-    selectInExport(start, start + findInput.value.length);
-  }
+  const start = textMatches[findIndex];
+  if (mode === "json") selectInDocument(start, start + findInput.value.length, false);
+  else selectInExport(start, start + findInput.value.length);
   showFindCount();
   showMarks();
 }
@@ -646,7 +614,7 @@ function openFind(): void {
   findOpenBtn.setAttribute("aria-expanded", "true");
   const { from, to } = editor.selection;
   const selected = to - from < 200 ? documentText().slice(from, to) : "";
-  if (mode === "text" && selected && selected.length < 200 && !selected.includes("\n")) {
+  if (mode === "json" && selected && selected.length < 200 && !selected.includes("\n")) {
     findInput.value = selected;
   }
   findInput.focus();
@@ -660,9 +628,7 @@ function closeFind(): void {
   findOpenBtn.setAttribute("aria-expanded", "false");
   editor.setMarks([]);
   exportView.setMarks([]);
-  tree.setQuery("", false);
-  if (mode === "text") editor.focus();
-  else if (mode === "tree") tree.focus();
+  if (mode === "json") editor.focus();
 }
 
 // ---------- Validation: after every pause in typing, and every change made from code ----------
@@ -746,8 +712,6 @@ function validate(): void {
   editor.setError(fault && { from: fault.position.offset, message: fault.message });
   findVersion++;
   if (findOpen()) refreshFind();
-  treeStale = true;
-  if (mode === "tree") showTree();
   showExport();
   showOptions();
   showViewControls();
@@ -773,7 +737,7 @@ const LONG_TEXT = 1_000_000;
 function replaceText(text: string): void {
   if (text === documentText()) return;
   editor.setText(text);
-  if (mode === "text") editor.focus();
+  if (mode === "json") editor.focus();
   validate();
 }
 
@@ -816,7 +780,7 @@ const isCsvFile = (file: File) => /\.(csv|tsv)$/i.test(file.name) || file.type =
 // ---------- Where you are: caret, path ----------
 
 function showCursor(): void {
-  if (mode !== "text") return;
+  if (mode !== "json") return;
   const { line, column } = editor.position(editor.selection.head);
   cursor.textContent = `Ln ${line.toLocaleString()}, Col ${column}`;
   // While typing, the parse is behind the text: the last path stays until it catches up,
@@ -827,7 +791,7 @@ function showCursor(): void {
 
 let shownPath: PathSegment[] | null = null;
 
-/** The path of the value under the caret or selected in the tree; click it to copy. */
+/** The path of the value under the caret; click it to copy. */
 function showPath(path: PathSegment[] | null): void {
   shownPath = path;
   const text = path && (pathStyle === "js" ? jsPath(path) : jsonPointer(path));
@@ -854,45 +818,21 @@ function fitPath(): void {
 
 // ---------- Views ----------
 
-function showTree(): void {
-  if (!treeStale) return;
-  const text = documentText();
-  // A minified document is one line, where every value would be "line 1": number the rows by
-  // column there instead, which still says where each value is.
-  const oneLine = !text.includes("\n");
-  const starts = oneLine ? [] : lineStarts(text);
-  tree.show(
-    doc?.root ?? null,
-    fault ? "Not valid JSON: switch to Text to fix it." : "Nothing to show yet.",
-    oneLine ? (offset) => offset + 1 : (offset) => lineOf(starts, offset),
-    oneLine ? "Column" : "Line"
-  );
-  treeStale = false;
-}
-
 function setMode(next: ViewMode): void {
   mode = next;
-  if (mode === "text" || mode === "tree") place = mode;
-  codeEl.classList.toggle("hidden", mode !== "text");
-  treeEl.classList.toggle("hidden", mode !== "tree");
+  codeEl.classList.toggle("hidden", mode !== "json");
   for (const b of viewButtons) setPressed(b, b.dataset.view === mode);
   viewSelect.value = mode;
-  // The text's and the tree's own buttons float over them, shown only in their own view.
+  // The text's own buttons float over it, shown only in its view.
   document.body.dataset.view = mode;
   // Hidden but still holding its place, so the path does not move when the view changes.
-  cursor.classList.toggle("invisible", mode !== "text");
+  cursor.classList.toggle("invisible", mode !== "json");
   showExport();
   if (findOpen()) {
     findIndex = -1;
     refreshFind();
   }
-  if (mode === "tree") {
-    showTree();
-    const at = atCursor();
-    if (at) tree.reveal(at.indices);
-    else showPath(null);
-    tree.focus();
-  } else if (mode === "text") {
+  if (mode === "json") {
     editor.focus();
     showCursor();
   } else {
@@ -905,7 +845,6 @@ function setMode(next: ViewMode): void {
 
 /** Controls that act on one view: disabled, not hidden, while another is shown. */
 function showViewControls(): void {
-  expandAllBtn.disabled = collapseAllBtn.disabled = mode !== "tree" || !doc;
   foldAllBtn.disabled = unfoldAllBtn.disabled = !documentText().trim();
   showFileControls();
 }
@@ -929,15 +868,9 @@ function showFileControls(): void {
   downloadBtn.setAttribute("aria-label", downloadBtn.title);
 }
 
-/** Switches to the text with a value selected and scrolled to the middle. */
-function showInText(node: JsonNode): void {
-  setMode("text");
-  selectInDocument(node.start, node.end);
-}
-
 function goToError(): void {
   if (!fault) return;
-  if (mode !== "text") setMode("text");
+  if (mode !== "json") setMode("json");
   const { offset } = fault.position;
   selectInDocument(offset, offset + 1);
 }
@@ -951,7 +884,7 @@ async function load(file: File): Promise<void> {
   showDocument(json ? json.text : text);
   validate();
   // A file opens as it is, in the text: what was opened is what you see first.
-  setMode("text");
+  setMode("json");
 }
 
 /** What Copy and Download hand over, and under which name. */
@@ -981,8 +914,6 @@ for (const b of viewButtons) {
   b.addEventListener("click", () => setMode(b.dataset.view as ViewMode));
 }
 viewSelect.addEventListener("change", () => setMode(viewSelect.value as ViewMode));
-expandAllBtn.addEventListener("click", () => tree.expandAll());
-collapseAllBtn.addEventListener("click", () => tree.collapseAll());
 unfoldAllBtn.addEventListener("click", () => {
   editor.unfoldAll();
   editor.focus();

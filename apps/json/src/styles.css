@@ -67,7 +67,7 @@ body {
   background: var(--panel);
 }
 
-/* Buttons joined into one control (Text | Tree | …, indent, path style) are @tools/ui's .ui-seg. */
+/* Buttons joined into one control (JSON | YAML | …, indent, path style) are @tools/ui's .ui-seg. */
 
 /* The views as one dropdown, for a phone (see the media query below); drawn as a header button
    with its own chevron, since the native arrow differs on every platform. */
@@ -194,26 +194,7 @@ body {
   }
 }
 
-/*
- * Matches in a solid highlighter yellow, the way the SVG app marks its search: every match
- * tinted, the current one filled, with dark text so it reads in either theme. The editor draws
- * its own the same way (@tools/editor).
- */
-.tree mark {
-  border-radius: 2px;
-  background: rgb(255 210 31 / 38%);
-  box-shadow: 0 0 0 1px rgb(255 210 31 / 70%);
-  color: inherit;
-}
-
-.tree .row.sel mark {
-  background: #ffd21f;
-  box-shadow: 0 0 0 1px #ffd21f;
-  color: #1d1f24;
-}
-
-.text-area,
-.tree-area {
+.text-area {
   position: relative;
   display: flex;
   flex: 1;
@@ -221,14 +202,12 @@ body {
   min-height: 0;
 }
 
-body:not([data-view="text"]) .text-area,
-body:not([data-view="tree"]) .tree-area {
+body:not([data-view="json"]) .text-area {
   display: none;
 }
 
-/* Format | Minify over the text, Expand all | Collapse all over the tree: joined like the
-   views, floating at the top right clear of the scrollbar, frosted like the SVG app's
-   floating controls. */
+/* Format | Minify | Unfold all | Fold all over the text: joined like the views, floating at
+   the top right clear of the scrollbar, frosted like the SVG app's floating controls. */
 .view-tools {
   position: absolute;
   top: 8px;
@@ -251,132 +230,6 @@ body:not([data-view="tree"]) .tree-area {
   font-size: 13px;
 }
 
-/*
- * The tree has a gutter like the text: each row's cell holds the text line its value starts
- * on, and the background draws the gutter on down past the last row.
- */
-.tree {
-  --ln-width: calc(var(--ln-digits, 2) * 1ch + 20px);
-
-  flex: 1;
-  min-height: 8rem;
-  overflow: auto;
-  background: linear-gradient(
-    to right,
-    var(--panel) calc(var(--ln-width) - 1px),
-    var(--border) calc(var(--ln-width) - 1px) var(--ln-width),
-    var(--bg) var(--ln-width)
-  );
-  font: 13px / 1.6 var(--mono);
-}
-
-.tree .row {
-  padding-right: 12px;
-  white-space: pre;
-  cursor: default;
-}
-
-/* Stays put when the tree scrolls sideways; its right margin indents the row by depth. */
-.tree .ln {
-  position: sticky;
-  left: 0;
-  display: inline-block;
-  width: var(--ln-width);
-  margin-right: calc(var(--level) * 18px + 8px);
-  padding: 0 8px 0 12px;
-  border-right: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--muted);
-  text-align: right;
-  user-select: none;
-}
-
-.tree .row:hover {
-  background: var(--panel-2);
-}
-
-/* Translucent, so every syntax colour stays readable on it. */
-.tree .row.sel {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-}
-
-.tree .row:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: -1px;
-}
-
-/*
- * The fold arrow: a CSS triangle centred in a square cell, turned down when the row is open.
- * Drawn rather than a ▸ glyph, whose ink sits off the centre of its box, so it would swing
- * around the rotation point instead of turning in place.
- */
-.tw {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-right: 4px;
-  vertical-align: -2px;
-  color: var(--muted);
-  transition: transform 0.1s;
-}
-
-.tw.can-fold {
-  cursor: pointer;
-}
-
-.tw.can-fold::before {
-  content: "";
-  /* Nudged right by a third of its width, so its centre of mass sits on the cell's centre. */
-  margin-left: 2px;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 6px solid currentColor;
-}
-
-.row:hover .tw.can-fold {
-  color: var(--text);
-}
-
-.ti[aria-expanded="true"] > .row > .tw {
-  transform: rotate(90deg);
-}
-
-.t-index {
-  color: var(--muted);
-}
-
-.tree .more {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  text-align: left;
-  white-space: pre;
-  cursor: pointer;
-}
-
-/* Lines up with the rows' text, past where their fold arrow sits. */
-.more-text {
-  padding-left: 18px;
-}
-
-.tree .more:hover .more-text {
-  text-decoration: underline;
-}
-
-.tree-empty {
-  display: block;
-  padding: 24px;
-  color: var(--muted);
-  font-family: system-ui, sans-serif;
-  text-align: center;
-}
-
 /* ---------- Where the caret is: line and column, then the path ---------- */
 
 /* One block of a fixed width, in monospace: the line and column at its start, the path against
@@ -389,7 +242,7 @@ body:not([data-view="tree"]) .tree-area {
   flex: none;
   width: min(64ch, 100%);
   min-width: 0;
-  /* A line tall even while the line and column are empty (a page opened on the tree). */
+  /* A line tall even while the line and column are empty (a converted view is shown). */
   min-height: 1.5em;
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -466,38 +319,6 @@ body:not([data-view="tree"]) .tree-area {
 .code > .cm-editor.dragging {
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
-}
-
-.t-key {
-  color: var(--accent);
-}
-
-.t-string {
-  color: var(--ok);
-}
-
-.t-number {
-  color: var(--warn);
-}
-
-.t-literal {
-  color: var(--violet);
-}
-
-/* TypeScript's type names. */
-.t-type {
-  color: var(--ok);
-}
-
-/* Colours off (a setting): the tree shows its values in the text colour too. The code views
-   switch to plain text themselves. */
-.no-colour .tree :is(.t-key, .t-string, .t-number, .t-literal, .t-index) {
-  color: inherit;
-}
-
-.t-comment,
-.t-punct {
-  color: var(--muted);
 }
 
 /* Open, Copy, Download, Clear: actions everyone knows by their picture. */

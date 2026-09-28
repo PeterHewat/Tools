@@ -11,8 +11,7 @@
     <header class="ui-header json-header" id="header" data-tools-header>
       <div class="group" role="group" aria-label="View">
         <div class="ui-seg views" role="group" aria-label="Show as">
-          <button type="button" class="ui-btn" data-view="text" aria-pressed="true">Text</button>
-          <button type="button" class="ui-btn" data-view="tree" aria-pressed="false">Tree</button>
+          <button type="button" class="ui-btn" data-view="json" aria-pressed="true">JSON</button>
           <button type="button" class="ui-btn" data-view="yaml" aria-pressed="false">YAML</button>
           <button type="button" class="ui-btn" data-view="csv" aria-pressed="false">CSV</button>
           <button
@@ -30,8 +29,7 @@
         </div>
         <!-- The same choice on a phone, where six buttons would take a row of their own. -->
         <select class="view-select" id="view-select" aria-label="Show as">
-          <option value="text">Text</option>
-          <option value="tree">Tree</option>
+          <option value="json">JSON</option>
           <option value="yaml">YAML</option>
           <option value="csv">CSV</option>
           <option value="ts">Types</option>
@@ -210,17 +208,9 @@
         <h3>Views</h3>
         <ul>
           <li>
-            <b>Text</b> — edit the JSON, with colours, line numbers and live checking. The arrows in
-            the gutter fold objects and arrays; a folded one says how many keys or items it holds.
-            Unfold all and Fold all are at its top right.
-          </li>
-          <li>
-            <b>Tree</b> — fold objects and arrays. The gutter shows the line each value starts on in
-            the text (the column, when the text is one line). Double-click (double-tap) a row<span
-              class="keys-only"
-              >, or press <kbd>Enter</kbd>,</span
-            >
-            to show it in the text. Expand all and Collapse all are at its top right.
+            <b>JSON</b> — edit the document, with colours, line numbers and live checking. The
+            arrows in the gutter fold objects and arrays; a folded one says how many keys or items
+            it holds. Unfold all and Fold all are at its top right.
           </li>
           <li>
             <b>YAML, CSV, Types, Schema</b> — the document converted, following your edits. Export
@@ -250,8 +240,8 @@
           <li>
             <b>Find</b> (the magnifying glass<span class="keys-only"
               >, or <kbd>Ctrl</kbd> + <kbd>F</kbd></span
-            >) searches the view shown: the text, the converted views, or the keys and values of the
-            tree. Its button closes it again.
+            >) searches the view shown: the JSON, or the converted view. A match inside a folded
+            value unfolds it. Its button closes it again.
           </li>
           <li>
             <b>Format</b> and <b>Minify</b>, over the text's top right, keep numbers and strings
@@ -324,10 +314,6 @@
           <tr>
             <td><kbd>Ctrl</kbd>+click, <kbd>Alt</kbd>+drag</td>
             <td>More cursors, a rectangular selection</td>
-          </tr>
-          <tr>
-            <td>Arrows</td>
-            <td>In the tree: move, open and close rows</td>
           </tr>
         </table>
       </div>
@@ -421,30 +407,6 @@
         </div>
         <!-- The editor (@tools/editor) is created in here. -->
         <div class="code" id="code"></div>
-      </div>
-      <!-- The tree, with its own buttons floating at its top right: they only apply to it. -->
-      <div class="tree-area">
-        <div class="view-tools ui-seg" role="group" aria-label="Tree">
-          <button
-            type="button"
-            class="ui-btn icon-btn"
-            id="expand-all"
-            title="Expand all"
-            aria-label="Expand all"
-          >
-            <svg data-ui-icon="expand-all" aria-hidden="true"></svg>
-          </button>
-          <button
-            type="button"
-            class="ui-btn icon-btn"
-            id="collapse-all"
-            title="Collapse all"
-            aria-label="Collapse all"
-          >
-            <svg data-ui-icon="collapse-all" aria-hidden="true"></svg>
-          </button>
-        </div>
-        <div class="tree hidden" id="tree" role="tree" aria-label="JSON tree"></div>
       </div>
       <!-- CSV only: what the tables are, and which one Copy and Export take. -->
       <div class="bar csvbar hidden" id="csvbar">
