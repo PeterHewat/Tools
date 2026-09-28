@@ -68,6 +68,7 @@ import { iconSvg } from "@tools/ui";
 import { lexerColours, type BlockComment, type LineLexer } from "./colour.js";
 import { expandExtension, expandSelection, shrinkSelection } from "./expand.js";
 import { foldSummary } from "./fold-summary.js";
+import { selectLinesFromGutter } from "./line-select.js";
 import { minimalChange } from "./text-diff.js";
 import { siteTheme, syntaxColours } from "./theme.js";
 
@@ -456,11 +457,12 @@ function colourExtension(colours: Colours): Extension {
 const indentString = (indent: number | "\t") => (indent === "\t" ? "\t" : " ".repeat(indent));
 
 function numbers(labels: readonly (number | string | null)[] | null): Extension {
-  return lineNumbers(
-    labels
-      ? { formatNumber: (n) => (labels[n - 1] == null ? "" : String(labels[n - 1])) }
-      : undefined
-  );
+  return lineNumbers({
+    ...(labels && {
+      formatNumber: (n: number) => (labels[n - 1] == null ? "" : String(labels[n - 1])),
+    }),
+    domEventHandlers: { mousedown: selectLinesFromGutter },
+  });
 }
 
 export function createEditor(parent: HTMLElement, options: EditorOptions = {}): Editor {

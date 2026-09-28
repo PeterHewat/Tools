@@ -65,6 +65,17 @@ describe("createEditor", () => {
     expect(make('{\n  /* see {x} */\n  "a": [\n    1\n  ]\n}').canFold).toBe(true);
   });
 
+  // happy-dom lays nothing out, so every row is at height 0: line 1 is the one it can find.
+  test("a mousedown on a line number selects that line, its line break included", () => {
+    const ed = make("one\ntwo\nthree", { language: null });
+    const number = [...ed.dom.querySelectorAll(".cm-lineNumbers .cm-gutterElement")].find(
+      (e) => e.textContent === "1"
+    )!;
+    number.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+    document.dispatchEvent(new MouseEvent("mouseup"));
+    expect(ed.selection).toEqual({ from: 0, to: 4, head: 4 });
+  });
+
   test("fold placeholders say what they hold", () => {
     const ed = make(DOC);
     ed.foldAll();
