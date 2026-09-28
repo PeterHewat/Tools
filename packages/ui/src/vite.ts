@@ -94,8 +94,24 @@ export function toolsSite(): UserConfig {
     appType: "mpa",
     publicDir: false,
     define: siteDefine(),
-    plugins: [sitePages(), siteManifest(), workers(null)],
+    plugins: [sitePages(), sitePageHead(), siteManifest(), workers(null)],
     server: { port: 5170 },
+  };
+}
+
+/**
+ * Each page's head tags under the site's dev server. Added after Vite's own pass over the page:
+ * in dev, Vite puts the base in front of every root-absolute URL it finds there, and these
+ * already carry it (`/Tools/manifest.webmanifest` would become `/Tools/Tools/…`).
+ */
+function sitePageHead(): Plugin {
+  return {
+    name: "tools-site-page-head",
+    apply: "serve",
+    transformIndexHtml: {
+      order: "post",
+      handler: (_html, ctx) => headTags(appOfFile(ctx.filename)),
+    },
   };
 }
 
@@ -166,7 +182,7 @@ function sitePages(): Plugin {
         // Script and style URLs from the page's own root ("/src/main.ts") are under its folder.
         const folder = app ? app.slug : "home";
         const own = html.replace(/(\s(?:src|href)=")\/src\//g, `$1/${folder}/src/`);
-        return { html: withIcons(app ? withHeaderStart(own, app) : own), tags: headTags(app) };
+        return withIcons(app ? withHeaderStart(own, app) : own);
       },
     },
     transform(code, id) {
