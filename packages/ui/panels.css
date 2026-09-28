@@ -232,9 +232,3 @@
   border: 0;
   background: var(--border);
 }
-
-@media (pointer: coarse) {
-  .ui-menu-item {
-    min-height: 40px;
-  }
-}

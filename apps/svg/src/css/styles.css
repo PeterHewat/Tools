@@ -1599,34 +1599,6 @@ body {
   color: var(--danger);
 }
 
-/* Touch: every control gets at least the usual 44px target. */
-@media (pointer: coarse) {
-  .tool-btn,
-  .menu-trigger--icon,
-  .icon-btn {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .doc-act,
-  .doc-del,
-  .acc-icon-btn,
-  .acc-trash,
-  .btn-visibility {
-    min-width: 40px;
-    min-height: 40px;
-  }
-
-  .doc-size-row {
-    --ctl-h: 40px;
-  }
-
-  .help-mode-btn {
-    min-height: 36px;
-    padding: 0 10px;
-  }
-}
-
 /* A phone-width panel: at 375px the 74px colour preview and four 40px buttons left the name
    field 15px wide. The preview becomes a 22px square - it still shows stroke and fill - and the
    row buttons give up a little of their target, so the name can be read and edited. */
@@ -1682,10 +1654,11 @@ body {
   display: none;
 }
 
-/* The second level (the first, "‹" alone, comes from the catalog's compactHeader): with a mouse
-   the header needs 587px once it is down to "‹", so the tools move below that. Touch targets
-   are 44px rather than 34px, so a touch screen needs about 760px and switches before it wraps. */
-@media (width < 591px), (pointer: coarse) and (width < 801px) {
+/* The second level (the first, "‹" alone, comes from the catalog's compactHeader): the header
+   needs 587px once it is down to "‹", so the tools move below that. By width alone, on a touch
+   screen as with a mouse, so the layout does not change with the pointer (layout.ts moves the
+   tools at the same width). */
+@media (width < 591px) {
   /* The header stays where it is on every screen, a solid row above the rulers, as in every
      Tools app. Only the tools float, in a bar over the bottom of the canvas where thumbs are. */
   /* 48px like every screen's: the 40px finger-sized buttons fit inside it, centred, rather than
@@ -1731,8 +1704,7 @@ body {
     flex: none;
   }
 
-  /* "‹ Tools  SVG" reduces to "‹", its words kept for screen readers: the build's rule does it
-     from 665px, but a touch screen gets this layout up to 800px, with a finger-sized button. */
+  /* "‹" as tall as the other buttons here (the build's rule has already reduced it). */
   .top-bar > .ui-home {
     flex: 0 0 auto;
     justify-content: center;
@@ -1813,7 +1785,7 @@ body {
 
 /* A phone with a panel open: the panel covers the canvas, so the rulers and the cursor readout
    go with it. */
-@media (max-width: 720px), (pointer: coarse) and (max-width: 800px) {
+@media (max-width: 720px) {
   .panel-open .ruler,
   .panel-open .ruler-corner,
   .panel-open .cursor-readout {

@@ -291,9 +291,11 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   reduces to its "‹" and the name is left out. From 720px down an open panel is full width and
   covers the canvas, so opening one closes the other, and the rulers and cursor readout are
   hidden.
-- **Phones** (590px and below, where even that header stops fitting, or 800px on a touch
-  screen): the tools and snap switches move to a bar floating over the bottom of the canvas,
-  under the thumb, and the theme switch moves into the Help panel.
+- **Phones** (590px and below, where even that header stops fitting): the tools and snap
+  switches move to a bar floating over the bottom of the canvas, under the thumb, and the theme
+  switch moves into the Help panel. The layout and the buttons' size follow the width alone, the
+  same with a finger as with a mouse; only what happens on the canvas (handle targets, drag
+  thresholds) adapts to touch.
 - **Zoom** is one control: a button reading the level that opens a list - fit the artboard, fit
   the selection, then presets (25%–800%); wheel and pinch go from 10% to 1600%.
 - **Touch:** handles have ~44px targets (shrunk where points crowd), a drag starts only past a

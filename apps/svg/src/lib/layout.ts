@@ -3,9 +3,18 @@ import { renderRulers, setRulerOffset } from "./rulers.js";
 import { isCoarsePointer } from "./pointer.js";
 import { bindDock, byId } from "@tools/ui";
 
-/** Where the layout turns into the phone one. Keep in step with the media query in styles.css. */
-const NARROW = "(max-width: 720px), (pointer: coarse) and (max-width: 800px)";
-const narrowQuery = window.matchMedia(NARROW);
+/**
+ * Where the tools move to the bottom bar: the phone layout's media query in styles.css, which
+ * shows that bar. The two must match, or the tools land in a bar that is not shown.
+ */
+const PHONE = "(width < 591px)";
+const phoneQuery = window.matchMedia(PHONE);
+/**
+ * Where a side panel goes full width and covers the canvas (panels.css, and the `.panel-open`
+ * media query in styles.css): wider than the phone layout, since the panels need more room.
+ */
+const COVER = "(max-width: 720px)";
+const narrowQuery = window.matchMedia(COVER);
 const toolGroup = byId("tool-group-tools");
 
 /**
@@ -14,13 +23,13 @@ const toolGroup = byId("tool-group-tools");
  * than up among the view controls.
  */
 function placeTools(): void {
-  const home = narrowQuery.matches ? byId("tool-bar") : byId("tool-slot");
+  const home = phoneQuery.matches ? byId("tool-bar") : byId("tool-slot");
   if (toolGroup.parentElement !== home) home.appendChild(toolGroup);
 }
 placeTools();
+phoneQuery.addEventListener("change", placeTools);
 narrowQuery.addEventListener("change", () => {
-  placeTools();
-  if (docDock.isOpen()) helpDock.setOpen(false);
+  if (narrowQuery.matches && docDock.isOpen()) helpDock.setOpen(false);
   layoutPanels();
 });
 
