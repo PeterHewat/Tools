@@ -8,7 +8,8 @@
  * touchstart is what reliably keeps the browser from scrolling or starting a gesture of its own,
  * whatever it was doing before (a caret just placed in the text, for one). It then follows touch
  * moves, which keep coming to the element first touched. The theme also turns touch scrolling off
- * there (`touch-action: none` on `.cm-lineNumbers`).
+ * there (`touch-action: none` on `.cm-gutters`). The fold strip beside the numbers does the same,
+ * except on a fold arrow.
  */
 import { EditorSelection } from "@codemirror/state";
 import type { BlockInfo, EditorView } from "@codemirror/view";
@@ -54,8 +55,12 @@ function startSelecting(view: EditorView, line: BlockInfo, extend: boolean) {
 export function selectLinesFromGutter(view: EditorView, line: BlockInfo, event: Event): boolean {
   if (event.type === "touchstart") {
     const t = event as TouchEvent;
-    if (t.touches.length !== 1) return false;
-    const selectAt = startSelecting(view, line, false);
+    const first = t.touches[0];
+    if (t.touches.length !== 1 || !first) return false;
+    // From the finger rather than `line`: where the gutter has no element of its own (the fold
+    // strip beside a line with no arrow), CodeMirror reads a clientY a touch event does not have.
+    const touched = view.lineBlockAtHeight(first.clientY - view.documentTop);
+    const selectAt = startSelecting(view, touched, false);
     const move = (m: TouchEvent) => {
       const touch = m.touches[0];
       if (!touch) return;

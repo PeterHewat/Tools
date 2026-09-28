@@ -16,7 +16,13 @@ export const siteTheme = EditorView.theme({
     font: "var(--editor-font, 13px / 1.5 var(--mono))",
   },
   "&.cm-focused": { outline: "none" },
-  ".cm-scroller": { font: "inherit", lineHeight: "inherit" },
+  // A thin scrollbar in the site's scrollbar colour, as the side panels have (panels.css).
+  ".cm-scroller": {
+    font: "inherit",
+    lineHeight: "inherit",
+    scrollbarWidth: "thin",
+    scrollbarColor: "var(--scroll) transparent",
+  },
   ".cm-content": { padding: "6px 0", caretColor: "var(--text)" },
   ".cm-line": { padding: "0 10px" },
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--text)" },
@@ -27,11 +33,13 @@ export const siteTheme = EditorView.theme({
     backgroundColor: "var(--panel)",
     color: "var(--muted)",
     borderRight: "1px solid var(--border)",
+    // A drag along the gutters (numbers and fold strip) selects lines (line-select.ts), with a
+    // finger too.
+    touchAction: "none",
+    cursor: "default",
   },
   ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text)" },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 6px 0 12px", minWidth: "2ch" },
-  // A drag along the line numbers selects lines (line-select.ts), with a finger too.
-  ".cm-lineNumbers": { touchAction: "none", cursor: "default" },
   ".cm-foldGutter .cm-gutterElement": {
     display: "flex",
     alignItems: "center",

@@ -61,6 +61,7 @@ import {
   lineNumbers,
   placeholder as placeholderText,
   rectangularSelection,
+  type BlockInfo,
   type DecorationSet,
   type KeyBinding,
 } from "@codemirror/view";
@@ -410,6 +411,12 @@ function canFoldMore(state: EditorState): boolean {
   return open;
 }
 
+/** Line selection from the fold gutter, except on a fold arrow, which is left to fold. */
+function selectOffMarker(view: EditorView, line: BlockInfo, event: Event): boolean {
+  if ((event.target as Element | null)?.closest?.(".cm-fold-marker")) return false;
+  return selectLinesFromGutter(view, line, event);
+}
+
 function markerDom(open: boolean): HTMLElement {
   const span = document.createElement("span");
   span.className = `cm-fold-marker${open ? " open" : ""}`;
@@ -431,7 +438,11 @@ const folding: Extension = [
       return span;
     },
   }),
-  foldGutter({ markerDOM: markerDom }),
+  foldGutter({
+    markerDOM: markerDom,
+    // The strip beside the numbers selects lines as they do; a fold arrow still folds.
+    domEventHandlers: { pointerdown: selectOffMarker, touchstart: selectOffMarker },
+  }),
 ];
 
 // ---------- The editor ----------
