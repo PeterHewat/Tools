@@ -228,17 +228,20 @@ body {
   min-height: 34px;
 }
 
-/* In the top bar, sized by the shared header (header.css), so the bar matches every other app's.
-   A phone makes them bigger again, for fingers. Joined groups (.ui-seg) round only their ends. */
+/* In the top bar and the phone's tool bar, sized by the shared header (header.css), so they
+   match every other app's at every width. Joined groups (.ui-seg) round only their ends. */
 .top-bar .tool-btn,
-.top-bar .menu-trigger--icon {
+.top-bar .menu-trigger--icon,
+.tool-bar .tool-btn {
   min-width: var(--ui-control);
   min-height: var(--ui-control);
   padding: 0 5px;
+  border-radius: 6px;
 }
 
 .top-bar .tool-btn .glyph,
-.top-bar .menu-trigger--icon .glyph {
+.top-bar .menu-trigger--icon .glyph,
+.tool-bar .tool-btn .glyph {
   width: var(--ui-glyph);
   height: var(--ui-glyph);
 }
@@ -1641,15 +1644,12 @@ body {
    tools at the same width). */
 @media (width < 591px) {
   /* The header stays where it is on every screen, a solid row above the rulers, as in every
-     Tools app. Only the tools float, in a bar over the bottom of the canvas where thumbs are. */
-  /* 48px like every screen's: the 40px finger-sized buttons fit inside it, centred, rather than
-     growing it by the bar's padding. */
+     Tools app, with the same buttons. Only the tools float, in a bar over the bottom of the
+     canvas where thumbs are. One row, 6px apart like the JSON app's phone header, which fits
+     all eight controls down to 320px. */
   .top-bar {
     flex-wrap: nowrap;
     gap: 6px;
-    height: 48px;
-    padding-block: 0;
-    padding-inline: 8px;
   }
 
   /* Undo | Redo in the middle of the free space, well clear of Document on one side and zoom on
@@ -1678,64 +1678,6 @@ body {
     display: none;
   }
 
-  /* "‹" as tall as the other buttons here (the build's rule has already reduced it). */
-  .top-bar > .ui-home {
-    flex: 0 0 auto;
-    justify-content: center;
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0;
-  }
-
-  .top-bar > .ui-home::before {
-    margin-left: 4px;
-  }
-
-  .ui-home-label,
-  .top-bar > .ui-app-name {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  /* Eight controls on one line, so none of them is behind a menu. They shrink to fit rather than
-     being sized to the narrowest phone and left small on every other one. */
-  .top-bar .tool-btn,
-  .top-bar .menu-trigger--icon,
-  .tool-bar .tool-btn {
-    flex: 0 1 40px;
-    box-sizing: border-box;
-    width: 40px;
-    min-width: 32px;
-    height: 40px;
-    min-height: 40px;
-    padding: 0;
-  }
-
-  .top-bar .zoom-level {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 46px;
-    padding: 0 4px;
-  }
-
-  .top-bar,
-  .tool-bar {
-    gap: 4px;
-  }
-
-  .top-bar > .tool-group,
-  .tool-group {
-    gap: 4px;
-  }
-
-  #tool-group-tools {
-    gap: 6px;
-  }
-
   .tool-bar {
     position: fixed;
     bottom: calc(10px + env(safe-area-inset-bottom));
@@ -1754,28 +1696,6 @@ body {
     bottom: calc(66px + env(safe-area-inset-bottom));
     border-right: 0;
     border-left: 0;
-  }
-}
-
-/* The narrowest phones (320px): tighter gaps and a little narrower buttons keep all eight on the
-   line. */
-@media (width < 361px) {
-  .top-bar,
-  .top-bar > .tool-group {
-    gap: 2px;
-  }
-
-  .top-bar {
-    padding-inline: 4px;
-  }
-
-  .top-bar .tool-btn,
-  .top-bar .menu-trigger--icon {
-    min-width: 30px;
-  }
-
-  .top-bar .zoom-level {
-    min-width: 40px;
   }
 }
 

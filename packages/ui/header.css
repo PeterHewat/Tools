@@ -18,8 +18,9 @@
 }
 
 /* The measures every header shares, so the apps' bars match: an app sizes its own buttons from
-   these rather than from its own. In px, not rem, because the apps' root font sizes differ. */
-.ui-header {
+   these rather than from its own, in the header and in any bar drawn like it (the SVG app's
+   floating tool bar). In px, not rem, because the apps' root font sizes differ. */
+:root {
   /* Every control in the bar is this tall, and an icon button this wide. */
   --ui-control: 34px;
   /* The picture in an icon button. */
@@ -27,7 +28,9 @@
   /* Between the buttons of one group; groups are the header's own gap apart. */
   --ui-group-gap: 4px;
   --ui-control-font: 13px;
+}
 
+.ui-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
