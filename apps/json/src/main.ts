@@ -1099,9 +1099,7 @@ for (const view of [editor, exportView]) {
   });
 }
 
-// The header's, and on a phone the one in Help's title row.
 bindThemeToggle(byId("theme-toggle"));
-bindThemeToggle(byId("theme-toggle-help"));
 restore();
 restored = true;
 editor.setIndent(indent());

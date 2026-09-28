@@ -1,7 +1,11 @@
 /**
- * Selecting whole lines from the line numbers, as editors do: a click selects the line (its line
- * break included), dragging down or up the gutter selects every line passed over, and Shift+click
- * extends the selection to the clicked line from where it started.
+ * Selecting whole lines from the line numbers, as editors do: a click or tap selects the line
+ * (its line break included), dragging down or up the gutter selects every line passed over, and
+ * Shift+click extends the selection to the clicked line from where it started.
+ *
+ * Pointer events, so a finger drags as a mouse does. A touch on the line numbers would otherwise
+ * scroll the editor, and the browser would only send a mouse event for a plain tap; the theme
+ * turns off touch scrolling there (`touch-action: none` on `.cm-lineNumbers`).
  */
 import { EditorSelection } from "@codemirror/state";
 import type { BlockInfo, EditorView } from "@codemirror/view";
@@ -22,9 +26,13 @@ export function linesBetween(
     : { anchor: anchor.from, head: head.to };
 }
 
-/** The line-number gutter's mousedown: selects lines, and follows the pointer while it is held. */
+/**
+ * The line-number gutter's pointerdown: selects lines, and follows the pointer while it is down.
+ * Handled (true), so the browser sends no mouse events after it and CodeMirror does not place a
+ * caret of its own.
+ */
 export function selectLinesFromGutter(view: EditorView, line: BlockInfo, event: Event): boolean {
-  const e = event as MouseEvent;
+  const e = event as PointerEvent;
   if (e.button !== 0) return false;
   const anchor = e.shiftKey
     ? lineSpan(view, view.lineBlockAt(view.state.selection.main.anchor))
@@ -39,12 +47,17 @@ export function selectLinesFromGutter(view: EditorView, line: BlockInfo, event: 
   };
   view.focus();
   select(line);
-  const move = (m: MouseEvent) => select(view.lineBlockAtHeight(m.clientY - view.documentTop));
-  const up = () => {
-    document.removeEventListener("mousemove", move);
-    document.removeEventListener("mouseup", up);
+  const move = (m: PointerEvent) => {
+    if (m.pointerId === e.pointerId) select(view.lineBlockAtHeight(m.clientY - view.documentTop));
   };
-  document.addEventListener("mousemove", move);
-  document.addEventListener("mouseup", up);
+  const up = (u: PointerEvent) => {
+    if (u.pointerId !== e.pointerId) return;
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", up);
+    document.removeEventListener("pointercancel", up);
+  };
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", up);
   return true;
 }

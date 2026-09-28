@@ -422,16 +422,6 @@ body:not([data-view="json"]) .text-area {
     margin-left: auto;
   }
 
-  /* In Help's title row instead, as in every app on a phone. */
-  .json-header .ui-theme-toggle {
-    display: none;
-  }
-
-  .ui-dock-head .ui-theme-toggle {
-    display: inline-grid;
-    flex: none;
-  }
-
   /* "Valid JSON · … deep" on one line, the sizes on the next. */
   .sizes {
     display: block;

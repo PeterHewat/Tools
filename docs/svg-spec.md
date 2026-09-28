@@ -292,8 +292,8 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   covers the canvas, so opening one closes the other, and the rulers and cursor readout are
   hidden.
 - **Phones** (590px and below, where even that header stops fitting): the tools and snap
-  switches move to a bar floating over the bottom of the canvas, under the thumb, and the theme
-  switch moves into the Help panel. The layout and the buttons' size follow the width alone, the
+  switches move to a bar floating over the bottom of the canvas, under the thumb; the theme
+  switch stays in the header, which fits all eight controls down to 320px. The layout and the buttons' size follow the width alone, the
   same with a finger as with a mouse; only what happens on the canvas (handle targets, drag
   thresholds) adapts to touch.
 - **Zoom** is one control: a button reading the level that opens a list - fit the artboard, fit
@@ -307,8 +307,9 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   selected on a touch screen it offers select everything and paste. Up to seven buttons sit in one
   row, as many as fit across a 360px phone; more split into even rows, eight as two of four, never parting backward from forward. These switches are
   session state (`modes.ts`), so undo never flips them.
-- **Help** (`?`) explains everything for the pointer it detects, switchable between mouse and
-  touch, and carries an About section.
+- **Help** (`?`) explains everything for what the device has: touch on a phone or tablet, mouse
+  and keyboard on a computer, both on a laptop with a touch screen (`any-pointer`). It carries
+  an About section.
 - **Light and dark** follow the browser until the theme switch is pressed (see AGENTS.md).
 
 ## 12. Documents and files

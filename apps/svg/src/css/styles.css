@@ -1247,37 +1247,18 @@ body {
   cursor: default;
 }
 
-/* Help answers for one pointer at a time. It is a switch rather than a media query because a
-   laptop with a touch screen is both, and because the other half is often what you want to read. */
-.help-mode {
-  display: flex;
-  gap: 4px;
+/* Help says how to work with what the device has: touch on a phone or tablet, mouse and keyboard
+   on a computer, both on a laptop with a touch screen. With neither detected, the mouse's. */
+@media not (any-pointer: coarse) {
+  .help-body [data-help="touch"] {
+    display: none;
+  }
 }
 
-.help-mode-btn {
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.help-mode-btn:hover {
-  border-color: var(--accent);
-}
-
-.help-mode-btn.active {
-  color: var(--text);
-  background: var(--accent-dim);
-  border-color: var(--accent);
-}
-
-.help-body.help--mouse [data-help="touch"],
-.help-body.help--touch [data-help="mouse"] {
-  display: none;
+@media (any-pointer: coarse) and (not (any-pointer: fine)) {
+  .help-body [data-help="mouse"] {
+    display: none;
+  }
 }
 
 .help-keys td:first-child {
@@ -1693,15 +1674,8 @@ body {
     box-shadow: 0 6px 20px var(--shadow);
   }
 
-  .cursor-readout,
-  .top-bar > .theme-btn {
+  .cursor-readout {
     display: none;
-  }
-
-  /* In Help's title row instead, as in every app on a phone. */
-  .ui-dock-head .ui-theme-toggle {
-    display: inline-grid;
-    flex: none;
   }
 
   /* "‹" as tall as the other buttons here (the build's rule has already reduced it). */
@@ -1727,8 +1701,8 @@ body {
     white-space: nowrap;
   }
 
-  /* Seven controls on one line at 360px, so none of them is behind a menu. They shrink to fit
-     rather than being sized to the narrowest phone and left small on every other one. */
+  /* Eight controls on one line, so none of them is behind a menu. They shrink to fit rather than
+     being sized to the narrowest phone and left small on every other one. */
   .top-bar .tool-btn,
   .top-bar .menu-trigger--icon,
   .tool-bar .tool-btn {
@@ -1780,6 +1754,28 @@ body {
     bottom: calc(66px + env(safe-area-inset-bottom));
     border-right: 0;
     border-left: 0;
+  }
+}
+
+/* The narrowest phones (320px): tighter gaps and a little narrower buttons keep all eight on the
+   line. */
+@media (width < 361px) {
+  .top-bar,
+  .top-bar > .tool-group {
+    gap: 2px;
+  }
+
+  .top-bar {
+    padding-inline: 4px;
+  }
+
+  .top-bar .tool-btn,
+  .top-bar .menu-trigger--icon {
+    min-width: 30px;
+  }
+
+  .top-bar .zoom-level {
+    min-width: 40px;
   }
 }
 

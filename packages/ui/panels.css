@@ -78,12 +78,6 @@
   scrollbar-color: var(--scroll) transparent;
 }
 
-/* The theme switch is in the header. When the header has no room for it, the app's phone layout
-   hides it there and shows this one, in Help's title row. */
-.ui-dock-head .ui-theme-toggle {
-  display: none;
-}
-
 /* On a phone the panel covers the work, so it is full width and opaque: text over a blurred
    drawing or more text does not read. */
 @media (max-width: 720px) {

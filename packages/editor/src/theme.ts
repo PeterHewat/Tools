@@ -30,6 +30,8 @@ export const siteTheme = EditorView.theme({
   },
   ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text)" },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 6px 0 12px", minWidth: "2ch" },
+  // A drag along the line numbers selects lines (line-select.ts), with a finger too.
+  ".cm-lineNumbers": { touchAction: "none", cursor: "default" },
   ".cm-foldGutter .cm-gutterElement": {
     display: "flex",
     alignItems: "center",
