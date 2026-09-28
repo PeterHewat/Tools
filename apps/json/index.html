@@ -7,7 +7,7 @@
   <body>
     <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.
          Controls that cannot apply are disabled, never hidden, so nothing moves. -->
-    <!-- "‹ Tools", the name and the beta badge are written in at build time, from the catalog. -->
+    <!-- "‹ Tools" and the name are written in at build time, from the catalog. -->
     <header class="ui-header json-header" id="header" data-tools-header>
       <div class="group" role="group" aria-label="View">
         <div class="ui-seg views" role="group" aria-label="Show as">
@@ -192,8 +192,8 @@
           </li>
           <li>
             Nothing you open or paste leaves this page: the draft is kept only for this tab, so a
-            reload keeps it and closing the tab ends it. The Exact values you turned on are kept
-            with it.
+            reload keeps it (up to 2 MB) and closing the tab ends it. The Exact values you turned on
+            are kept with it.
           </li>
           <li>
             A new tab opens on a small sample to try things on; <b>Clear</b> empties it, and it does
@@ -290,6 +290,10 @@
           <tr>
             <td><kbd>Esc</kbd></td>
             <td>Close find</td>
+          </tr>
+          <tr>
+            <td><kbd>Esc</kbd>, then <kbd>Tab</kbd></td>
+            <td>Leave the editor (<kbd>Tab</kbd> alone indents)</td>
           </tr>
           <tr>
             <td><kbd>Ctrl</kbd>+<kbd>G</kbd></td>

@@ -31,3 +31,31 @@ own YAML view is the test: every document it writes must read back to the same J
 - **Diff** (app-ideas #6) on `@codemirror/merge`, added to `@tools/editor`: side by side or
   unified, editable, unchanged stretches collapsed.
 - JWT's header and payload, and Icon Check's pasted SVG, in the editor.
+
+## Optional extras
+
+What CodeMirror makes cheap to add. None is needed; each is worth doing when someone misses it.
+Roughly most useful first. Anything from outside the CodeMirror project (a Vim keymap, a
+minimap) is ruled out by ADR 003.
+
+### JSON
+
+- **Replace** in the find bar, with a regex option: the one everyday editor feature the app
+  lacks. CodeMirror's search query does the matching; the app's own bar stays.
+- **Check against a JSON Schema**: pick or paste a schema (the app already writes them) and see
+  every problem underlined in place and listed, through `@codemirror/lint`.
+- **Complete keys** as you type, from a schema, or from the keys the document already uses at
+  that place.
+- **Hover a value** for its path, its type and, for an object or array, how much it holds.
+- **YAML view** folding and indentation from `@codemirror/lang-yaml`; the same grammar helps
+  YAML in.
+
+### SVG source
+
+- **Colour swatches** beside `fill` and `stroke` values, opening the app's colour picker.
+- **Complete element and attribute names** from a small SVG schema (`lang-xml` takes one).
+- **Hover a line** to outline that shape on the canvas.
+
+### Both
+
+- Settings for **line wrapping** and **showing whitespace**.
