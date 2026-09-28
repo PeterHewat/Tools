@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Linked, not imported from the script: the browser waits for it before the first paint,
+         so the page never shows unstyled while the script loads (under the dev server). -->
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <!-- One row, grouped by what the controls act on: the view, the layout, finding, the file.

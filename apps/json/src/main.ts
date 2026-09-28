@@ -10,7 +10,6 @@ import {
   pickFiles,
   registerServiceWorker,
 } from "@tools/ui";
-import "@tools/ui/base.css";
 import { createEditor, type LineLexer } from "@tools/editor";
 import {
   applyEdits,
@@ -39,7 +38,6 @@ import { SAMPLE } from "./lib/sample.js";
 import { csvToJson, looksLikeCsv } from "./lib/csv-read.js";
 import { csvSheet, tablesIn, type CsvSheet } from "./lib/tables.js";
 import { findInText, MAX_MATCHES } from "./lib/search.js";
-import "./styles.css";
 
 const formatBtn = byId<HTMLButtonElement>("format");
 const minifyBtn = byId<HTMLButtonElement>("minify");

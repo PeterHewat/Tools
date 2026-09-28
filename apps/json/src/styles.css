@@ -1,4 +1,5 @@
 /* JSON's own layout. Tokens and controls come from @tools/ui/base.css. */
+@import "@tools/ui/base.css";
 
 /* The page is the editor: header on top, then the tool filling every pixel left. */
 body {

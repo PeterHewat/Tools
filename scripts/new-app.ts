@@ -85,6 +85,7 @@ export default defineConfig(toolsApp("${slug}"));
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <header class="ui-header" data-tools-header>
@@ -98,8 +99,6 @@ export default defineConfig(toolsApp("${slug}"));
 </html>
 `,
   "src/main.ts": `import { bindThemeToggle, byId, registerServiceWorker } from "@tools/ui";
-import "@tools/ui/base.css";
-import "./styles.css";
 
 bindThemeToggle(byId("theme-toggle"));
 byId("app").textContent = "Nothing here yet.";
@@ -116,6 +115,7 @@ test("is in the catalog", () => {
 });
 `,
   "src/styles.css": `/* ${title}'s own layout. Tokens and controls come from @tools/ui/base.css. */
+@import "@tools/ui/base.css";
 `,
   "public/icon.svg": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#5b8def" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/></svg>
 `,

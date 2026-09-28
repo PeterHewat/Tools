@@ -23,9 +23,11 @@ export const THEME_EVENT = "tools:theme";
 
 /**
  * Inlined into every page's `<head>` by the Vite plugin, so a stored theme applies before the
- * first paint rather than flashing the other one while the module loads.
+ * first paint rather than flashing the other one while the module loads. It also sets the
+ * page's `color-scheme`, so what the browser paints before the stylesheet (its own background)
+ * is the chosen theme's, not the system's.
  */
-export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t==="light"||t==="dark"){var d=document.documentElement;d.dataset.theme=t;d.style.colorScheme=t}}catch(e){}`;
 
 function darkQuery(): MediaQueryList | null {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
@@ -59,6 +61,8 @@ function apply(): void {
   const root = document.documentElement;
   if (stored) root.dataset.theme = stored;
   else delete root.dataset.theme;
+  // Set inline before the first paint by THEME_BOOT_SCRIPT, so it must follow every change.
+  root.style.colorScheme = stored ?? "";
   // The browser chrome follows the page: the tokens are resolved by now, so read the real one.
   const bg = getComputedStyle(root).getPropertyValue("--bg").trim();
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
