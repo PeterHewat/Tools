@@ -78,7 +78,8 @@
   scrollbar-color: var(--scroll) transparent;
 }
 
-/* The theme switch is in the header, except on a phone, where the header has no room for it. */
+/* The theme switch is in the header. When the header has no room for it, the app's phone layout
+   hides it there and shows this one, in Help's title row. */
 .ui-dock-head .ui-theme-toggle {
   display: none;
 }
@@ -91,11 +92,6 @@
     border-right: 0;
     border-left: 0;
     background: var(--panel);
-  }
-
-  .ui-dock-head .ui-theme-toggle {
-    display: inline-grid;
-    flex: none;
   }
 }
 

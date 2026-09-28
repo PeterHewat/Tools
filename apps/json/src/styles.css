@@ -127,7 +127,7 @@ body {
   }
 }
 
-@media (min-width: 646px) {
+@media (width >= 476px) {
   .phone-only {
     display: none;
   }
@@ -383,33 +383,19 @@ body:not([data-view="json"]) .text-area {
   display: none;
 }
 
-/*
- * The JSON header needs a little more room than the others: "‹ Tools  JSON" reduces to "‹" up
- * to 730px rather than the site's 720px (packages/ui/header.css, which this repeats for the
- * width between).
- */
-@media (min-width: 721px) and (max-width: 730px) {
-  .json-header .ui-home {
-    justify-content: center;
-    min-width: 36px;
-    padding: 0;
+/* Second level, when "‹" alone no longer leaves room for the views: they become a dropdown. */
+@media (width < 646px) {
+  .json-header .ui-seg.views {
+    display: none;
   }
 
-  .json-header .ui-home::before {
-    margin-left: 4px;
-  }
-
-  .json-header :is(.ui-home-label, .ui-app-name, .ui-app-status) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .view-select {
+    display: block;
   }
 }
 
-@media (max-width: 645px) {
+/* Third level, when even that does not fit: a phone's layout. */
+@media (width < 476px) {
   /* The groups' buttons flow straight into the header's rows, so everything wraps as single
      buttons rather than as whole groups leaving gaps. */
   .json-header .group {
@@ -423,7 +409,6 @@ body:not([data-view="json"]) .text-area {
     gap: 6px;
   }
 
-  .json-header .ui-seg.views,
   .json-header .group.file {
     display: none;
   }
@@ -442,8 +427,9 @@ body:not([data-view="json"]) .text-area {
     display: none;
   }
 
-  .view-select {
-    display: block;
+  .ui-dock-head .ui-theme-toggle {
+    display: inline-grid;
+    flex: none;
   }
 
   /* "Valid JSON · … deep" on one line, the sizes on the next. */

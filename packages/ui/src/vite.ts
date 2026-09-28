@@ -260,11 +260,42 @@ export function headTags(
     // Absolute: a page reached at a deeper path must still find the files beside its index.
     { tag: "link", attrs: { rel: "icon", href: `${base}${ICON}`, type: "image/svg+xml" } },
   ];
+  if (app) tags.push(compactHeaderTag(app));
   // Every page names the one manifest, so installing from any of them installs the whole site.
   tags.push({ tag: "link", attrs: { rel: "manifest", href: `${siteBase()}${MANIFEST}` } });
   const beacon = cfBeaconTag(env);
   if (beacon) tags.push(beacon);
-  return tags.map((t) => ({ ...t, injectTo: "head" }));
+  return tags.map((t) => ({ ...t, injectTo: t.injectTo ?? "head" }));
+}
+
+/** Screens up to this wide get "‹" alone when the catalog does not say otherwise. */
+export const COMPACT_HEADER = 720;
+
+/**
+ * "‹ Tools  Name" reduced to "‹" (the words kept for screen readers) at and below the width the
+ * catalog gives the app. Written into each page rather than kept in header.css, because a media
+ * query cannot take its width from anywhere. First in the head, so an app's own stylesheet can
+ * still size the button (the SVG app's touch layout does).
+ */
+function compactHeaderTag(app: ToolsApp): HtmlTagDescriptor {
+  const width = app.compactHeader ?? COMPACT_HEADER;
+  const css = [
+    // "Up to and including" as a range, so a fractional width (browser zoom) falls on one side.
+    `@media (width < ${width + 1}px) {`,
+    "[data-tools-header] .ui-home { justify-content: center; min-width: 36px; padding: 0; }",
+    "[data-tools-header] .ui-home::before { margin-left: 4px; }",
+    "[data-tools-header] :is(.ui-home-label, .ui-app-name, .ui-app-status) {",
+    "  position: absolute; width: 1px; height: 1px; overflow: hidden;",
+    "  clip-path: inset(50%); white-space: nowrap;",
+    "}",
+    "}",
+  ].join("\n");
+  return {
+    tag: "style",
+    attrs: { "data-compact-header": String(width) },
+    children: css,
+    injectTo: "head-prepend",
+  };
 }
 
 function pageHead(app: ToolsApp | null): Plugin {

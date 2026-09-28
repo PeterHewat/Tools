@@ -178,26 +178,6 @@
   height: 22px;
 }
 
-/* On a narrow screen "‹ Tools  Name" reduces to "‹"; the words stay for screen readers. */
-@media (max-width: 720px) {
-  .ui-home {
-    justify-content: center;
-    min-width: 36px;
-    padding: 0;
-  }
-
-  .ui-home::before {
-    margin-left: 4px;
-  }
-
-  .ui-home-label,
-  .ui-app-name,
-  .ui-app-status {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-}
+/* On a narrow screen "‹ Tools  Name" reduces to "‹", its words kept for screen readers. The
+   build writes that rule into each page, at the width the catalog gives the app
+   (`compactHeader`, `compactHeaderTag` in src/vite.ts). */
