@@ -20,7 +20,7 @@ import {
   type ParseResult,
   type RepairKind,
 } from "./lib/ast.js";
-import { highlightLine } from "./lib/highlight.js";
+import { BLOCK_COMMENT, highlightLine } from "./lib/highlight.js";
 import { lexCsvSheet, lexTypeScript, lexYaml } from "./lib/lexers.js";
 import {
   exactCandidates,
@@ -85,7 +85,7 @@ const unwrapBtn = options.querySelector<HTMLButtonElement>('[data-action="unwrap
 const wrapBtn = options.querySelector<HTMLButtonElement>('[data-action="wrap"]')!;
 const editor = createEditor(codeEl, {
   language: "json",
-  colours: highlightLine,
+  colours: jsonColours(),
   label: "JSON",
   placeholder: "Paste JSON here, or drop a .json file",
   keys: [
@@ -108,6 +108,7 @@ const editor = createEditor(codeEl, {
     validateSoon();
   },
   onSelection: showCursor,
+  onFolds: showFoldControls,
 });
 /** YAML, CSV, Types, Schema: the document converted, read-only. */
 const exportView = createEditor(exportEl, {
@@ -120,6 +121,11 @@ const exportView = createEditor(exportEl, {
     showFileControls();
   },
 });
+/** The JSON's colours: its lexer, with block comments that can run over lines. */
+function jsonColours() {
+  return { lexer: highlightLine, blockComment: BLOCK_COMMENT };
+}
+
 // ---------- State ----------
 
 /** JSON edits the document; the others show it converted, read-only. */
@@ -504,7 +510,7 @@ function showExport(): void {
 
 /** Turns syntax colours on or off everywhere: the text and the converted views. */
 function showColours(): void {
-  editor.setColours(colours ? highlightLine : null);
+  editor.setColours(colours ? jsonColours() : null);
   if (isExport(mode)) exportView.setColours(colours ? EXPORTS[mode].lexer : null);
 }
 
@@ -862,8 +868,14 @@ function setMode(next: ViewMode): void {
 
 /** Controls that act on one view: disabled, not hidden, while another is shown. */
 function showViewControls(): void {
-  foldAllBtn.disabled = unfoldAllBtn.disabled = !documentText().trim();
+  showFoldControls();
   showFileControls();
+}
+
+/** Fold all while something is still open, Unfold all while something is folded. */
+function showFoldControls(): void {
+  foldAllBtn.disabled = !editor.canFold;
+  unfoldAllBtn.disabled = !editor.hasFolds;
 }
 
 /**

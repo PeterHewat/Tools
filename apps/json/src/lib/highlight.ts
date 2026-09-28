@@ -3,9 +3,12 @@
  *
  * JSON strings cannot span lines, so a line can be coloured without the rest of the document,
  * and the editor only ever colours the lines on screen. The one thing a line cannot know is
- * whether it starts inside a multi-line block comment (almost-JSON only); such a line shows
- * uncoloured until it is fixed.
+ * whether it starts inside a block comment opened on an earlier line (almost-JSON only): the
+ * editor works that out from {@link BLOCK_COMMENT} and colours those lines as comment.
  */
+
+/** Block comments' markers, so the editor can carry one from line to line. */
+export const BLOCK_COMMENT = ["/*", "*/"] as const;
 
 export type TokenKind =
   "key" | "string" | "number" | "literal" | "type" | "comment" | "punct" | "plain";

@@ -44,6 +44,7 @@ import {
   Transaction,
   type Extension,
   type StateCommand,
+  type Text,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -64,20 +65,21 @@ import {
   type KeyBinding,
 } from "@codemirror/view";
 import { iconSvg } from "@tools/ui";
-import { lexerColours, type LineLexer } from "./colour.js";
+import { lexerColours, type BlockComment, type LineLexer } from "./colour.js";
 import { expandExtension, expandSelection, shrinkSelection } from "./expand.js";
 import { foldSummary } from "./fold-summary.js";
 import { minimalChange } from "./text-diff.js";
 import { siteTheme, syntaxColours } from "./theme.js";
 
-export type { LineLexer, Token } from "./colour.js";
+export type { BlockComment, LineLexer, Token } from "./colour.js";
 export { minimalChange } from "./text-diff.js";
 
 /** Structure: folding, bracket matching and indentation follow the language's syntax. */
 export type Language = "json" | "xml" | null;
 
 /** How text is coloured: an app's line lexer, the language's own syntax colours, or not at all. */
-export type Colours = LineLexer | "syntax" | null;
+export type Colours =
+  LineLexer | { lexer: LineLexer; blockComment?: BlockComment } | "syntax" | null;
 
 /** A stretch of text drawn with a class; `line` puts the class on each whole line it touches. */
 export interface Highlight {
@@ -127,6 +129,11 @@ export interface EditorOptions {
   /** The caret or selection moved (also after a change). */
   onSelection?: () => void;
   onFocus?: (focused: boolean) => void;
+  /**
+   * What `canFold` and `hasFolds` say may have changed: something was folded or unfolded, the
+   * text changed, or more of it was parsed. Called at most once a frame.
+   */
+  onFolds?: () => void;
 }
 
 export interface Editor {
@@ -168,6 +175,10 @@ export interface Editor {
   /** Folds every object, array or element, except the one holding the whole document. */
   foldAll(): void;
   unfoldAll(): void;
+  /** Fold all would fold something: a value over several lines is still open. */
+  readonly canFold: boolean;
+  /** Something is folded, so Unfold all has something to do. */
+  readonly hasFolds: boolean;
   /**
    * Scrolls the editor, and only the editor, to show an offset without moving the selection:
    * the page and any panel holding the editor stay where they are.
@@ -328,21 +339,74 @@ const editorKeys: readonly KeyBinding[] = [
 
 // ---------- Folding ----------
 
-/** Every foldable range in the document, from the syntax tree, outermost first. */
-function foldableRanges(state: EditorState): { from: number; to: number }[] {
-  const tree = ensureSyntaxTree(state, state.doc.length, 2_000) ?? syntaxTree(state);
-  const out: { from: number; to: number }[] = [];
-  tree.iterate({
-    enter(node) {
-      const fold = node.type.prop(foldNodeProp);
-      if (!fold) return;
-      const range = fold(node.node, state);
-      if (!range || range.to <= range.from) return;
-      if (state.doc.lineAt(range.from).number === state.doc.lineAt(range.to).number) return;
-      out.push(range);
-    },
-  });
-  return out;
+type Range = { from: number; to: number };
+
+/** Offsets of the first and last characters that are not white space; null for blank text. */
+function contentBounds(doc: Text): [number, number] | null {
+  let first = -1;
+  let at = 0;
+  for (const it = doc.iter(); !it.next().done; at += it.value.length) {
+    const k = it.value.search(/\S/);
+    if (k >= 0) {
+      first = at + k;
+      break;
+    }
+  }
+  if (first < 0) return null;
+  let end = doc.length;
+  for (const it = doc.iter(-1); !it.next().done; end -= it.value.length) {
+    const k = it.value.trimEnd().length;
+    if (k > 0) return [first, end - it.value.length + k - 1];
+  }
+  return null;
+}
+
+/**
+ * Visits what Fold all folds, outermost first, until `visit` returns true: every foldable range
+ * over more than one line, except the one that holds the whole document (JSON's outer object,
+ * XML's root element), which would fold the text to a single line. Decided by where the ranges
+ * are rather than by the tree's shape, which a parse of broken text can bend.
+ */
+function visitFoldTargets(
+  state: EditorState,
+  tree: ReturnType<typeof syntaxTree>,
+  visit: (range: Range) => boolean | void
+): void {
+  const bounds = contentBounds(state.doc);
+  if (!bounds) return;
+  const [first, last] = bounds;
+  const cursor = tree.cursor();
+  for (;;) {
+    const fold = cursor.type.prop(foldNodeProp);
+    const range = fold?.(cursor.node, state);
+    if (
+      range &&
+      range.to > range.from &&
+      !(range.from <= first + 1 && range.to >= last) &&
+      state.doc.lineAt(range.from).number !== state.doc.lineAt(range.to).number &&
+      visit(range)
+    ) {
+      return;
+    }
+    if (cursor.firstChild()) continue;
+    while (!cursor.nextSibling()) if (!cursor.parent()) return;
+  }
+}
+
+const rangeKey = (from: number, to: number) => `${from}:${to}`;
+
+function foldedKeys(state: EditorState): Set<string> {
+  const keys = new Set<string>();
+  foldedRanges(state).between(0, state.doc.length, (f, t) => void keys.add(rangeKey(f, t)));
+  return keys;
+}
+
+/** Something Fold all would fold is still open (in the part of the text parsed so far). */
+function canFoldMore(state: EditorState): boolean {
+  const folded = foldedKeys(state);
+  let open = false;
+  visitFoldTargets(state, syntaxTree(state), (r) => (open = !folded.has(rangeKey(r.from, r.to))));
+  return open;
 }
 
 function markerDom(open: boolean): HTMLElement {
@@ -383,7 +447,10 @@ function languageExtension(language: Language, size: number): Extension {
 
 function colourExtension(colours: Colours): Extension {
   if (colours === "syntax") return syntaxColours;
-  return colours ? lexerColours(colours) : [];
+  if (!colours) return [];
+  return typeof colours === "function"
+    ? lexerColours(colours)
+    : lexerColours(colours.lexer, colours.blockComment);
 }
 
 const indentString = (indent: number | "\t") => (indent === "\t" ? "\t" : " ".repeat(indent));
@@ -403,6 +470,8 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
   const readOnly = new Compartment();
   const gutter = new Compartment();
   const undo = new Compartment();
+  /** An `onFolds` call is waiting for the next frame. */
+  let foldsPending = false;
   let languageChoice: Language = options.language ?? null;
   const text = options.text ?? "";
 
@@ -444,6 +513,20 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
       }
       if (u.docChanged || u.selectionSet) options.onSelection?.();
       if (u.focusChanged) options.onFocus?.(u.view.hasFocus);
+      const onFolds = options.onFolds;
+      if (
+        onFolds &&
+        !foldsPending &&
+        (u.docChanged ||
+          foldedRanges(u.startState) !== foldedRanges(u.state) ||
+          syntaxTree(u.startState) !== syntaxTree(u.state))
+      ) {
+        foldsPending = true;
+        requestAnimationFrame(() => {
+          foldsPending = false;
+          onFolds();
+        });
+      }
     }),
   ];
   if (options.lineWrapping) extensions.push(EditorView.lineWrapping);
@@ -601,18 +684,21 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
 
     foldAll() {
       const { state } = view;
-      const ranges = foldableRanges(state);
-      const doc = state.doc.toString();
-      const first = doc.search(/\S/);
-      const last = doc.trimEnd().length - 1;
-      const folded = new Set<string>();
-      foldedRanges(state).between(0, state.doc.length, (f, t) => void folded.add(`${f}:${t}`));
-      const effects = ranges
-        // The value that holds the whole document stays open: folding it would show one line.
-        .filter((r) => !(r.from <= first + 1 && r.to >= last))
-        .filter((r) => !folded.has(`${r.from}:${r.to}`))
-        .map((r) => foldEffect.of(r));
+      const tree = ensureSyntaxTree(state, state.doc.length, 2_000) ?? syntaxTree(state);
+      const folded = foldedKeys(state);
+      const effects: StateEffect<unknown>[] = [];
+      visitFoldTargets(state, tree, (r) => {
+        if (!folded.has(rangeKey(r.from, r.to))) effects.push(foldEffect.of(r));
+      });
       if (effects.length) view.dispatch({ effects });
+    },
+
+    get canFold() {
+      return canFoldMore(view.state);
+    },
+
+    get hasFolds() {
+      return foldedRanges(view.state).size > 0;
     },
 
     unfoldAll: () => void unfoldAll(view),

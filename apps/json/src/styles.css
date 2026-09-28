@@ -127,7 +127,7 @@ body {
   }
 }
 
-@media (min-width: 641px) {
+@media (min-width: 646px) {
   .phone-only {
     display: none;
   }
@@ -383,7 +383,33 @@ body:not([data-view="json"]) .text-area {
   display: none;
 }
 
-@media (max-width: 640px) {
+/*
+ * The JSON header needs a little more room than the others: "‹ Tools  JSON" reduces to "‹" up
+ * to 730px rather than the site's 720px (packages/ui/header.css, which this repeats for the
+ * width between).
+ */
+@media (min-width: 721px) and (max-width: 730px) {
+  .json-header .ui-home {
+    justify-content: center;
+    min-width: 36px;
+    padding: 0;
+  }
+
+  .json-header .ui-home::before {
+    margin-left: 4px;
+  }
+
+  .json-header :is(.ui-home-label, .ui-app-name, .ui-app-status) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 645px) {
   /* The groups' buttons flow straight into the header's rows, so everything wraps as single
      buttons rather than as whole groups leaving gaps. */
   .json-header .group {

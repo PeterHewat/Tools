@@ -51,6 +51,20 @@ describe("createEditor", () => {
     expect(folded()).toBe(0);
   });
 
+  test("canFold and hasFolds say whether Fold all and Unfold all have anything to do", () => {
+    const ed = make(DOC);
+    expect([ed.canFold, ed.hasFolds]).toEqual([true, false]);
+    ed.foldAll();
+    expect([ed.canFold, ed.hasFolds]).toEqual([false, true]);
+    ed.unfoldAll();
+    expect([ed.canFold, ed.hasFolds]).toEqual([true, false]);
+    // Only the value that holds the document spans lines: nothing Fold all would fold.
+    expect(make('{\n  "a": [1, 2]\n}').canFold).toBe(false);
+    expect(make("").canFold).toBe(false);
+    // A brace inside a comment bends the JSON grammar's tree; the array still folds.
+    expect(make('{\n  /* see {x} */\n  "a": [\n    1\n  ]\n}').canFold).toBe(true);
+  });
+
   test("fold placeholders say what they hold", () => {
     const ed = make(DOC);
     ed.foldAll();
