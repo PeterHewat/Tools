@@ -8,6 +8,7 @@
  * translucent backdrop that takes on whatever is behind it, light or dark.
  */
 
+import { withBackdropLocked } from "./demos.js";
 import { importSvgFile } from "./io.js";
 import { setState } from "./state.js";
 
@@ -35,7 +36,7 @@ export async function loadWelcome(): Promise<boolean> {
   const { artboard, background, elements, groupNames } = imported;
   setState((s) => ({
     ...s,
-    elements,
+    elements: withBackdropLocked(elements),
     groupNames,
     artboard: artboard ?? s.artboard,
     background: background ?? s.background,

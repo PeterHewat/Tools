@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { withBackdropLocked } from "./demos.js";
 import { formatExportSvg, importSvgFile } from "./io.js";
 
 const ART = await Bun.file(new URL("../../public/art.svg", import.meta.url)).text();
@@ -32,6 +33,11 @@ describe("the welcome drawing", () => {
   test("its backdrop is translucent, so it sits on a light page and a dark one", () => {
     const backdrop = imported.elements.find((e) => e.name === "backdrop");
     expect(backdrop?.gradStops.every((s) => s.opacity < 0.5)).toBe(true);
+  });
+
+  test("opens with its backdrop locked, and nothing else", () => {
+    const locked = withBackdropLocked(imported.elements).filter((e) => e.locked);
+    expect(locked.map((e) => e.name)).toEqual(["backdrop"]);
   });
 
   test("is already in the app's own format: exporting it gives the file back", () => {
