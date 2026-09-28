@@ -48,9 +48,9 @@ export const APPS: readonly ToolsApp[] = [
     slug: "json",
     name: "JSON",
     blurb:
-      "Format, minify and validate JSON, and fix almost-JSON. Explore it as a tree, or convert it to YAML, CSV, TypeScript types or a JSON Schema.",
+      "Format, minify, fold and validate JSON, and fix almost-JSON. Convert it to YAML, CSV, TypeScript types or a JSON Schema.",
     icon: "M8 4C6 4 5.5 5 5.5 7v2.5C5.5 11 4.5 12 3.5 12c1 0 2 1 2 2.5V17c0 2 .5 3 2.5 3M16 4c2 0 2.5 1 2.5 3v2.5c0 1.5 1 2.5 2 2.5-1 0-2 1-2 2.5V17c0 2-.5 3-2.5 3",
-    tags: ["json", "format", "validate", "convert", "developer"],
+    tags: ["json", "format", "validate", "fold", "convert", "developer"],
     art: true,
     status: "beta",
     listed: true,

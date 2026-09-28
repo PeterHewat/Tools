@@ -9,7 +9,7 @@ send anonymous page-view analytics to Cloudflare when you are online.
 | Tool                 | What it does                                                                                                                                              |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [SVG](./apps/svg/)   | Trace images with a Bézier pen and shapes; combine, align, group and fill with gradients. A searchable library of drawings, exported as clean SVG or PNG. |
-| [JSON](./apps/json/) | Format, minify and validate JSON, and fix almost-JSON. Explore it as a tree, or convert it to YAML, CSV, TypeScript types or a JSON Schema.               |
+| [JSON](./apps/json/) | Format, minify, fold and validate JSON, and fix almost-JSON. Convert it to YAML, CSV, TypeScript types or a JSON Schema.                                  |
 
 ## Running it
 
@@ -51,15 +51,18 @@ apps/          one folder per tool, plus `home` (the index page)
 packages/
   catalog/     which apps exist, and where the site is deployed
   ui/          shared styles, browser helpers, build wiring and the offline service worker
+  editor/      the code editor the apps share: CodeMirror 6 behind a small API
   codec/       pure encoding helpers: base64, hex, UTF-8, JSON with error positions
   tsconfig/    shared TypeScript config
 scripts/       build and scaffold scripts
 docs/          decisions, reference and plans
 ```
 
-Each app is TypeScript built by Vite into plain static files, with **no runtime framework and no
-runtime dependencies**. Vite is a build tool here, not a foundation: the output is HTML, CSS and
-ES modules that will still work off any file server in ten years.
+Each app is TypeScript built by Vite into plain static files, with **no runtime framework**.
+Vite is a build tool here, not a foundation: the output is HTML, CSS and ES modules that will
+still work off any file server in ten years. The one library bundled in is CodeMirror, for
+editing code, reached only through `packages/editor`
+([ADR 003](docs/adr/003-codemirror-for-code-editing.md)).
 
 ## Commands
 

@@ -18,8 +18,9 @@ chrome.
 
 ## 2. Technical approach
 
-- Static files: TypeScript compiled by Vite into HTML, CSS and ES modules. No runtime framework and
-  no runtime dependency. Geometry, undo and path maths live in the app.
+- Static files: TypeScript compiled by Vite into HTML, CSS and ES modules. No runtime framework;
+  the one bundled library is CodeMirror, in the SVG source panel, through `@tools/editor` (ADR
+  003). Geometry, undo and path maths live in the app.
 - The document layer is real SVG in the DOM, drawn from the scene graph in `state.ts`. Everything
   else is drawn in layers of its own that are never exported:
 

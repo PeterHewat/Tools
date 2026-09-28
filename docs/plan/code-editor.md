@@ -7,12 +7,6 @@ The JSON app (its text and its converted views) and the SVG app's source panel e
 ([ADR 003](../adr/003-codemirror-for-code-editing.md)). The JSON text folds, shows its parse
 error in place, and is one document however long it is. What follows builds on that.
 
-## The Tree
-
-With folding in the text, the JSON Tree view overlaps it. Decide whether it stays (an outline
-with search over keys and values, and a place to read nested JSON without the punctuation) or
-goes. Until then it stays as it is.
-
 ## YAML in
 
 The JSON app opens CSV (a file, or pasted CSV with **Convert CSV to JSON**). YAML is the other
