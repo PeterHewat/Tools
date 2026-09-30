@@ -32,6 +32,7 @@ import {
 } from "./utils.js";
 import { groupsOf, normalizeGroups, pruneGroups } from "./groups.js";
 import { arcToCubics } from "./arc.js";
+import { parseSvg } from "./parse-svg.js";
 import {
   IDENTITY,
   applyMatrix,
@@ -1303,15 +1304,7 @@ export interface ImportResult {
 
 /** `keepIds` restores generated ids from the markup (used when editing the SVG text in place). */
 export function importSvgFile(text: string, { keepIds = false } = {}): ImportResult {
-  // A DOCTYPE is the only way to declare entities, so refusing it rules out entity-expansion
-  // bombs; SVG written by editors does not need one.
-  if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error("SVG with a DOCTYPE is not supported");
-  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
-  const err = doc.querySelector("parsererror");
-  if (err) {
-    const message = err.textContent?.match(/(?:error on )?line \d+[^\n]*/i)?.[0] ?? "Invalid SVG";
-    throw new Error(message);
-  }
+  const doc = parseSvg(text);
   const svg = doc.querySelector("svg");
   if (!svg) throw new Error("No SVG root found");
   const skipped: Skipped = new Map();
