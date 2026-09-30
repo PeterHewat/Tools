@@ -31,8 +31,8 @@ import { canCombine } from "./boolean.js";
 import { pickedPoints } from "./points.js";
 import { worldToScreen } from "./viewport.js";
 import { HIT_R_COARSE, HIT_R_FINE, isCoarsePointer } from "./pointer.js";
-import { isSelectMore, setSelectMore } from "./session.js";
-import { HANDLE_EXTENT, outerHandlePoints, selectionHandlePoints } from "./render.js";
+import { setSelectMore } from "./session.js";
+import { HANDLE_RADIUS, outerHandlePoints, selectionHandlePoints } from "./handles.js";
 import {
   alignableCount,
   alignSelection,
@@ -61,8 +61,7 @@ import type { EditorState, Point, SceneElement } from "./types.js";
 export interface Action {
   key: string;
   label: string;
-  icon?: string;
-  glyph?: string;
+  icon: string;
   danger?: boolean;
   disabled?: boolean;
   /** A switch rather than an action: shown pressed while on. */
@@ -83,12 +82,18 @@ const MAX_BUTTONS = 7;
 
 let bar: HTMLElement;
 let lastSignature = "";
+/** The callbacks and presentation for the current selection, independent of button identity. */
+let shownActions: readonly Action[] = [];
 /** The pages opened from the bar, by key, innermost last; emptied when the selection changes. */
 let pagePath: string[] = [];
 let pageFor = "";
 
 export function initActionBar(element: HTMLElement): void {
   bar = element;
+  lastSignature = "";
+  shownActions = [];
+  pagePath = [];
+  pageFor = "";
   // A press on the bar is a press on the bar, not on the canvas underneath it.
   bar.addEventListener("pointerdown", (e) => e.stopPropagation());
 }
@@ -164,9 +169,7 @@ function closeAction(el: SceneElement): Action | null {
   if (!worthClosing(el)) return null;
   const closed = isClosedShape(el);
   return {
-    // The key carries the state: the bar is rebuilt when the signature changes, and a key that
-    // read the same either way left the button showing the action it had just performed.
-    key: closed ? "open" : "close",
+    key: "toggle-closed",
     label: closed ? "Open the path" : "Close the path",
     icon: closed ? "icon-open-path" : "icon-close-path",
     run: () => setElementClosed(el.id, !closed),
@@ -211,19 +214,18 @@ function pointActions(el: SceneElement, index: number, handle?: "in" | "out"): A
       run: removeSelectedHandle,
     });
   }
-  // Only a point with two handles has a pair to link or break. The key carries the state, as
-  // the close button's does, so the button is rebuilt when it flips.
+  // Only a point with two handles has a pair to link or break.
   if (p && hasTwoHandles(p)) {
     out.push(
       p.smooth
         ? {
-            key: "unlink",
+            key: "toggle-linked",
             label: "Break the handles: each moves on its own",
             icon: "icon-unlink",
             run: () => setSelectedHandlesLinked(false),
           }
         : {
-            key: "link",
+            key: "toggle-linked",
             label: "Link the handles: they mirror each other",
             icon: "icon-link",
             run: () => setSelectedHandlesLinked(true),
@@ -437,10 +439,10 @@ function selectionActions(state: EditorState): Action[] {
   }
 
   const ids = new Set(state.selection.elementIds);
-  const more = isSelectMore();
+  const more = state.selectMore;
   out.unshift({
     // Shift for a finger: while on, a tap adds a shape to the selection or takes it out.
-    key: more ? "more-on" : "more-off",
+    key: "select-more",
     label: more ? "Stop adding to the selection" : "Add to the selection: tap more shapes",
     icon: "icon-select-more",
     pressed: more,
@@ -449,7 +451,7 @@ function selectionActions(state: EditorState): Action[] {
   // Locked shapes are reached from their rows; unlocking them is here once they are selected.
   const anyLocked = sel.some((e) => e.locked);
   out.push({
-    key: anyLocked ? "unlock" : "lock",
+    key: "toggle-locked",
     label: anyLocked ? "Unlock: clickable on the canvas again" : "Lock: out of reach on the canvas",
     icon: anyLocked ? "icon-unlock" : "icon-lock",
     run: () => setSelectionLocked(!anyLocked),
@@ -460,7 +462,7 @@ function selectionActions(state: EditorState): Action[] {
     {
       key: "back",
       label: "Send backward (Shift: to the back)",
-      glyph: "▼",
+      icon: "icon-chevron-down",
       pairedWithNext: true,
       disabled: !canMoveSelectionZ(state.elements, ids, -1),
       run: () => moveZOrder("back"),
@@ -468,7 +470,7 @@ function selectionActions(state: EditorState): Action[] {
     {
       key: "forward",
       label: "Bring forward (Shift: to the front)",
-      glyph: "▲",
+      icon: "icon-chevron-up",
       disabled: !canMoveSelectionZ(state.elements, ids, 1),
       run: () => moveZOrder("forward"),
     }
@@ -542,34 +544,40 @@ function build(actions: readonly Action[]): void {
   for (const action of actions) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "tool-btn";
-    btn.title = action.label;
-    btn.setAttribute("aria-label", action.label);
-    if (action.icon) {
-      btn.innerHTML = `<svg class="glyph" aria-hidden="true"><use href="#${action.icon}" /></svg>`;
-    } else {
-      btn.textContent = action.glyph ?? "";
-      btn.classList.add("tool-btn--text");
-    }
-    if (action.danger) btn.classList.add("action-danger");
-    if (action.pressed !== undefined) {
-      btn.setAttribute("aria-pressed", String(action.pressed));
-      btn.classList.toggle("active", action.pressed);
-    }
-    btn.disabled = !!action.disabled;
-    if (action.menu) btn.setAttribute("aria-haspopup", "true");
+    btn.className = "ui-btn ui-icon-btn";
+    const key = action.key;
     btn.addEventListener("click", () => {
-      if (action.menu) {
-        pagePath = [...pagePath, action.key];
+      const current = shownActions.find((a) => a.key === key);
+      if (!current || current.disabled) return;
+      if (current.menu) {
+        pagePath = [...pagePath, key];
         lastSignature = "";
       } else {
-        action.run?.();
+        current.run?.();
       }
       // A page change redraws at once; an action redraws with the state it changed.
-      if (action.menu || action.key === "page-back") syncActionBar(latest!);
+      if (current.menu || key === "page-back") syncActionBar(latest!);
     });
     bar.appendChild(btn);
   }
+}
+
+function updateButtons(): void {
+  shownActions.forEach((action, index) => {
+    const btn = bar.children[index] as HTMLButtonElement;
+    btn.title = action.label;
+    btn.setAttribute("aria-label", action.label);
+    if (btn.dataset.icon !== action.icon) {
+      btn.innerHTML = `<svg class="glyph" aria-hidden="true"><use href="#${action.icon}" /></svg>`;
+      btn.dataset.icon = action.icon;
+    }
+    btn.classList.toggle("action-danger", !!action.danger);
+    if (action.pressed === undefined) btn.removeAttribute("aria-pressed");
+    else btn.setAttribute("aria-pressed", String(action.pressed));
+    if (action.menu) btn.setAttribute("aria-haspopup", "true");
+    else btn.removeAttribute("aria-haspopup");
+    btn.disabled = !!action.disabled;
+  });
 }
 
 interface AnchorRect {
@@ -663,19 +671,19 @@ function anchorRect(state: EditorState): AnchorRect | null {
     const rotatable = !drawing && shapes.length === 1;
     for (const world of outerHandlePoints(el, zoom, rotatable)) {
       const p = worldToScreen(world.x, world.y);
-      left = Math.min(left, p.x - HANDLE_EXTENT);
-      right = Math.max(right, p.x + HANDLE_EXTENT);
-      top = Math.min(top, p.y - HANDLE_EXTENT);
-      bottom = Math.max(bottom, p.y + HANDLE_EXTENT);
+      left = Math.min(left, p.x - HANDLE_RADIUS);
+      right = Math.max(right, p.x + HANDLE_RADIUS);
+      top = Math.min(top, p.y - HANDLE_RADIUS);
+      bottom = Math.max(bottom, p.y + HANDLE_RADIUS);
     }
   }
   // Several shapes have handles of their own, around the box they share.
   for (const world of drawing ? [] : selectionHandlePoints(shapes, zoom)) {
     const p = worldToScreen(world.x, world.y);
-    left = Math.min(left, p.x - HANDLE_EXTENT);
-    right = Math.max(right, p.x + HANDLE_EXTENT);
-    top = Math.min(top, p.y - HANDLE_EXTENT);
-    bottom = Math.max(bottom, p.y + HANDLE_EXTENT);
+    left = Math.min(left, p.x - HANDLE_RADIUS);
+    right = Math.max(right, p.x + HANDLE_RADIUS);
+    top = Math.min(top, p.y - HANDLE_RADIUS);
+    bottom = Math.max(bottom, p.y + HANDLE_RADIUS);
   }
   if (!Number.isFinite(left)) return null;
   return { left, right, top, bottom };
@@ -731,6 +739,7 @@ export function syncActionBar(state: EditorState): void {
   bar.classList.toggle("hidden", !show);
   if (!show) {
     lastSignature = "";
+    shownActions = [];
     return;
   }
   latest = state;
@@ -743,11 +752,13 @@ export function syncActionBar(state: EditorState): void {
   const actions = currentButtons(
     drawing ? drawingActions(state) : idle(state) ? idleActions(state) : selectionActions(state)
   );
-  // Rebuilt only when the set of buttons, or whether they are enabled, actually changes.
-  const signature = actions.map((a) => `${a.key}${a.disabled ? "-off" : ""}`).join(",");
+  shownActions = actions;
+  // Only structural changes rebuild the buttons; callbacks and appearance always stay current.
+  const signature = actions.map((a) => `${a.key}${a.pairedWithNext ? "-pair" : ""}`).join(",");
   if (signature !== lastSignature) {
     build(actions);
     lastSignature = signature;
   }
+  updateButtons();
   position(state);
 }

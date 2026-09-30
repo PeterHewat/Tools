@@ -29,25 +29,8 @@ body {
   gap: var(--ui-group-gap);
 }
 
-/* Sized by the shared header (header.css), so the bar matches the SVG app's. */
-.json-header .ui-btn {
-  min-height: var(--ui-control);
-  padding-block: 0;
-  font-size: var(--ui-control-font);
-}
-
-.json-header .icon-btn {
-  width: var(--ui-control);
-  height: var(--ui-control);
-}
-
-.json-header .icon-btn svg {
-  width: var(--ui-glyph);
-  height: var(--ui-glyph);
-}
-
 /* Text buttons a little tighter than elsewhere, so the whole bar fits one row on a laptop. */
-.json-header .ui-btn:not(.icon-btn) {
+.json-header .ui-btn:not(.ui-icon-btn) {
   padding-inline: 9px;
 }
 
@@ -72,15 +55,26 @@ body {
 
 /* The views as one dropdown, for a phone (see the media query below); drawn as a header button
    with its own chevron, since the native arrow differs on every platform. */
-.view-select {
+.view-picker {
+  position: relative;
   display: none;
+}
+.view-picker > svg {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--text);
+  pointer-events: none;
+}
+.view-select {
   min-height: var(--ui-control);
   padding: 0 28px 0 10px;
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  background: var(--accent-dim)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%239aa0ab' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-    no-repeat right 8px center / 12px;
+  background: var(--accent-dim);
   color: var(--text);
   font: inherit;
   font-size: var(--ui-control-font);
@@ -97,21 +91,6 @@ body {
 
 .ui-seg.equal .ui-btn {
   justify-content: center;
-}
-
-.ui-btn.small {
-  padding: 3px 9px;
-  font-size: 0.85rem;
-}
-
-/* Pressed reads as "on" or "you are here", and a button whose panel is open reads as pressed
-   while it is: filled, as in the SVG app. */
-.ui-seg .ui-btn[aria-pressed="true"],
-.ui-btn.toggle[aria-pressed="true"],
-.ui-btn[aria-expanded="true"] {
-  position: relative;
-  border-color: var(--accent);
-  background: var(--accent-dim);
 }
 
 /* Settings: a menu under its button (panels.css), with rows of settings and the nested-JSON
@@ -165,6 +144,8 @@ body {
 }
 
 .find-input {
+  height: var(--ui-control);
+  font-size: var(--ui-control-font);
   flex: 1 1 0;
   min-width: 4rem;
 }
@@ -221,14 +202,8 @@ body:not([data-view="json"]) .text-area {
   box-shadow: 0 4px 14px var(--shadow);
 }
 
-.view-tools .ui-btn {
+.view-tools .ui-btn:not([aria-pressed="true"]) {
   background: transparent;
-}
-
-.view-tools .ui-btn:not(.icon-btn) {
-  min-height: 34px;
-  padding: 0 10px;
-  font-size: 13px;
 }
 
 /* ---------- Where the caret is: line and column, then the path ---------- */
@@ -322,20 +297,6 @@ body:not([data-view="json"]) .text-area {
   outline-offset: -2px;
 }
 
-/* Open, Copy, Download, Clear: actions everyone knows by their picture. */
-/* The same size and weight as the SVG app's tool buttons. */
-.icon-btn {
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-}
-
-.icon-btn svg {
-  width: 22px;
-  height: 22px;
-}
-
 .statusbar {
   display: flex;
   align-items: baseline;
@@ -390,7 +351,7 @@ body:not([data-view="json"]) .text-area {
     display: none;
   }
 
-  .view-select {
+  .view-picker {
     display: block;
   }
 }
@@ -489,6 +450,13 @@ body:not([data-view="json"]) .text-area {
     min-height: calc(60px + env(safe-area-inset-bottom));
     padding: 8px 64px calc(8px + env(safe-area-inset-bottom)) 12px;
     align-content: center;
+  }
+}
+
+/* The phone header needs 347px with Find in the bar. Below that it joins the file menu. */
+@media (width < 348px) {
+  #find-open {
+    display: none;
   }
 }
 

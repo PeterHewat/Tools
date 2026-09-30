@@ -1,7 +1,7 @@
 import {
   getState,
   setState,
-  mutate,
+  mutateDocument,
   replaceElements,
   findElement,
   selectOnly,
@@ -22,10 +22,11 @@ import {
   type AlignOptions,
   magnetTurn,
 } from "./model.js";
+import { createPinch } from "./pinch.js";
 import { screenToWorld, zoomAt } from "./viewport.js";
 import { dist } from "./utils.js";
 import { pushUndo } from "./undo.js";
-import { addTurn, isAlignSnap, isSelectMore } from "./session.js";
+import { addTurn } from "./session.js";
 import {
   type Anchor,
   type EditorState,
@@ -35,7 +36,7 @@ import {
   type PointRef,
   type SceneElement,
 } from "./types.js";
-import { closeAndFinishPath, endPath, finishPath } from "./pen-commands.js";
+import { closeAndFinishPath, endPath, finishPath, updatePenPreview } from "./pen-commands.js";
 import {
   endDropTarget,
   mergeDroppedEnd,
@@ -45,7 +46,7 @@ import {
 import { applyResize, pointIndexForRole } from "./resize.js";
 import { boxCorners, rotateAll, scaleAllByCorner, unionBox } from "./selection-transform.js";
 import { SELECTION_HANDLE_ID } from "./render.js";
-import { snapFeatures } from "./boolean.js";
+import { snapFeatures } from "./snap.js";
 import { boxToGuides, movedGuide, nearestGuide, withGuide, type GuideAxis } from "./guides.js";
 import {
   byShape,
@@ -59,12 +60,7 @@ import {
 } from "./points.js";
 import { clickTarget, drillTarget, expandToGroups } from "./groups.js";
 import { beginTextEdit } from "./textedit.js";
-import {
-  type ShapeTool,
-  updatePenPreview,
-  updateShapePreview,
-  finalizeShape,
-} from "./shape-tools.js";
+import { type ShapeTool, updateShapePreview, finalizeShape } from "./shape-tools.js";
 
 const CLOSE_TOL = 12;
 const ALIGN_TOL_PX = 6;
@@ -229,7 +225,7 @@ function guideAt(
   points: (s: EditorState) => readonly Point[]
 ): number {
   const s = getState();
-  if (isAlignSnap() || e.altKey) {
+  if (getState().alignSnap || e.altKey) {
     let at = raw;
     let best = ALIGN_TOL_PX / s.viewport.zoom;
     for (const p of points(s)) {
@@ -397,7 +393,7 @@ function onAltKey(e: KeyboardEvent): void {
   if (path?.type !== "path") return;
   const p = path.points[index];
   if (!p) return;
-  mutate(() => applyHandleDrag(p, last, e.type === "keydown"));
+  mutateDocument(() => applyHandleDrag(p, last, e.type === "keydown"));
 }
 
 /**
@@ -430,7 +426,7 @@ function pointerWorld(e: PointerEvent): Point {
   // While dragging a curve handle, Alt breaks its symmetry instead of aligning. The align
   // switch has no second meaning to give way to, so it aligns whatever is being dragged.
   const alignOn =
-    isAlignSnap() ||
+    getState().alignSnap ||
     (e.altKey &&
       !(drag?.type === "handle" && drag.kind !== "anchor") &&
       !(drag?.type === "resize" && drag.role === "corner"));
@@ -485,7 +481,6 @@ function onPointerDown(e: PointerEvent): void {
   drillId = null;
   pointClick = null;
   pointMarquee = false;
-  svg.setPointerCapture(e.pointerId);
   const st = getState();
   const world = pointerWorld(e);
 
@@ -617,7 +612,7 @@ function onPointerDown(e: PointerEvent): void {
         drag = null;
         return;
       }
-      const additive = e.shiftKey || isSelectMore();
+      const additive = e.shiftKey || getState().selectMore;
       const wasSelected = st.selection.elementIds.includes(elId);
       const members = clickTarget(st.elements, new Set(st.selection.elementIds), elId).ids;
       // Pressing a shape already selected keeps the selection, so it can be dragged; if the
@@ -669,7 +664,8 @@ function onPointerDown(e: PointerEvent): void {
       arm(e, marquee, { undo: false, grab: false });
     }
     pointMarquee = !!st.selection.pathEdit;
-    if (!e.shiftKey && !isSelectMore() && !pointMarquee) setState({ selection: selectOnly() });
+    if (!e.shiftKey && !getState().selectMore && !pointMarquee)
+      setState({ selection: selectOnly() });
     return;
   }
 
@@ -739,7 +735,7 @@ function startSelectionDrag(e: PointerEvent, role: string, world: Point): void {
  */
 function pointGesture(e: PointerEvent, st: EditorState, ref: PointRef, world: Point): boolean {
   const sel = st.selection;
-  const additive = e.shiftKey || isSelectMore();
+  const additive = e.shiftKey || getState().selectMore;
   if (additive && sel.pathEdit && sel.elementIds.includes(ref.pathId)) {
     setState({ selection: togglePoint(sel, ref) });
     return true;
@@ -805,7 +801,7 @@ function handlePenDown(world: Point, isDouble: boolean): void {
   let path: PathElement;
   if (active?.type === "path") {
     path = active;
-    mutate(() => path.points.push(point));
+    mutateDocument(() => path.points.push(point));
   } else {
     path = createPath([point]);
     setState((s) => ({
@@ -868,7 +864,7 @@ function onPointerMove(e: PointerEvent): void {
     const d = drag;
     let dx = world.x - d.start.x;
     let dy = world.y - d.start.y;
-    if (st.grid.snap && !e.altKey && !isAlignSnap()) {
+    if (st.grid.snap && !e.altKey && !getState().alignSnap) {
       // Snap the top-left of the first dragged shape to the grid.
       const firstBase = d.bases[d.ids[0] ?? ""];
       const first = firstBase ? elementBBox(firstBase) : null;
@@ -879,7 +875,7 @@ function onPointerMove(e: PointerEvent): void {
       }
     }
     // With snapping on, an edge or the centre of what is dragged lines up with a guide.
-    if (st.grid.snap || e.altKey || isAlignSnap()) {
+    if (st.grid.snap || e.altKey || getState().alignSnap) {
       const box = unionBox(Object.values(d.bases));
       if (box) {
         const fit = boxToGuides(
@@ -891,7 +887,7 @@ function onPointerMove(e: PointerEvent): void {
         dy += fit.dy;
       }
     }
-    mutate(() => {
+    mutateDocument(() => {
       for (const id of d.ids) {
         const el = findElement(id);
         const base = d.bases[id];
@@ -918,7 +914,7 @@ function onPointerMove(e: PointerEvent): void {
     if (d.kind === "anchor") {
       const dx = world.x - p.x;
       const dy = world.y - p.y;
-      mutate(() => {
+      mutateDocument(() => {
         p.x = world.x;
         p.y = world.y;
         for (const h of [p.hIn, p.hOut]) {
@@ -929,7 +925,7 @@ function onPointerMove(e: PointerEvent): void {
       });
     } else {
       d.last = world;
-      mutate(() => applyHandleDrag(p, world, e.altKey));
+      mutateDocument(() => applyHandleDrag(p, world, e.altKey));
     }
     setState({
       selection: onePoint(getState().selection, {
@@ -997,7 +993,7 @@ function onPointerMove(e: PointerEvent): void {
     const d = drag;
     const el = findElement(d.elementId);
     const at = { x: world.x + d.grab.x, y: world.y + d.grab.y };
-    if (el) mutate(() => applyResize(el, d.role, at, d.base, e.altKey, e.shiftKey));
+    if (el) mutateDocument(() => applyResize(el, d.role, at, d.base, e.altKey, e.shiftKey));
     showDropTarget(d.elementId, pointIndexForRole(d.role));
     return;
   }
@@ -1008,7 +1004,7 @@ function onPointerMove(e: PointerEvent): void {
     if (path?.type !== "path") return;
     const p = path.points[d.index];
     if (p) {
-      mutate(() => {
+      mutateDocument(() => {
         p.smooth = true;
         p.hOut = { x: world.x, y: world.y };
         p.hIn = mirrorHandle(p, p.hOut);
@@ -1057,7 +1053,7 @@ function onPointerUp(e: PointerEvent): void {
       }),
     });
   }
-  if (clickedEmpty && !e.shiftKey && !isSelectMore()) setState({ selection: selectOnly() });
+  if (clickedEmpty && !e.shiftKey && !getState().selectMore) setState({ selection: selectOnly() });
   if (clickedSelected) {
     const s = getState();
     const inner = drillTarget(s.elements, new Set(s.selection.elementIds), clickedSelected);
@@ -1081,7 +1077,7 @@ function onPointerUp(e: PointerEvent): void {
       ? pointsInMarquee(s0.elements, new Set(s0.selection.elementIds), drag)
       : [];
     if (refs.length) {
-      const additive = e.shiftKey || isSelectMore();
+      const additive = e.shiftKey || getState().selectMore;
       const next = additive ? [...pickedPoints(s0.selection), ...refs] : refs;
       setState({ selection: pickPoints(s0.selection, next) });
       clearDrawing();
@@ -1092,7 +1088,9 @@ function onPointerUp(e: PointerEvent): void {
     setState((s) => ({
       ...s,
       selection: selectOnly(
-        e.shiftKey || isSelectMore() ? [...new Set([...s.selection.elementIds, ...ids])] : ids
+        e.shiftKey || getState().selectMore
+          ? [...new Set([...s.selection.elementIds, ...ids])]
+          : ids
       ),
     }));
     clearDrawing();
@@ -1152,17 +1150,26 @@ export function bindInteraction(canvas: SVGSVGElement, canvasWrap: HTMLElement):
   window.addEventListener("keydown", onAltKey);
   window.addEventListener("keyup", onAltKey);
 
-  // A second finger means pinch/pan: drop whatever one-finger drag had started.
-  svg.addEventListener("pinch-start", () => {
+  const pinch = createPinch(svg);
+  let activePointer: number | null = null;
+  function cancelDrag(): void {
+    activePointer = null;
     pending = null;
+    drag = null;
+    drillId = null;
+    pointClick = null;
+    pointMarquee = false;
+    featureCache = null;
     cancelHold();
-    if (drag && drag.type !== "pan") {
-      drag = null;
-      wrap.classList.remove("grabbing");
-      clearDrawing();
-      setState({ dropTarget: null });
-    }
-  });
+    wrap.classList.remove("panning", "grabbing");
+    clearDrawing();
+    setState({ dropTarget: null, align: { x: null, y: null } });
+  }
+  const cancel = () => {
+    pinch.cancel();
+    cancelDrag();
+  };
+  window.addEventListener("blur", cancel);
 
   svg.addEventListener("pointerleave", () => {
     wrap.classList.remove("hover-target");
@@ -1173,9 +1180,36 @@ export function bindInteraction(canvas: SVGSVGElement, canvasWrap: HTMLElement):
       align: { x: null, y: null },
     }));
   });
-  svg.addEventListener("pointerdown", onPointerDown);
-  svg.addEventListener("pointermove", onPointerMove);
-  svg.addEventListener("pointerup", onPointerUp);
+  svg.addEventListener("pointerdown", (e) => {
+    if (pinch.start()) {
+      cancelDrag();
+      svg.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
+    if (activePointer !== null || (e.button !== 0 && e.button !== 1)) return;
+    activePointer = e.pointerId;
+    svg.setPointerCapture(e.pointerId);
+    onPointerDown(e);
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (pinch.move()) {
+      e.preventDefault();
+      return;
+    }
+    if (activePointer === null || activePointer === e.pointerId) onPointerMove(e);
+  });
+  svg.addEventListener("pointerup", (e) => {
+    if (pinch.end() || activePointer !== e.pointerId) return;
+    activePointer = null;
+    onPointerUp(e);
+  });
+  svg.addEventListener("pointercancel", (e) => {
+    if (!pinch.end() && activePointer === e.pointerId) cancelDrag();
+  });
+  svg.addEventListener("lostpointercapture", (e) => {
+    if (!pinch.end() && activePointer === e.pointerId) cancelDrag();
+  });
 
   svg.addEventListener(
     "wheel",

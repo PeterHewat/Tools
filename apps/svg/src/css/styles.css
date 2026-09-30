@@ -1,5 +1,7 @@
+@import "@tools/ui/tokens.css";
 /* "‹ Tools" and the app's name, which start the top bar as they start every Tools app. */
 @import "@tools/ui/header.css";
+@import "@tools/ui/controls.css";
 /* The docked panels (Document, Help) and the zoom menu, as in every Tools app. */
 @import "@tools/ui/panels.css";
 
@@ -10,26 +12,15 @@
 }
 
 :root {
-  --bg: #1a1b1e;
-  --panel: #25262b;
-  --panel-2: #2e3038;
   --hover: #3a3d45;
   --field: #1a1b1e;
   --canvas: #121316;
-  --border: #3a3d45;
-  --text: #e8e9ed;
-  --muted: #9aa0ab;
-  --accent: #5b8def;
-  --accent-dim: #3d5a9e;
-  --danger: #e85d5d;
   --current-row: #364159;
   --search-hit: #ffd21f;
   --sel-text: #6cb2ff;
   --attr-bg: rgba(255, 214, 102, 0.28);
   --attr-text: #ffd666;
   --swatch-ring: rgba(255, 255, 255, 0.3);
-  --scroll: #4a4e59;
-  --shadow: rgba(0, 0, 0, 0.4);
   /* Heavier than the shared frost: under a menu lie a drawing's shapes and the grid, not text
      worth reading through, and a light frost lets them fight the menu's own words. */
   --ui-frost-bg: color-mix(in srgb, var(--panel) 72%, transparent);
@@ -45,7 +36,6 @@
     sans-serif;
   font-size: 14px;
   color: var(--text);
-  color-scheme: dark;
 }
 
 /* Light: when the browser prefers it and nobody has chosen, or when light was chosen (see
@@ -53,54 +43,30 @@
    The artboard and its handles keep their colours: they are the drawing, not the chrome. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #f3f4f7;
-    --panel: #ffffff;
-    --panel-2: #f1f2f5;
     --hover: #e3e6eb;
     --field: #ffffff;
     --canvas: #dfe2e8;
-    --border: #d3d7de;
-    --text: #1d1f24;
-    --muted: #5d6471;
-    --accent: #2f6fe0;
-    --accent-dim: #d3e1fb;
-    --danger: #cf3b3b;
     --current-row: #dfe8fb;
     --search-hit: #ffd21f;
     --sel-text: #1f5fcf;
     --attr-bg: rgba(240, 180, 0, 0.22);
     --attr-text: #8a5d00;
     --swatch-ring: rgba(0, 0, 0, 0.18);
-    --scroll: #b7bcc6;
-    --shadow: rgba(20, 24, 33, 0.16);
     --ruler-tick: #a3a9b4;
-    color-scheme: light;
   }
 }
 
 :root[data-theme="light"] {
-  --bg: #f3f4f7;
-  --panel: #ffffff;
-  --panel-2: #f1f2f5;
   --hover: #e3e6eb;
   --field: #ffffff;
   --canvas: #dfe2e8;
-  --border: #d3d7de;
-  --text: #1d1f24;
-  --muted: #5d6471;
-  --accent: #2f6fe0;
-  --accent-dim: #d3e1fb;
-  --danger: #cf3b3b;
   --current-row: #dfe8fb;
   --search-hit: #ffd21f;
   --sel-text: #1f5fcf;
   --attr-bg: rgba(240, 180, 0, 0.22);
   --attr-text: #8a5d00;
   --swatch-ring: rgba(0, 0, 0, 0.18);
-  --scroll: #b7bcc6;
-  --shadow: rgba(20, 24, 33, 0.16);
   --ruler-tick: #a3a9b4;
-  color-scheme: light;
 }
 
 html,
@@ -147,26 +113,19 @@ body {
   position: relative;
 }
 
-.menu-trigger {
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
+.history-more {
+  position: relative;
+  display: none;
 }
 
-.menu-trigger:hover {
-  border-color: var(--accent);
-}
-
-/* Anything that opens a panel reads as pressed while that panel is up, whether it is a menu
-   trigger or a plain toolbar button such as Help. */
-.menu-trigger[aria-expanded="true"],
-.tool-btn[aria-expanded="true"] {
-  background: var(--accent-dim);
-  border-color: var(--accent);
+/* The phone header needs 340px with Undo and Redo in the bar. */
+@media (width < 341px) {
+  #group-history {
+    display: none;
+  }
+  .history-more {
+    display: block;
+  }
 }
 
 .primitive-empty {
@@ -197,55 +156,6 @@ body {
   display: block;
 }
 
-/* A toolbar button is a target with a picture in it, and the picture is the whole point: at
-   18px in a 34-44px button the glyph read as a smudge rather than as what it means. */
-.tool-btn .glyph,
-.menu-trigger--icon .glyph {
-  width: 22px;
-  height: 22px;
-}
-
-.tool-btn {
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 6px 8px;
-  cursor: pointer;
-  min-width: 34px;
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.menu-trigger--icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 8px;
-  min-width: 34px;
-  min-height: 34px;
-}
-
-/* In the top bar and the phone's tool bar, sized by the shared header (header.css), so they
-   match every other app's at every width. Joined groups (.ui-seg) round only their ends. */
-.top-bar .tool-btn,
-.top-bar .menu-trigger--icon,
-.tool-bar .tool-btn {
-  min-width: var(--ui-control);
-  min-height: var(--ui-control);
-  padding: 0 5px;
-  border-radius: 6px;
-}
-
-.top-bar .tool-btn .glyph,
-.top-bar .menu-trigger--icon .glyph,
-.tool-bar .tool-btn .glyph {
-  width: var(--ui-glyph);
-  height: var(--ui-glyph);
-}
-
 .top-bar .tool-group {
   gap: var(--ui-group-gap);
 }
@@ -253,20 +163,6 @@ body {
 /* The drawing tools and the snap switches: two joined groups, as far apart as any two groups. */
 #tool-group-tools {
   gap: var(--ui-header-gap);
-}
-
-.tool-btn:hover {
-  border-color: var(--accent);
-}
-
-.tool-btn.copied {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.tool-btn.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
 }
 
 .workspace {
@@ -379,27 +275,6 @@ body.dragging::after {
   opacity: 0.45;
 }
 
-.icon-btn {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.icon-btn:hover {
-  border-color: var(--accent);
-}
-
 .field-row {
   display: flex;
   align-items: center;
@@ -423,26 +298,6 @@ body.dragging::after {
   border: 1px solid var(--border);
   background: var(--field);
   color: var(--text);
-}
-
-.btn-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.btn-row button {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.btn-row button:hover {
-  border-color: var(--accent);
 }
 
 .mono {
@@ -545,7 +400,8 @@ body.dragging::after {
 
 .chevron {
   flex: 0 0 auto;
-  padding: 8px;
+  width: 14px;
+  height: 14px;
   color: var(--muted);
   font-size: 10px;
   transition: transform 0.15s ease;
@@ -768,8 +624,8 @@ body.dragging::after {
   background: var(--panel);
 }
 
-.doc-section-head > .icon-btn,
-.doc-section-head .btn-row,
+.doc-section-head > .ui-btn,
+.doc-section-head > .ui-seg,
 .doc-section-head .menu-panel-toolbar-actions {
   margin-left: auto;
 }
@@ -795,8 +651,7 @@ body.dragging::after {
 }
 
 .doc-toggle .chevron {
-  display: inline-block;
-  font-size: 9px;
+  display: block;
   transition: transform 0.12s;
   transform: rotate(90deg);
 }
@@ -902,21 +757,6 @@ body.dragging::after {
 
 #doc-primitives.collapsed .doc-section-body {
   display: none;
-}
-
-.tool-btn.active[aria-pressed="true"] {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-}
-
-.btn-row--inline {
-  flex-wrap: nowrap;
-}
-
-.btn-row--inline button {
-  flex: 0 0 auto;
-  padding: 3px 8px;
-  font-size: 11px;
 }
 
 /* Color swatch + popover picker */
@@ -1039,22 +879,13 @@ body.dragging::after {
 }
 
 .cp-dropper {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 28px;
   height: 28px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--field);
-  color: var(--text);
-  cursor: pointer;
+  min-height: 28px;
 }
-
-.cp-dropper:hover {
-  border-color: var(--accent);
+.cp-dropper > svg {
+  width: 18px;
+  height: 18px;
 }
 
 .cp-dropper[hidden] {
@@ -1285,11 +1116,6 @@ body.dragging::after {
   pointer-events: none;
 }
 
-.tool-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
 /* Help says how to work with what the device has: touch on a phone or tablet, mouse and keyboard
    on a computer, both on a laptop with a touch screen. With neither detected, the mouse's. */
 @media not (any-pointer: coarse) {
@@ -1338,13 +1164,6 @@ body.dragging::after {
   margin-left: 0;
 }
 
-.tool-btn--text {
-  width: auto;
-  padding: 0 8px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
 /* One control for zoom: it reads the current level and opens a list to set it. */
 .zoom-wrap {
   position: relative;
@@ -1354,6 +1173,8 @@ body.dragging::after {
 /* Wide enough for "3200%", so the bar does not change width as the zoom does. */
 .zoom-level {
   min-width: 52px;
+  padding: 0 8px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1573,15 +1394,6 @@ body.dragging::after {
   border-radius: 2px;
 }
 
-.btn-row button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.btn-row button:disabled:hover {
-  border-color: var(--border);
-}
-
 .acc-icon-btn {
   flex: 0 0 auto;
   display: flex;
@@ -1603,7 +1415,7 @@ body.dragging::after {
 }
 
 .acc-icon-btn:disabled {
-  opacity: 0.25;
+  opacity: 0.45;
   cursor: default;
 }
 
@@ -1769,7 +1581,7 @@ body.dragging::after {
   box-shadow: 0 6px 20px var(--shadow);
 }
 
-.action-bar .tool-btn {
+.action-bar .ui-btn {
   flex: 0 0 auto;
 }
 
@@ -1832,37 +1644,16 @@ body.dragging::after {
 }
 
 .grad-stop-del:disabled {
-  opacity: 0.3;
+  opacity: 0.45;
   cursor: default;
 }
 
 .grad-stop-add {
   align-self: flex-start;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--panel-2);
-  color: var(--text);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.grad-stop-add:hover {
-  border-color: var(--accent);
-}
-
-/* An action that has nowhere to go reads as unavailable rather than silently doing nothing. */
-.action-bar .tool-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-.action-bar .tool-btn:disabled:hover {
-  border-color: var(--border);
 }
 
 /* The grid toggle sits inside the shared row, so it matches the inputs beside it. */
-.doc-size-row .doc-size .tool-btn {
+.doc-size-row .doc-size .ui-btn {
   width: var(--ctl-h);
   min-width: var(--ctl-h);
   height: var(--ctl-h);
@@ -2049,4 +1840,18 @@ body.dragging::after {
 
 .doc-tag-hits[hidden] {
   display: none;
+}
+
+/* Compact list and field controls retain their contextual sizes and share keyboard feedback. */
+:is(
+  .acc-icon-btn,
+  .acc-expand-btn,
+  .btn-visibility,
+  .doc-toggle,
+  .doc-search-btn,
+  .color-swatch,
+  .grad-stop-del
+):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }

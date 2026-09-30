@@ -1,0 +1,58 @@
+/* Shared palette and editor tokens. Dark is the base; light follows the browser or theme choice. */
+:root {
+  --bg: #1a1b1e;
+  --panel: #25262b;
+  --panel-2: #2e3038;
+  --border: #3a3d45;
+  --text: #e8e9ed;
+  --muted: #9aa0ab;
+  --accent: #5b8def;
+  --accent-dim: #3d5a9e;
+  --danger: #e85d5d;
+  --ok: #5fbf7f;
+  --warn: #e0b050;
+  --violet: #c98fe0;
+  --shadow: rgb(0 0 0 / 40%);
+  --scroll: #4a4e59;
+  --radius: 6px;
+  --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f4f7;
+    --panel: #ffffff;
+    --panel-2: #f1f2f5;
+    --border: #d3d7de;
+    --text: #1d1f24;
+    --muted: #5d6471;
+    --accent: #2f6fe0;
+    --accent-dim: #d3e1fb;
+    --danger: #cf3b3b;
+    --ok: #2a8a50;
+    --warn: #a8780a;
+    --violet: #8a44a8;
+    --shadow: rgb(20 24 33 / 16%);
+    --scroll: #b7bcc6;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f4f7;
+  --panel: #ffffff;
+  --panel-2: #f1f2f5;
+  --border: #d3d7de;
+  --text: #1d1f24;
+  --muted: #5d6471;
+  --accent: #2f6fe0;
+  --accent-dim: #d3e1fb;
+  --danger: #cf3b3b;
+  --ok: #2a8a50;
+  --warn: #a8780a;
+  --violet: #8a44a8;
+  --shadow: rgb(20 24 33 / 16%);
+  --scroll: #b7bcc6;
+  color-scheme: light;
+}

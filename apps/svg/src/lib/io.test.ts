@@ -1,16 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { elementIdFromSvgId, groupIdFromSvgId, sanitizeName } from "./svg-names.js";
 import {
-  elementIdFromSvgId,
   cleanElement,
-  elementToSvgMarkup,
-  formatExportSvg,
-  groupIdFromSvgId,
-  importSvgFile,
-  sanitizeName,
+  createDocument,
   isInert,
   readProject,
   serializeProject,
-} from "./io.js";
+} from "./project-file.js";
+import { elementToSvgMarkup, formatExportSvg } from "./svg-export.js";
+import { importSvgFile } from "./svg-import.js";
 import {
   createEllipse,
   createLine,
@@ -517,10 +515,8 @@ describe("project file", () => {
       "artboard",
       "background",
       "elements",
-      "finalOnly",
       "grid",
       "images",
-      "tool",
       "version",
     ]);
   });
@@ -529,8 +525,27 @@ describe("project file", () => {
     expect(serializeProject(createInitialState())).not.toHaveProperty("defaults");
   });
 
-  test("is written as version 1, the first released format", () => {
-    expect(serializeProject(createInitialState()).version).toBe(1);
+  test("version 1 stores only document data", () => {
+    const state = {
+      ...createInitialState(),
+      tool: "pen" as const,
+      finalOnly: true,
+    };
+    const saved = serializeProject(state);
+    expect(saved.version).toBe(1);
+    expect(saved).not.toHaveProperty("tool");
+    expect(saved).not.toHaveProperty("finalOnly");
+  });
+
+  test("new documents own their default data", () => {
+    const first = createDocument(true);
+    first.guides.x.push(50);
+    first.artboard.width = 64;
+    const next = createDocument();
+    expect(next.guides.x).toEqual([]);
+    expect(next.artboard.width).toBe(512);
+    expect(next.grid.snap).toBe(false);
+    expect(first.grid.snap).toBe(true);
   });
 
   test("a document of the current version reads back as it is, what it left out filled in", () => {
@@ -1143,5 +1158,42 @@ describe("a stored element missing a style", () => {
     const el = cleanElement(partial as SceneElement)!;
     expect(el.strokeFrom).toEqual({ x: 0, y: 0.5 });
     expect(el.fillStops).toHaveLength(2);
+  });
+
+  test("malformed paint data is completed once before internal readers see it", () => {
+    const raw = {
+      ...createRect(0, 0, 10, 10),
+      strokeType: "unknown",
+      strokeWidth: Number.NaN,
+      markerEnd: "unknown",
+      fillFrom: null,
+      fillTo: { x: Number.NaN, y: 1 },
+      fillStops: [null, { offset: Number.NaN }, { offset: 0.3, color: "#123456", opacity: 1 }],
+    };
+    const el = cleanElement(raw)!;
+    expect(el.strokeType).toBe("solid");
+    expect(el.strokeWidth).toBe(2);
+    expect(el.markerEnd).toBe("none");
+    expect(el.fillFrom).toEqual({ x: 0, y: 0.5 });
+    expect(el.fillTo).toEqual({ x: 1, y: 0.5 });
+    expect(el.fillStops).toHaveLength(2);
+    expect(el.fillStops.every((stop) => Number.isFinite(stop.offset))).toBe(true);
+    expect(formatExportSvg(doc([el]))).not.toContain("NaN");
+  });
+
+  test("completed styles are owned, sorted and leave the input untouched", () => {
+    const raw = createRect(0, 0, 10, 10, {
+      fillStops: [
+        { offset: 1, color: "#ffffff", opacity: 1 },
+        { offset: 0, color: "#123456", opacity: 0.5 },
+      ],
+    });
+    const el = cleanElement(raw)!;
+    expect(el.fillStops.map((stop) => stop.offset)).toEqual([0, 1]);
+    el.fillStops[0]!.color = "#ff0000";
+    el.fillFrom.x = 0.75;
+    expect(raw.fillStops[0]!.color).toBe("#123456");
+    expect(raw.fillFrom.x).toBe(0);
+    expect("id" in el.fillFrom).toBe(false);
   });
 });

@@ -72,6 +72,19 @@ export function rowDotHtml(
     </button>`;
 }
 
+/** Refresh a selection checkbox without replacing its button or the field beside it. */
+export function setRowChecked(row: HTMLElement, on: boolean, title: string): void {
+  const button = row.querySelector<HTMLButtonElement>(
+    ':scope > .acc-header-row [data-action="toggle-dot"]'
+  );
+  if (!button || button.getAttribute("aria-checked") === String(on)) return;
+  button.setAttribute("aria-checked", String(on));
+  button.setAttribute("aria-label", title);
+  button.title = title;
+  button.classList.toggle("is-off", !on);
+  button.querySelector("use")!.setAttribute("href", on ? "#icon-check-on" : "#icon-check-off");
+}
+
 /**
  * The eye: whether a thing is drawn. Separate from the checkbox, which says whether it is
  * selected - one control, one meaning, in every list.
@@ -92,15 +105,15 @@ function lockHtml(locked: boolean, title: string): string {
 export function accHeaderHtml(o: AccHeaderOptions): string {
   return `<div class="acc-header-row">
       <button type="button" class="acc-expand-btn" data-action="toggle-expand" aria-label="Expand" title="Expand / collapse">
-        <span class="chevron" aria-hidden="true">▶</span>
+        <svg class="chevron" aria-hidden="true"><use href="#icon-chevron-right" /></svg>
       </button>
       ${o.dot ? rowDotHtml("check", o.dot.on, o.dot.title, ' data-action="toggle-dot"') : ""}
-      ${o.titleHtml ?? `<input type="text" class="acc-title-input" data-field="name" value="${escapeAttr(o.name ?? "")}" placeholder="${escapeAttr(o.placeholder ?? "")}" />`}
+      ${o.titleHtml ?? `<input type="text" class="acc-title-input" data-field="name" aria-label="Name" value="${escapeAttr(o.name ?? "")}" placeholder="${escapeAttr(o.placeholder ?? "")}" />`}
       ${o.extra ?? ""}
       ${o.lock ? lockHtml(o.lock.locked, o.lock.title) : ""}
       ${o.eye ? eyeHtml(o.eye.visible, o.eye.title) : ""}
-      <button type="button" class="acc-icon-btn acc-move" data-action="move-up" title="Bring forward (Shift: to the front)" aria-label="Bring forward"${(o.canUp ?? o.index > 0) ? "" : " disabled"}>▲</button>
-      <button type="button" class="acc-icon-btn acc-move" data-action="move-down" title="Send backward (Shift: to the back)" aria-label="Send backward"${(o.canDown ?? o.index < o.count - 1) ? "" : " disabled"}>▼</button>
+      <button type="button" class="acc-icon-btn acc-move" data-action="move-up" title="Bring forward (Shift: to the front)" aria-label="Bring forward"${(o.canUp ?? o.index > 0) ? "" : " disabled"}><svg class="glyph" aria-hidden="true"><use href="#icon-chevron-up" /></svg></button>
+      <button type="button" class="acc-icon-btn acc-move" data-action="move-down" title="Send backward (Shift: to the back)" aria-label="Send backward"${(o.canDown ?? o.index < o.count - 1) ? "" : " disabled"}><svg class="glyph" aria-hidden="true"><use href="#icon-chevron-down" /></svg></button>
       <button type="button" class="acc-icon-btn acc-trash" data-action="delete" title="Delete" aria-label="Delete">
         <svg class="glyph" aria-hidden="true"><use href="#icon-trash" /></svg>
       </button>
@@ -117,7 +130,12 @@ interface AccHandlers {
 }
 
 export function wireAccRow(li: HTMLElement, h: AccHandlers): void {
-  li.querySelector('[data-action="toggle-expand"]')!.addEventListener("click", h.onExpand);
+  const expand = li.querySelector<HTMLButtonElement>('[data-action="toggle-expand"]')!;
+  const open = li.classList.contains("expanded") || li.classList.contains("open");
+  expand.setAttribute("aria-expanded", String(open));
+  expand.setAttribute("aria-label", open ? "Collapse" : "Expand");
+  expand.title = open ? "Collapse" : "Expand";
+  expand.addEventListener("click", h.onExpand);
   const on = (action: string, fn: (() => void) | undefined) =>
     li
       .querySelector(`:scope > .acc-header-row [data-action="${action}"]`)

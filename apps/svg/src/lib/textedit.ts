@@ -10,7 +10,7 @@
  * to the element on every keystroke.
  */
 
-import { findElement, flushRender, getState, mutate, setState } from "./state.js";
+import { findElement, flushRender, getState, mutateDocument, setState } from "./state.js";
 import { elementBBox } from "./model.js";
 import { worldToScreen } from "./viewport.js";
 import { undoStepper } from "./undo.js";
@@ -74,7 +74,7 @@ function ensureInput(): HTMLInputElement {
     const el = textElement(editingId);
     if (!el) return;
     editStep();
-    mutate(() => {
+    mutateDocument(() => {
       const target = textElement(editingId);
       if (target) target.text = node.value;
     });
@@ -132,7 +132,7 @@ export function endTextEdit(commit: boolean): void {
   node.classList.remove("visible");
 
   if (!commit) {
-    mutate(() => {
+    mutateDocument(() => {
       const el = textElement(id);
       if (el) el.text = originalText;
     });

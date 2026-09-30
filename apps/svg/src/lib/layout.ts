@@ -86,7 +86,9 @@ if (storedSections && typeof storedSections === "object")
 
 function applySections(): void {
   docDock.panel.querySelectorAll<HTMLElement>(".doc-section").forEach((sec) => {
-    sec.classList.toggle("collapsed", !sectionOpen[sec.dataset.section ?? ""]);
+    const open = !!sectionOpen[sec.dataset.section ?? ""];
+    sec.classList.toggle("collapsed", !open);
+    sec.querySelector(".doc-toggle")?.setAttribute("aria-expanded", String(open));
   });
 }
 

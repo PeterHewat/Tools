@@ -6,9 +6,9 @@
  * so an import never replaces or merges with anything.
  */
 
-import { importSvgFile, readProject, serializeProject, type ImportResult } from "./io.js";
+import { importSvgFile, type ImportResult } from "./svg-import.js";
+import { createDocument, readProject, serializeProject } from "./project-file.js";
 import { cleanTags } from "./doc-list.js";
-import { createInitialState } from "./state.js";
 import type { ProjectFile } from "./types.js";
 
 const DOC_TAG = "svg/document";
@@ -17,7 +17,6 @@ const LIBRARY_TAG = "svg/library";
 /** One document, as `Name.svg.json`. */
 export interface DocumentFile {
   tag: typeof DOC_TAG;
-  version: 1;
   exported: string;
   name: string;
   tags?: string[];
@@ -27,7 +26,6 @@ export interface DocumentFile {
 /** Every document, in list order. */
 export interface LibraryFile {
   tag: typeof LIBRARY_TAG;
-  version: 1;
   exported: string;
   documents: ImportedDocument[];
 }
@@ -47,13 +45,12 @@ const entry = ({ name, tags, data }: ImportedDocument): ImportedDocument =>
   tags?.length ? { name, tags: [...tags], data } : { name, data };
 
 export function documentFile(doc: ImportedDocument, now = new Date()): DocumentFile {
-  return { tag: DOC_TAG, version: 1, exported: now.toISOString(), ...entry(doc) };
+  return { tag: DOC_TAG, exported: now.toISOString(), ...entry(doc) };
 }
 
 export function libraryFile(documents: readonly ImportedDocument[], now = new Date()): LibraryFile {
   return {
     tag: LIBRARY_TAG,
-    version: 1,
     exported: now.toISOString(),
     documents: documents.map(entry),
   };
@@ -98,7 +95,7 @@ export function svgProject({
   elements,
   groupNames,
 }: Omit<ImportResult, "skipped">): ProjectFile {
-  const blank = createInitialState();
+  const blank = createDocument();
   return serializeProject({
     ...blank,
     elements,

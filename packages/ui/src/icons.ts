@@ -32,6 +32,7 @@ export const ICONS = {
   trash: line(
     '<path d="M3 6h18M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>'
   ),
+  plus: line('<path d="M12 5v14M5 12h14"/>'),
   close: line('<path d="M6 6l12 12M18 6 6 18"/>'),
   settings: line(
     '<path d="M18.99 10.26 21.35 10.33 21.35 13.67 18.99 13.74 18.17 15.71 19.79 17.43 17.43 19.79 15.71 18.17 13.74 18.99 13.67 21.35 10.33 21.35 10.26 18.99 8.29 18.17 6.57 19.79 4.21 17.43 5.83 15.71 5.01 13.74 2.65 13.67 2.65 10.33 5.01 10.26 5.83 8.29 4.21 6.57 6.57 4.21 8.29 5.83 10.26 5.01 10.33 2.65 13.67 2.65 13.74 5.01 15.71 5.83 17.43 4.21 19.79 6.57 18.17 8.29Z"/><circle cx="12" cy="12" r="3"/>'
@@ -39,7 +40,6 @@ export const ICONS = {
   more: dot(5, 12, 1.7) + dot(12, 12, 1.7) + dot(19, 12, 1.7),
   "chevron-up": line('<path d="M6 15l6-6 6 6"/>'),
   "chevron-down": line('<path d="M6 9l6 6 6-6"/>'),
-  "chevron-left": line('<path d="M15 6l-6 6 6 6"/>'),
   "chevron-right": line('<path d="M9 6l6 6-6 6"/>'),
   "expand-all": line('<path d="M17 16l-5 5-5-5M7 8l5-5 5 5"/>'),
   "collapse-all": line('<path d="M7 20l5-5 5 5M17 4l-5 5-5-5"/>'),
@@ -72,7 +72,12 @@ const ICON_ATTR = "data-ui-icon";
  * icon, giving it the icon's viewBox where it has none. An unknown name fails the build rather
  * than shipping a blank button.
  */
-export function withIcons(html: string): string {
+export function withIcons(html: string, sprite?: string): string {
+  const marker = "<!-- tools:icons -->";
+  if (html.includes(marker)) {
+    if (!sprite) throw new Error("This page needs its app icon sprite at src/icons.svg");
+    html = html.replace(marker, sprite);
+  }
   // A scan in steps, each a pattern with a single unbounded part, rather than one pattern for the
   // whole element: that one could backtrack for a long time over a tag repeating the attribute.
   let out = "";

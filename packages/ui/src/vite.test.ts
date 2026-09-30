@@ -152,14 +152,14 @@ describe("manifest", () => {
   });
 });
 
-describe("base.css", () => {
+describe("shared theme tokens", () => {
   test("the page background is the theme colour the head and manifest announce", async () => {
-    const css = await Bun.file(new URL("../base.css", import.meta.url)).text();
+    const css = await Bun.file(new URL("../tokens.css", import.meta.url)).text();
     expect(css).toContain(`--bg: ${SITE.themeColor};`);
   });
 
   test("the light tokens are the same whether the browser or a choice asked for them", async () => {
-    const css = await Bun.file(new URL("../base.css", import.meta.url)).text();
+    const css = await Bun.file(new URL("../tokens.css", import.meta.url)).text();
     const block = (selector: string) => {
       const start = css.indexOf(`${selector} {`);
       const body = css.slice(css.indexOf("{", start) + 1, css.indexOf("}", start));

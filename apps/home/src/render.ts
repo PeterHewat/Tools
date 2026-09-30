@@ -40,7 +40,7 @@ export function cardHtml(app: ToolsApp, base: string): string {
 export function pageHtml(apps: readonly ToolsApp[], base: string): string {
   return `
     <header class="masthead">
-      <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
+      <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button>
       <h1>${escapeHtml(SITE.name)}</h1>
       <p class="tagline">${escapeHtml(SITE.tagline)}</p>
     </header>

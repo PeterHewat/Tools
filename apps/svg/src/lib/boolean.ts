@@ -1,3 +1,12 @@
+import {
+  cubicAt,
+  cubicHull,
+  boxesOverlap,
+  lerpPoint,
+  splitCubic,
+  type OutlineSegment,
+} from "./cubic.js";
+import { segmentHits } from "./intersections.js";
 /**
  * Combining shapes: union, subtract, intersect and exclude, with curves kept as curves.
  *
@@ -23,12 +32,7 @@ import type { Anchor, BBox, PathElement, Point, SceneElement, StyleCarrier } fro
 export type BooleanOp = "union" | "subtract" | "intersect" | "exclude";
 
 /** One cubic segment, and where it came from, so pieces of it can be joined again. */
-interface Seg {
-  a: Point;
-  c1: Point;
-  c2: Point;
-  b: Point;
-  line: boolean;
+interface Seg extends OutlineSegment {
   /** The segment it was cut from, and the stretch of that segment it covers. */
   origin: number;
   t0: number;
@@ -43,18 +47,6 @@ interface Region {
 
 /* ---------- Cubic arithmetic ---------- */
 
-function at(s: Seg, t: number): Point {
-  const u = 1 - t;
-  const a = u * u * u;
-  const b = 3 * u * u * t;
-  const c = 3 * u * t * t;
-  const d = t * t * t;
-  return {
-    x: a * s.a.x + b * s.c1.x + c * s.c2.x + d * s.b.x,
-    y: a * s.a.y + b * s.c1.y + c * s.c2.y + d * s.b.y,
-  };
-}
-
 function tangent(s: Seg, t: number): Point {
   if (s.line) return { x: s.b.x - s.a.x, y: s.b.y - s.a.y };
   const u = 1 - t;
@@ -66,55 +58,20 @@ function tangent(s: Seg, t: number): Point {
   return Math.hypot(d.x, d.y) > 1e-12 ? d : { x: s.b.x - s.a.x, y: s.b.y - s.a.y };
 }
 
-const lerp = (p: Point, q: Point, t: number): Point => ({
-  x: p.x + (q.x - p.x) * t,
-  y: p.y + (q.y - p.y) * t,
-});
-
 /** The stretch of `s` from `t0` to `t1`, as a cubic of its own (de Casteljau, twice). */
 function sub(s: Seg, t0: number, t1: number): Seg {
   if (s.line) {
-    const a = lerp(s.a, s.b, t0);
-    const b = lerp(s.a, s.b, t1);
+    const a = lerpPoint(s.a, s.b, t0);
+    const b = lerpPoint(s.a, s.b, t1);
     return { ...s, a, b, c1: a, c2: b, t0: lerpT(s, t0), t1: lerpT(s, t1) };
   }
-  const right = splitAt(s, t0)[1];
+  const right = splitCubic(s, t0)[1];
   const span = t0 < 1 ? (t1 - t0) / (1 - t0) : 0;
-  const piece = splitAt(right, span)[0];
+  const piece = splitCubic(right, span)[0];
   return { ...piece, t0: lerpT(s, t0), t1: lerpT(s, t1) };
 }
 
 const lerpT = (s: Seg, t: number) => s.t0 + (s.t1 - s.t0) * t;
-
-function splitAt(s: Seg, t: number): [Seg, Seg] {
-  const p01 = lerp(s.a, s.c1, t);
-  const p12 = lerp(s.c1, s.c2, t);
-  const p23 = lerp(s.c2, s.b, t);
-  const p012 = lerp(p01, p12, t);
-  const p123 = lerp(p12, p23, t);
-  const m = lerp(p012, p123, t);
-  return [
-    { ...s, a: s.a, c1: p01, c2: p012, b: m },
-    { ...s, a: m, c1: p123, c2: p23, b: s.b },
-  ];
-}
-
-function hull(s: Seg): BBox {
-  const xs = [s.a.x, s.c1.x, s.c2.x, s.b.x];
-  const ys = [s.a.y, s.c1.y, s.c2.y, s.b.y];
-  const x = Math.min(...xs);
-  const y = Math.min(...ys);
-  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
-}
-
-function overlaps(p: BBox, q: BBox, pad: number): boolean {
-  return (
-    p.x <= q.x + q.width + pad &&
-    q.x <= p.x + p.width + pad &&
-    p.y <= q.y + q.height + pad &&
-    q.y <= p.y + p.height + pad
-  );
-}
 
 /* ---------- Shapes in, shapes out ---------- */
 
@@ -186,8 +143,8 @@ function winding(region: Region, q: Point): { sum: number; count: number } {
       for (let k = 0; k < ts.length - 1; k++) {
         const t0 = ts[k]!;
         const t1 = ts[k + 1]!;
-        const p0 = k === 0 ? s.a : at(s, t0);
-        const p1 = k === ts.length - 2 ? s.b : at(s, t1);
+        const p0 = k === 0 ? s.a : cubicAt(s, t0);
+        const p1 = k === ts.length - 2 ? s.b : cubicAt(s, t1);
         if (p0.y === p1.y) continue;
         const up = p1.y > p0.y;
         const lo = up ? p0.y : p1.y;
@@ -198,11 +155,11 @@ function winding(region: Region, q: Point): { sum: number; count: number } {
         let b = t1;
         for (let it = 0; it < 60; it++) {
           const m = (a + b) / 2;
-          const below = at(s, m).y < q.y;
+          const below = cubicAt(s, m).y < q.y;
           if (below === up) a = m;
           else b = m;
         }
-        if (at(s, (a + b) / 2).x > q.x) {
+        if (cubicAt(s, (a + b) / 2).x > q.x) {
           sum += up ? 1 : -1;
           count++;
         }
@@ -233,110 +190,6 @@ function resultAt(op: BooleanOp, regions: readonly Region[], q: Point): boolean 
 
 /* ---------- Cutting ---------- */
 
-/** One place two segments meet: the parameter on each, and the one point both are cut at. */
-interface Hit {
-  ta: number;
-  tb: number;
-  p: Point;
-}
-
-function lineHits(s: Seg, r: Seg, tol: number): Hit[] {
-  const d1 = { x: s.b.x - s.a.x, y: s.b.y - s.a.y };
-  const d2 = { x: r.b.x - r.a.x, y: r.b.y - r.a.y };
-  const cross = d1.x * d2.y - d1.y * d2.x;
-  const len1 = Math.hypot(d1.x, d1.y);
-  const len2 = Math.hypot(d2.x, d2.y);
-  if (!len1 || !len2) return [];
-  const w = { x: r.a.x - s.a.x, y: r.a.y - s.a.y };
-  if (Math.abs(cross) <= 1e-12 * len1 * len2) {
-    // Parallel: only lines on one line can meet, and then along a stretch - each is cut where
-    // the other's ends fall on it.
-    if (Math.abs(w.x * d1.y - w.y * d1.x) / len1 > tol) return [];
-    const hits: Hit[] = [];
-    const onS = (p: Point) => ((p.x - s.a.x) * d1.x + (p.y - s.a.y) * d1.y) / (len1 * len1);
-    const onR = (p: Point) => ((p.x - r.a.x) * d2.x + (p.y - r.a.y) * d2.y) / (len2 * len2);
-    for (const p of [r.a, r.b]) {
-      const t = onS(p);
-      if (t > -1e-9 && t < 1 + 1e-9) hits.push({ ta: t, tb: p === r.a ? 0 : 1, p });
-    }
-    for (const p of [s.a, s.b]) {
-      const t = onR(p);
-      if (t > -1e-9 && t < 1 + 1e-9) hits.push({ ta: p === s.a ? 0 : 1, tb: t, p });
-    }
-    return hits;
-  }
-  const ta = (w.x * d2.y - w.y * d2.x) / cross;
-  const tb = (w.x * d1.y - w.y * d1.x) / cross;
-  const eps = tol / Math.min(len1, len2);
-  if (ta < -eps || ta > 1 + eps || tb < -eps || tb > 1 + eps) return [];
-  return [{ ta, tb, p: lerp(s.a, s.b, Math.max(0, Math.min(1, ta))) }];
-}
-
-/**
- * Where two segments meet, by halving both until the pieces that still overlap are smaller than
- * `tol`. Segments that run along each other overlap everywhere; the work is capped for them, and
- * the cut is made where the run of meeting points starts and ends.
- */
-function curveHits(s: Seg, r: Seg, tol: number): Hit[] {
-  const found: Hit[] = [];
-  let budget = 4000;
-  const walk = (
-    p: Seg,
-    pa: number,
-    pb: number,
-    q: Seg,
-    qa: number,
-    qb: number,
-    depth: number
-  ): void => {
-    if (budget-- <= 0) return;
-    const hp = hull(p);
-    const hq = hull(q);
-    if (!overlaps(hp, hq, tol)) return;
-    const small = (h: BBox) => Math.max(h.width, h.height) <= tol;
-    if ((small(hp) && small(hq)) || depth > 50) {
-      const ta = (pa + pb) / 2;
-      const tb = (qa + qb) / 2;
-      const m1 = at(s, ta);
-      const m2 = at(r, tb);
-      found.push({ ta, tb, p: { x: (m1.x + m2.x) / 2, y: (m1.y + m2.y) / 2 } });
-      return;
-    }
-    const pm = (pa + pb) / 2;
-    const qm = (qa + qb) / 2;
-    const [p1, p2] = small(hp) ? [p, null] : splitAt(p, 0.5);
-    const [q1, q2] = small(hq) ? [q, null] : splitAt(q, 0.5);
-    const ps: [Seg, number, number][] = p2
-      ? [
-          [p1, pa, pm],
-          [p2, pm, pb],
-        ]
-      : [[p1, pa, pb]];
-    const qs: [Seg, number, number][] = q2
-      ? [
-          [q1, qa, qm],
-          [q2, qm, qb],
-        ]
-      : [[q1, qa, qb]];
-    for (const [pp, a0, a1] of ps)
-      for (const [qq, b0, b1] of qs) walk(pp, a0, a1, qq, b0, b1, depth + 1);
-  };
-  walk(s, 0, 1, r, 0, 1, 0);
-  if (!found.length) return [];
-  // Close meeting points are one meeting; a long run of them is two curves on top of each other.
-  found.sort((x, y) => x.ta - y.ta);
-  const clusters: Hit[][] = [];
-  for (const h of found) {
-    const last = clusters[clusters.length - 1];
-    const prev = last?.[last.length - 1];
-    if (prev && Math.hypot(h.p.x - prev.p.x, h.p.y - prev.p.y) <= tol * 4) last!.push(h);
-    else clusters.push([h]);
-  }
-  return clusters.flatMap((c) =>
-    c.length <= 2 ? [c[Math.floor(c.length / 2)]!] : [c[0]!, c[c.length - 1]!]
-  );
-}
-
 /**
  * Every segment of every operand, cut wherever another meets it. At each cut both segments end
  * on the very same point - the other's end when the meeting is at one - so the pieces chain
@@ -349,14 +202,14 @@ function cutAll(regions: readonly Region[], tol: number): { seg: Seg; op: number
   );
   all.forEach((x, i) => (x.seg = { ...x.seg, origin: i }));
   const cuts: Map<number, Point>[] = all.map(() => new Map());
-  const hulls = all.map((x) => hull(x.seg));
+  const hulls = all.map((x) => cubicHull(x.seg));
   const clampT = (t: number) => (t < 1e-9 ? 0 : t > 1 - 1e-9 ? 1 : t);
   for (let i = 0; i < all.length; i++) {
     for (let j = i + 1; j < all.length; j++) {
-      if (!overlaps(hulls[i]!, hulls[j]!, tol)) continue;
+      if (!boxesOverlap(hulls[i]!, hulls[j]!, tol)) continue;
       const s = all[i]!.seg;
       const r = all[j]!.seg;
-      const hits = s.line && r.line ? lineHits(s, r, tol) : curveHits(s, r, tol);
+      const hits = segmentHits(s, r, tol);
       for (const h of hits) {
         // Neighbouring segments meet at the corner they share, and the search finds that corner
         // a hair along one of them: a meeting that close to an end is the end.
@@ -385,7 +238,7 @@ function cutAll(regions: readonly Region[], tol: number): { seg: Seg; op: number
         piece.c2 = piece.b;
       }
       // A piece with no length is no edge: the next one starts where this one would have.
-      const h = hull(piece);
+      const h = cubicHull(piece);
       if (Math.max(h.width, h.height) <= tol * 10) continue;
       pieces.push({ seg: piece, op });
       from = t;
@@ -507,80 +360,6 @@ function loopToAnchors(loop: Seg[]): Anchor[] {
   });
 }
 
-/* ---------- Points worth snapping to ---------- */
-
-/** A shape's outline as segments, closing ones only where the shape is closed. */
-function outlineSegments(el: SceneElement): Seg[] {
-  if (el.type === "text") return [];
-  const path = toPathElement(el) as PathElement;
-  if (path.type !== "path") return [];
-  const pts = path.points;
-  const out: Seg[] = [];
-  for (const { start, end } of contours(path)) {
-    const last = path.closed && end - start >= 2 ? end : end - 1;
-    for (let i = start; i < last; i++) {
-      const p = pts[i]!;
-      const q = pts[i + 1 < end ? i + 1 : start]!;
-      const c1 = p.hOut ?? p;
-      const c2 = q.hIn ?? q;
-      const line = c1.x === p.x && c1.y === p.y && c2.x === q.x && c2.y === q.y;
-      out.push({ a: p, c1, c2, b: q, line, origin: 0, t0: 0, t1: 1 });
-    }
-  }
-  return out;
-}
-
-/**
- * Points a drawing lines up with besides the shapes' own: the middle of every segment, and
- * every place two different shapes cross. Crossings are left out past `maxSegments` segments,
- * where finding them would slow every move of the pointer.
- */
-export function snapFeatures(
-  elements: readonly SceneElement[],
-  exclude: ReadonlySet<string>,
-  maxSegments = 600
-): Point[] {
-  const shapes = elements
-    .filter((el) => !el.hidden && !exclude.has(el.id))
-    .map((el) => outlineSegments(el));
-  const out: Point[] = [];
-  for (const segs of shapes) for (const s of segs) out.push(at(s, 0.5));
-  const total = shapes.reduce((n, segs) => n + segs.length, 0);
-  if (total > maxSegments) return out;
-  let box: BBox | null = null;
-  for (const segs of shapes) {
-    for (const s of segs) {
-      const h = hull(s);
-      if (!box) box = { ...h };
-      else {
-        const x = Math.min(box.x, h.x);
-        const y = Math.min(box.y, h.y);
-        box = {
-          x,
-          y,
-          width: Math.max(box.x + box.width, h.x + h.width) - x,
-          height: Math.max(box.y + box.height, h.y + h.height) - y,
-        };
-      }
-    }
-  }
-  if (!box) return out;
-  const tol = Math.max(box.width, box.height, 1e-6) * 1e-7;
-  const hulls = shapes.map((segs) => segs.map(hull));
-  for (let i = 0; i < shapes.length; i++) {
-    for (let j = i + 1; j < shapes.length; j++) {
-      shapes[i]!.forEach((s, si) => {
-        shapes[j]!.forEach((r, ri) => {
-          if (!overlaps(hulls[i]![si]!, hulls[j]![ri]!, tol)) return;
-          const hits = s.line && r.line ? lineHits(s, r, tol) : curveHits(s, r, tol);
-          for (const h of hits) out.push(h.p);
-        });
-      });
-    }
-  }
-  return out;
-}
-
 /* ---------- The operation ---------- */
 
 /**
@@ -598,7 +377,7 @@ export function combine(
   for (const r of regions) {
     for (const loop of r.loops) {
       for (const s of loop) {
-        const h = hull(s);
+        const h = cubicHull(s);
         if (!box) box = { ...h };
         else {
           const x = Math.min(box.x, h.x);
@@ -626,7 +405,7 @@ export function combine(
   const kept: Seg[] = [];
   const seen: Seg[] = [];
   for (const s of source) {
-    const m = at(s, 0.5);
+    const m = cubicAt(s, 0.5);
     const d = tangent(s, 0.5);
     const len = Math.hypot(d.x, d.y) || 1;
     // With y running down the page, (d.y, -d.x) points to the left of the direction of travel.
@@ -636,12 +415,12 @@ export function combine(
     if (left === right) continue;
     const piece = left ? s : reverse(s);
     // A shared edge arrives twice, once from each shape; the second is the same edge again.
-    const mid = at(piece, 0.5);
+    const mid = cubicAt(piece, 0.5);
     const dup = seen.some(
       (o) =>
         samePoint(o.a, piece.a, tol * 10) &&
         samePoint(o.b, piece.b, tol * 10) &&
-        samePoint(at(o, 0.5), mid, tol * 10)
+        samePoint(cubicAt(o, 0.5), mid, tol * 10)
     );
     if (dup) continue;
     seen.push(piece);

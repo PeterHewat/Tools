@@ -8,10 +8,9 @@ import {
   readDocumentFile,
   svgDocument,
 } from "./document-files.js";
-import { readProject, serializeProject } from "./io.js";
-import { createInitialState } from "./state.js";
+import { createDocument, readProject, serializeProject } from "./project-file.js";
 
-const data = serializeProject(createInitialState());
+const data = serializeProject(createDocument());
 
 describe("document files", () => {
   test("a single document reads back as one", () => {

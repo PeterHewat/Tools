@@ -1,19 +1,12 @@
 import { getState, setState, findElement, selectOnly } from "./state.js";
 import { undoStepper } from "./undo.js";
-import {
-  elementToSvgMarkup,
-  buildDefsMarkup,
-  sanitizeName,
-  elementIdFromSvgId,
-  groupIdFromSvgId,
-  formatExportSvg,
-  importSvgFile,
-} from "./io.js";
+import { elementToSvgMarkup, buildDefsMarkup, formatExportSvg } from "./svg-export.js";
+import { sanitizeName, elementIdFromSvgId, groupIdFromSvgId } from "./svg-names.js";
+import { importSvgFile } from "./svg-import.js";
 import { groupsOf, selectedGroups } from "./groups.js";
 import { type EditorState, type SceneElement } from "./types.js";
 import { byId } from "@tools/ui";
 import { createEditor, type Highlight } from "@tools/editor";
-import { noteChange } from "./documents.js";
 
 /* ---------- SVG source: editable, highlighted, synced with the selection ---------- */
 const svgError = byId("svg-error");
@@ -334,7 +327,6 @@ function applySvgText(): void {
     background,
     selection: selectOnly(s.selection.elementIds.filter((id) => ids.has(id))),
   }));
-  noteChange();
 }
 
 /** The caret inside a shape's line selects that shape (like picking it in Primitives). */

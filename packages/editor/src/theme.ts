@@ -1,5 +1,5 @@
 /**
- * The editor drawn with the site's own colour tokens (`packages/ui/base.css`), so it follows
+ * The editor drawn with the site's own colour tokens (`packages/ui/tokens.css`), so it follows
  * light and dark with the rest of the page and needs no theme of its own.
  */
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";

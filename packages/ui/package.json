@@ -7,18 +7,23 @@
   "exports": {
     ".": "./src/index.ts",
     "./vite": "./src/vite.ts",
+    "./site-worker": "./src/site-worker.ts",
     "./theme": "./src/theme.ts",
     "./icons": "./src/icons.ts",
     "./base.css": "./base.css",
     "./header.css": "./header.css",
-    "./panels.css": "./panels.css"
+    "./panels.css": "./panels.css",
+    "./tokens.css": "./tokens.css",
+    "./controls.css": "./controls.css"
   },
   "files": [
     "src",
     "sw.js",
     "base.css",
     "header.css",
-    "panels.css"
+    "panels.css",
+    "tokens.css",
+    "controls.css"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",

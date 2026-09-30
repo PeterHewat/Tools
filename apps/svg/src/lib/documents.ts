@@ -1,16 +1,26 @@
-import { getState, setState, replaceState, createInitialState, selectOnly } from "./state.js";
-import { clearHistory, setHistoryListener } from "./undo.js";
+import {
+  getState,
+  setState,
+  replaceDocument,
+  getDocumentRevision,
+  subscribeDocument,
+} from "./state.js";
+import { hasActivePointers, subscribePointerActivity } from "./pointer.js";
+import { clearHistory } from "./undo.js";
 import {
   listDocuments,
   saveDocument,
   loadDocument,
+  loadDocuments,
   deleteDocument,
   duplicateDocument,
   reorderDocuments,
   updateMeta,
+  importDocuments,
   type DocumentMeta,
 } from "./storage.js";
-import { serializeProject, readProject, formatExportSvg, type ExportDoc } from "./io.js";
+import { serializeProject, readProject } from "./project-file.js";
+import { formatExportSvg, type ExportDoc } from "./svg-export.js";
 import {
   documentFile,
   documentFileName,
@@ -27,6 +37,7 @@ import { escapeAttr, uid } from "./utils.js";
 import {
   byId,
   downloadText,
+  formatBytes,
   pickFiles,
   readStored,
   registerServiceWorker,
@@ -42,7 +53,6 @@ import { demoDocument, demoUrl, demosToAdd } from "./demos.js";
 import {
   cleanTags,
   docStats,
-  sizeText,
   markHtml,
   matchesSearch,
   searchWords,
@@ -60,18 +70,15 @@ const DEMOS_KEY = "svg.demos";
 const docDirtyEl = byId("doc-dirty");
 const docListEl = byId("doc-list");
 let docsCache: DocumentMeta[] = [];
-let changeSeq = 0;
-let savedSeq = 0;
+let savedSeq = getDocumentRevision();
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
-let pointerDown = false;
 let saveChain: Promise<void> = Promise.resolve();
 
 function updateStatus(): void {
-  docDirtyEl.classList.toggle("hidden", changeSeq === savedSeq);
+  docDirtyEl.classList.toggle("hidden", getDocumentRevision() === savedSeq);
 }
 
-export function noteChange(): void {
-  changeSeq += 1;
+function scheduleSave(): void {
   updateStatus();
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => void flushSave(), 900);
@@ -104,8 +111,8 @@ function uniqueName(base: string): string {
 }
 
 /** Writes the open document to storage. The deep clone keeps IndexedDB off the live state. */
-function storeCurrent(): Promise<void> {
-  if (!currentDoc.id) return Promise.resolve();
+function storeCurrent(): Promise<DocumentMeta | null> {
+  if (!currentDoc.id) return Promise.resolve(null);
   return saveDocument({
     id: currentDoc.id,
     name: currentDoc.name,
@@ -115,6 +122,10 @@ function storeCurrent(): Promise<void> {
 
 async function refreshDocList(): Promise<void> {
   docsCache = (await stored(listDocuments())) ?? [];
+  renderDocList();
+}
+
+function renderDocList(): void {
   const active = document.activeElement as HTMLInputElement | null;
   // Don't rebuild the list under a name or tags being edited.
   const editing = active?.closest<HTMLElement>("#doc-list [data-doc-id]")?.dataset.docId;
@@ -143,7 +154,7 @@ async function refreshDocList(): Promise<void> {
     li.title = isCurrent ? `Open since ${when}` : `Open (last saved ${when})`;
     li.innerHTML = `<div class="acc-header-row">
         <button type="button" class="acc-expand-btn" data-doc-expand aria-expanded="${open}" aria-label="Tags and details" title="Tags and details">
-          <span class="chevron" aria-hidden="true">▶</span>
+          <svg class="chevron" aria-hidden="true"><use href="#icon-chevron-right" /></svg>
         </button>
         ${rowDotHtml("radio", isCurrent, isCurrent ? "This is the open document" : "Open")}
         <span class="doc-name">
@@ -156,8 +167,8 @@ async function refreshDocList(): Promise<void> {
         <button type="button" class="acc-icon-btn doc-act" data-doc-save title="Export document" aria-label="Export document">
           <svg class="glyph" aria-hidden="true"><use href="#icon-export" /></svg>
         </button>
-        <button type="button" class="acc-icon-btn acc-move" data-doc-move="-1" title="Move up the list" aria-label="Move document up"${i > 0 ? "" : " disabled"}>▲</button>
-        <button type="button" class="acc-icon-btn acc-move" data-doc-move="1" title="Move down the list" aria-label="Move document down"${i < last ? "" : " disabled"}>▼</button>
+        <button type="button" class="acc-icon-btn acc-move" data-doc-move="-1" title="Move up the list" aria-label="Move document up"${i > 0 ? "" : " disabled"}><svg class="glyph" aria-hidden="true"><use href="#icon-chevron-up" /></svg></button>
+        <button type="button" class="acc-icon-btn acc-move" data-doc-move="1" title="Move down the list" aria-label="Move document down"${i < last ? "" : " disabled"}><svg class="glyph" aria-hidden="true"><use href="#icon-chevron-down" /></svg></button>
         <button type="button" class="acc-icon-btn acc-trash doc-del" data-doc-delete title="Delete" aria-label="Delete document">
           <svg class="glyph" aria-hidden="true"><use href="#icon-trash" /></svg>
         </button>
@@ -220,7 +231,7 @@ async function fillStats(li: HTMLElement, d: DocumentMeta): Promise<void> {
     }
   }
   content.textContent = details.content;
-  file.textContent = `${sizeText(details.bytes)} saved ${when}`;
+  file.textContent = `${formatBytes(details.bytes)} saved ${when}`;
 }
 
 /* ---------- Search: names and tags ---------- */
@@ -228,7 +239,6 @@ async function fillStats(li: HTMLElement, d: DocumentMeta): Promise<void> {
 const docSearchBtn = byId<HTMLButtonElement>("btn-doc-search");
 const docSearchInput = byId<HTMLInputElement>("doc-search");
 const docNoMatch = byId("doc-no-match");
-let lastQuery = "";
 
 /**
  * Shows only the documents matching the search, with what matched marked: in the name, and -
@@ -241,12 +251,14 @@ function applyDocSearch(): void {
   const words = searchWords(query);
   let shown = 0;
   for (const li of docListEl.querySelectorAll<HTMLElement>("[data-doc-id]")) {
-    const d = docsCache.find((m) => m.id === li.dataset.docId);
+    const index = docsCache.findIndex((m) => m.id === li.dataset.docId);
+    const d = docsCache[index];
     const match = !d || matchesSearch(d, query);
     li.hidden = !match;
     if (match) shown++;
     li.querySelectorAll<HTMLButtonElement>("[data-doc-move]").forEach((b) => {
-      if (query) b.disabled = true;
+      b.disabled =
+        !!query || (b.dataset.docMove === "-1" ? index <= 0 : index >= docsCache.length - 1);
     });
     const name = li.querySelector<HTMLInputElement>(".doc-title-input:not(.doc-name-marks)");
     const marks = li.querySelector<HTMLElement>(".doc-name-marks");
@@ -267,10 +279,6 @@ function applyDocSearch(): void {
   docSearchBtn.innerHTML = `<svg class="glyph" aria-hidden="true"><use href="#${icon}" /></svg>`;
   docSearchBtn.title = label;
   docSearchBtn.setAttribute("aria-label", label);
-  // Leaving a filtered list gives ▲ and ▼ back, which only a rebuild works out.
-  const wasFiltered = !!lastQuery;
-  lastQuery = query;
-  if (wasFiltered && !query) void refreshDocList();
 }
 
 function clearDocSearch(): void {
@@ -299,39 +307,40 @@ function rememberLast(id: string | null): void {
   writeStored(LAST_DOC_KEY, id ?? undefined);
 }
 
-function flushSave(): Promise<void> {
+function flushSave(force = false): Promise<void> {
   if (saveTimer) clearTimeout(saveTimer);
-  if (pointerDown) {
-    saveTimer = setTimeout(() => void flushSave(), 400);
+  if (hasActivePointers()) {
+    saveTimer = setTimeout(() => void flushSave(force), 400);
     return saveChain;
   }
   saveChain = saveChain.then(async () => {
-    if (changeSeq === savedSeq || !currentDoc.id) return;
-    const seq = changeSeq;
-    if (!(await stored(storeCurrent().then(() => true)))) return;
+    if ((!force && getDocumentRevision() === savedSeq) || !currentDoc.id) return;
+    const seq = getDocumentRevision();
+    const record = await stored(storeCurrent());
+    if (!record) return;
+    docsCache = docsCache.map((doc) => (doc.id === record.id ? record : doc));
     savedSeq = seq;
     updateStatus();
-    await refreshDocList();
+    renderDocList();
   });
   return saveChain;
 }
 
 export function saveNow(): Promise<void> {
-  noteChange();
-  return flushSave();
+  return flushSave(true);
 }
 
 function afterDocumentReplaced(): void {
   void hydrateImageDimensions(getState().images);
   clearHistory();
-  savedSeq = changeSeq;
+  savedSeq = getDocumentRevision();
   updateStatus();
 }
 
 /** Creates and stores a fresh, named, empty document and switches to it. */
 async function createBlankDocument(): Promise<void> {
   docsCache = (await stored(listDocuments())) ?? docsCache;
-  replaceState(createInitialState());
+  replaceDocument();
   fitToView();
   currentDoc = { id: uid("doc"), name: uniqueName("Untitled") };
   await storeNew();
@@ -374,32 +383,24 @@ async function openDocument(id: string): Promise<void> {
   await flushSave();
   const data = await stored(loadDocument(id));
   if (!data) return;
+  if (showDocument(id, data)) renderDocList();
+}
+
+/** Put already-loaded document data on the canvas, independently of library reads. */
+function showDocument(id: string, data: ProjectFile): boolean {
   try {
-    const doc = readProject(data);
-    replaceState({
-      ...createInitialState(),
-      artboard: doc.artboard,
-      background: doc.background,
-      grid: doc.grid,
-      images: doc.images,
-      elements: doc.elements,
-      groupNames: doc.groupNames,
-      groupHues: doc.groupHues,
-      guides: doc.guides,
-      tool: doc.tool,
-      finalOnly: doc.finalOnly,
-      selection: selectOnly(),
-    });
+    const { version: _version, ...doc } = readProject(data);
+    replaceDocument(doc);
   } catch (err) {
     window.alert(err instanceof Error ? err.message : String(err));
-    return;
+    return false;
   }
   // A document opens showing all of its artboard, whatever view it was last left in.
   fitToView();
   currentDoc = { id, name: docsCache.find((d) => d.id === id)?.name ?? "" };
   rememberLast(id);
   afterDocumentReplaced();
-  await refreshDocList();
+  return true;
 }
 
 async function renameCurrent(raw: string): Promise<void> {
@@ -478,7 +479,7 @@ async function deleteDoc(id: string): Promise<void> {
   const wasCurrent = id === currentDoc.id;
   if (wasCurrent) {
     if (saveTimer) clearTimeout(saveTimer);
-    savedSeq = changeSeq;
+    savedSeq = getDocumentRevision();
     updateStatus();
   }
   if (!(await stored(deleteDocument(id).then(() => true)))) return;
@@ -500,7 +501,7 @@ docListEl.addEventListener("click", async (e) => {
   if (!id) return;
   if (target.closest("[data-doc-expand]")) {
     if (!expandedDocs.delete(id)) expandedDocs.add(id);
-    await refreshDocList();
+    renderDocList();
     return;
   }
   // The details under a row are for reading and typing tags, not a way to open the document.
@@ -537,12 +538,14 @@ async function exportDoc(id: string): Promise<void> {
 /** Every document in one file, in list order: a backup, or a whole library to move. */
 async function exportAll(): Promise<void> {
   await flushSave();
-  const documents: ImportedDocument[] = [];
-  for (const d of docsCache) {
-    const data = await stored(loadDocument(d.id));
-    if (!data) return;
-    documents.push({ name: d.name, tags: d.tags, data });
-  }
+  const metadata = docsCache;
+  const data = await stored(loadDocuments(metadata.map((doc) => doc.id)));
+  if (!data) return;
+  const documents = metadata.map((doc, index) => ({
+    name: doc.name,
+    tags: doc.tags,
+    data: data[index]!,
+  }));
   if (!documents.length) return;
   downloadText(libraryFileName(), JSON.stringify(libraryFile(documents)), "application/json");
 }
@@ -585,45 +588,27 @@ export async function importDocumentFiles(files: readonly File[]): Promise<void>
 
 async function addDocuments(incoming: readonly ImportedDocument[]): Promise<void> {
   await flushSave();
-  let firstId: string | null = null;
-  try {
-    docsCache = await listDocuments();
-    // A new document goes on top of the list, so the last one stored ends up first: stored
-    // backwards, a library comes back in its own order.
-    for (const doc of [...incoming].reverse()) {
-      const id = uid("doc");
-      // Named against everything stored so far, this import's other documents included.
-      await saveDocument({ id, name: uniqueName(doc.name), tags: doc.tags, data: doc.data });
-      docsCache = await listDocuments();
-      firstId = id;
-    }
-  } catch (err) {
-    storageError(err);
-  }
-  if (!firstId) return;
+  const records = await stored(importDocuments(incoming));
+  if (!records?.length) return;
+  const firstId = records[0].id;
+  docsCache = records;
   // As for a new one: what comes in must be seen, whatever the list was filtered to.
   clearDocSearch();
   setSectionOpen("documents", true);
-  await openDocument(firstId);
-  await refreshDocList();
+  if (showDocument(firstId, incoming[0].data)) renderDocList();
 }
 
 // Anything that changes the document schedules an autosave; saves wait until the pointer is up.
-setHistoryListener(noteChange);
-window.addEventListener("pointerdown", () => (pointerDown = true), true);
-window.addEventListener(
-  "pointerup",
-  () => {
-    pointerDown = false;
-    if (changeSeq !== savedSeq) noteChange();
-  },
-  true
-);
+subscribeDocument(scheduleSave);
+subscribePointerActivity(() => {
+  if (!hasActivePointers() && getDocumentRevision() !== savedSeq) scheduleSave();
+});
+
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") void flushSave();
 });
 window.addEventListener("beforeunload", (e) => {
-  if (changeSeq !== savedSeq) {
+  if (getDocumentRevision() !== savedSeq) {
     void flushSave();
     e.preventDefault();
   }
@@ -669,6 +654,7 @@ export function startDocuments(): void {
 }
 
 async function openInitialDocument(): Promise<void> {
+  setState({ tool: savedView.tool, finalOnly: savedView.finalOnly });
   await refreshDocList();
   const last = readStored(LAST_DOC_KEY);
   // A first visit's library is the demos, and it opens on the first of them.

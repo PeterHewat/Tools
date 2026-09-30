@@ -11,815 +11,7 @@
     <link rel="stylesheet" href="src/css/styles.css" />
   </head>
   <body>
-    <!-- The app's own icons. Those every Tools app shares (help, search, copy, …) are empty here:
-         the build draws them in from @tools/ui, so they match the other apps'. -->
-    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="icon-defs" focusable="false">
-      <defs>
-        <symbol id="icon-select" viewBox="0 0 24 24">
-          <path
-            fill="currentColor"
-            stroke="currentColor"
-            stroke-width="0.5"
-            stroke-linejoin="round"
-            d="M5 3v17l4.2-4.2 3.3 6.2 2.5-1.3-3.2-6 5.2-.1L5 3z"
-          />
-        </symbol>
-        <!-- The select arrow with a plus: taps add to the selection. -->
-        <symbol id="icon-select-more" viewBox="0 0 24 24">
-          <path
-            fill="currentColor"
-            stroke="currentColor"
-            stroke-width="0.5"
-            stroke-linejoin="round"
-            d="M3 2v15l3.7-3.7 2.9 5.4 2.2-1.1-2.8-5.3 4.6-.1L3 2z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            d="M18 13v8M14 17h8"
-          />
-        </symbol>
-        <symbol id="icon-select-all" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-dasharray="3 2.4"
-            d="M2.5 2.5h19v19h-19z"
-          />
-          <rect x="6.5" y="6.5" width="5" height="5" rx="1" fill="currentColor" />
-          <circle cx="15" cy="15" r="2.8" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-paste" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M9 4H6a1 1 0 00-1 1v15a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1h-3"
-          />
-          <rect
-            x="9"
-            y="2.5"
-            width="6"
-            height="4"
-            rx="1"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 10v7M9 14l3 3 3-3"
-          />
-        </symbol>
-        <!-- A shape's corner caught in the ring the app draws on a snapped point: snap to shapes. -->
-        <symbol id="icon-snap-shapes" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M11.6 9H4a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1v-7.6"
-          />
-          <circle cx="15" cy="9" r="3.4" fill="none" stroke="currentColor" stroke-width="2" />
-          <circle cx="15" cy="9" r="1" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-pen" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"
-          />
-        </symbol>
-        <symbol id="icon-rect" viewBox="0 0 24 24">
-          <rect
-            x="4"
-            y="6"
-            width="16"
-            height="12"
-            rx="1"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-        </symbol>
-        <symbol id="icon-ellipse" viewBox="0 0 24 24">
-          <ellipse
-            cx="12"
-            cy="12"
-            rx="9"
-            ry="6"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-        </symbol>
-        <symbol id="icon-check" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M4 13l5 5L20 6"
-          />
-        </symbol>
-        <!-- Each shows the state the button puts the path into: the same three points, the same
-             two sides, and the base there or not. -->
-        <symbol id="icon-close-path" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M5 19 12 5l7 14z"
-          />
-          <circle cx="12" cy="5" r="2.3" fill="currentColor" />
-          <circle cx="5" cy="19" r="2.3" fill="currentColor" />
-          <circle cx="19" cy="19" r="2.3" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-open-path" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M5 19 12 5l7 14"
-          />
-          <circle cx="12" cy="5" r="2.3" fill="currentColor" />
-          <circle cx="5" cy="19" r="2.3" fill="currentColor" />
-          <circle cx="19" cy="19" r="2.3" fill="currentColor" />
-        </symbol>
-        <!-- The dot in a row says what kind of choice it is: a radio where only one can be
-             chosen (documents), a checkbox where any number can (primitives and groups). -->
-        <symbol id="icon-radio-on" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
-          <circle cx="12" cy="12" r="4" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-radio-off" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
-        </symbol>
-        <symbol id="icon-check-on" viewBox="0 0 24 24">
-          <rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" />
-          <path
-            fill="none"
-            stroke="var(--panel, #24262b)"
-            stroke-width="2.4"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M8 12.4 11 15.4 16.2 9"
-          />
-        </symbol>
-        <symbol id="icon-check-off" viewBox="0 0 24 24">
-          <rect
-            x="4"
-            y="4"
-            width="16"
-            height="16"
-            rx="4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-        </symbol>
-        <symbol id="icon-help" viewBox="0 0 24 24" data-ui-icon="help"></symbol>
-        <symbol id="icon-split" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3 12h5M16 12h5"
-          />
-          <path fill="none" stroke="currentColor" stroke-width="2" d="M12 4v4M12 16v4" />
-          <circle cx="12" cy="12" r="2.4" fill="currentColor" />
-        </symbol>
-        <!-- A point's two handles, joined through it or broken apart at it. -->
-        <symbol id="icon-link" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3 17 21 7"
-          />
-          <circle cx="12" cy="12" r="2.6" fill="currentColor" />
-          <circle cx="3.5" cy="16.7" r="2" fill="currentColor" />
-          <circle cx="20.5" cy="7.3" r="2" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-unlink" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-dasharray="3 2.5"
-            d="M3.5 7.5 12 12l8.5-4.5"
-          />
-          <circle cx="12" cy="12" r="2.6" fill="currentColor" />
-          <circle cx="3.5" cy="7.5" r="2" fill="currentColor" />
-          <circle cx="20.5" cy="7.5" r="2" fill="currentColor" />
-        </symbol>
-        <!-- A point as a sharp corner, as a smooth curve, and with one of its handles taken off. -->
-        <symbol id="icon-corner" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M3.5 19 12 6l8.5 13"
-          />
-          <circle cx="12" cy="6" r="2.6" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-curve" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3.5 19C5 11 8 8.5 12 8.5s7 2.5 8.5 10.5"
-          />
-          <path fill="none" stroke="currentColor" stroke-width="1.5" d="M5 8.5h14" />
-          <circle cx="12" cy="8.5" r="2.6" fill="currentColor" />
-          <circle cx="4" cy="8.5" r="1.8" fill="currentColor" />
-          <circle cx="20" cy="8.5" r="1.8" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-remove-handle" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3.5 7.5 11 12"
-          />
-          <circle cx="11" cy="12" r="2.6" fill="currentColor" />
-          <circle cx="3.5" cy="7.5" r="2" fill="currentColor" />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="m15.5 5.5 5 5m0-5-5 5"
-          />
-        </symbol>
-        <symbol id="icon-join" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M4 16a6 6 0 016-6h4a6 6 0 016 6"
-          />
-          <circle cx="4" cy="16" r="2.2" fill="currentColor" />
-          <circle cx="20" cy="16" r="2.2" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-group" viewBox="0 0 24 24">
-          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-            <rect x="3" y="3" width="8" height="8" rx="1" />
-            <rect x="13" y="13" width="8" height="8" rx="1" />
-            <path stroke-dasharray="3 2" d="M3 3h18v18H3z" />
-          </g>
-        </symbol>
-        <symbol id="icon-merge" viewBox="0 0 24 24">
-          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-            <path stroke-dasharray="3 2" d="M2 2h12v12H2zM10 10h12v12H10z" />
-            <rect x="11" y="3" width="3" height="3" fill="currentColor" stroke="none" />
-          </g>
-        </symbol>
-        <symbol id="icon-ungroup" viewBox="0 0 24 24">
-          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-            <rect x="2" y="2" width="8" height="8" rx="1" />
-            <rect x="14" y="14" width="8" height="8" rx="1" />
-          </g>
-        </symbol>
-        <symbol id="icon-text" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M5 6V4h14v2M12 4v16M9 20h6"
-          />
-        </symbol>
-        <symbol id="icon-document" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M6 2h9l5 5v15H6z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15 2v5h5"
-          />
-        </symbol>
-        <symbol id="icon-undo" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"
-          />
-        </symbol>
-        <symbol id="icon-redo" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3"
-          />
-        </symbol>
-        <symbol id="icon-grid" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M4 4h16v16H4zM4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"
-          />
-        </symbol>
-        <symbol id="icon-eye" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"
-          />
-          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" />
-        </symbol>
-        <symbol id="icon-eye-off" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM4 4l16 16"
-          />
-        </symbol>
-        <!-- The same ring on a grid crossing: snap to the grid. -->
-        <symbol id="icon-snap-grid" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            opacity="0.55"
-            d="M3 8h18M3 16h9.6M8 3v18M16 3v9.6M20 16h1M16 20v1"
-          />
-          <circle cx="16" cy="16" r="3.4" fill="none" stroke="currentColor" stroke-width="2" />
-          <circle cx="16" cy="16" r="1" fill="currentColor" />
-        </symbol>
-        <symbol id="icon-trash" viewBox="0 0 24 24" data-ui-icon="trash"></symbol>
-        <symbol id="icon-import" viewBox="0 0 24 24" data-ui-icon="import"></symbol>
-        <symbol id="icon-export" viewBox="0 0 24 24" data-ui-icon="export"></symbol>
-        <!-- A cross: clear. -->
-        <symbol id="icon-clear" viewBox="0 0 24 24" data-ui-icon="close"></symbol>
-        <!-- A magnifying glass: search. -->
-        <symbol id="icon-search" viewBox="0 0 24 24" data-ui-icon="search"></symbol>
-        <symbol id="icon-copy" viewBox="0 0 24 24" data-ui-icon="copy"></symbol>
-        <!-- Two overlapping squares: combine shapes into one. -->
-        <symbol id="icon-combine" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M4 4h10v10H4z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M10 10h10v10H10z"
-          />
-        </symbol>
-        <!-- Their union: one outline round both. -->
-        <symbol id="icon-union" viewBox="0 0 24 24">
-          <path fill="currentColor" fill-opacity="0.45" d="M4 4h10v6h6v10H10v-6H4z" />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M4 4h10v6h6v10H10v-6H4z"
-          />
-        </symbol>
-        <!-- The back square, less the front one. -->
-        <symbol id="icon-subtract" viewBox="0 0 24 24">
-          <path fill="currentColor" fill-opacity="0.45" d="M4 4h10v6h-4v4H4z" />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M4 4h10v6h-4v4H4z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linejoin="round"
-            stroke-dasharray="2 2"
-            d="M10 10h10v10H10z"
-          />
-        </symbol>
-        <!-- Only where they overlap. -->
-        <symbol id="icon-intersect" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linejoin="round"
-            stroke-dasharray="2 2"
-            d="M4 4h10v10H4z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linejoin="round"
-            stroke-dasharray="2 2"
-            d="M10 10h10v10H10z"
-          />
-          <path fill="currentColor" fill-opacity="0.45" d="M10 10h4v4h-4z" />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M10 10h4v4h-4z"
-          />
-        </symbol>
-        <!-- Everything but where they overlap. -->
-        <symbol id="icon-exclude" viewBox="0 0 24 24">
-          <path
-            fill="currentColor"
-            fill-opacity="0.45"
-            fill-rule="evenodd"
-            d="M4 4h10v10H4zM10 10h10v10H10z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M4 4h10v10H4z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M10 10h10v10H10z"
-          />
-        </symbol>
-        <!-- Two bars against a line on their left: align left edges. -->
-        <symbol id="icon-align-left" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M4 3v18"
-          />
-          <rect
-            x="7"
-            y="6"
-            width="13"
-            height="4"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-          <rect
-            x="7"
-            y="14"
-            width="8"
-            height="4"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- Two bars centred on a vertical line. -->
-        <symbol id="icon-align-hcenter" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M12 3v18"
-          />
-          <rect
-            x="5.5"
-            y="6"
-            width="13"
-            height="4"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-          <rect
-            x="8"
-            y="14"
-            width="8"
-            height="4"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- Two bars against a line on their right. -->
-        <symbol id="icon-align-right" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M20 3v18"
-          />
-          <rect
-            x="4"
-            y="6"
-            width="13"
-            height="4"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-          <rect
-            x="9"
-            y="14"
-            width="8"
-            height="4"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- Two bars hanging from a line above them. -->
-        <symbol id="icon-align-top" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3 4h18"
-          />
-          <rect
-            x="6"
-            y="7"
-            width="4"
-            height="13"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-          <rect
-            x="14"
-            y="7"
-            width="4"
-            height="8"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- Two bars centred on a horizontal line. -->
-        <symbol id="icon-align-vcenter" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3 12h18"
-          />
-          <rect
-            x="6"
-            y="5.5"
-            width="4"
-            height="13"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-          <rect
-            x="14"
-            y="8"
-            width="4"
-            height="8"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- Two bars standing on a line below them. -->
-        <symbol id="icon-align-bottom" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3 20h18"
-          />
-          <rect
-            x="6"
-            y="4"
-            width="4"
-            height="13"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-          <rect
-            x="14"
-            y="9"
-            width="4"
-            height="8"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- A bar spaced evenly between two lines, across. -->
-        <symbol id="icon-distribute-x" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M3 4v16M21 4v16"
-          />
-          <rect
-            x="9"
-            y="7"
-            width="6"
-            height="10"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- A bar spaced evenly between two lines, down. -->
-        <symbol id="icon-distribute-y" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M4 3h16M4 21h16"
-          />
-          <rect
-            x="7"
-            y="9"
-            width="10"
-            height="6"
-            rx="1"
-            fill="currentColor"
-            fill-opacity="0.45"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </symbol>
-        <!-- An eyedropper: pick a colour from the reference image. -->
-        <symbol id="icon-dropper" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M14 6l4 4M16.5 3.5a2.1 2.1 0 013 3L18 8l-2-2 .5-2.5zM15 7l-9 9-1.5 4.5L9 19l9-9"
-          />
-        </symbol>
-        <!-- A padlock, shut and open: lock a shape out of reach on the canvas, and unlock it. -->
-        <symbol id="icon-lock" viewBox="0 0 24 24">
-          <rect
-            x="5"
-            y="11"
-            width="14"
-            height="10"
-            rx="2"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M8 11V8a4 4 0 018 0v3"
-          />
-        </symbol>
-        <symbol id="icon-unlock" viewBox="0 0 24 24">
-          <rect
-            x="5"
-            y="11"
-            width="14"
-            height="10"
-            rx="2"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            d="M8 11V8a4 4 0 017.7-1.5"
-          />
-        </symbol>
-        <!-- A picture: export a PNG. -->
-        <symbol id="icon-png" viewBox="0 0 24 24">
-          <rect
-            x="3"
-            y="4"
-            width="18"
-            height="16"
-            rx="2"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <circle cx="9" cy="10" r="1.8" fill="currentColor" />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-            d="M4 18l5-5 3 3 3-3 5 5"
-          />
-        </symbol>
-        <!-- Back from a page of the bar, such as Combine's. -->
-        <symbol id="icon-back" viewBox="0 0 24 24">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15 5l-7 7 7 7"
-          />
-        </symbol>
-      </defs>
-    </svg>
+    <!-- tools:icons -->
 
     <div id="app">
       <header
@@ -834,7 +26,7 @@
         <div class="menu" id="menu-document-wrap">
           <button
             type="button"
-            class="menu-trigger menu-trigger--icon"
+            class="ui-btn ui-icon-btn"
             id="menu-document-btn"
             aria-expanded="false"
             title="Document"
@@ -853,23 +45,15 @@
               <section class="doc-section" data-section="documents">
                 <div class="doc-section-head">
                   <button type="button" class="doc-toggle">
-                    <span class="chevron" aria-hidden="true">▶</span>Documents
+                    <svg class="chevron" aria-hidden="true"><use href="#icon-chevron-right" /></svg
+                    >Documents
                   </button>
                   <span id="doc-dirty" class="doc-dirty hidden" title="Saving…">●</span>
                   <div class="menu-panel-toolbar-actions">
                     <button
                       type="button"
-                      id="btn-doc-export-all"
-                      class="icon-btn"
-                      title="Export every document, in one file"
-                      aria-label="Export every document"
-                    >
-                      <svg class="glyph" aria-hidden="true"><use href="#icon-export" /></svg>
-                    </button>
-                    <button
-                      type="button"
                       id="btn-doc-import"
-                      class="icon-btn"
+                      class="ui-btn ui-icon-btn"
                       title="Import documents — document files, whole libraries or SVG files; nothing already here is replaced"
                       aria-label="Import documents"
                     >
@@ -877,12 +61,21 @@
                     </button>
                     <button
                       type="button"
+                      id="btn-doc-export-all"
+                      class="ui-btn ui-icon-btn"
+                      title="Export every document, in one file"
+                      aria-label="Export every document"
+                    >
+                      <svg class="glyph" aria-hidden="true"><use href="#icon-export" /></svg>
+                    </button>
+                    <button
+                      type="button"
                       id="btn-new-doc"
-                      class="icon-btn"
+                      class="ui-btn ui-icon-btn"
                       title="New document"
                       aria-label="New document"
                     >
-                      +
+                      <svg class="glyph" aria-hidden="true"><use href="#icon-plus" /></svg>
                     </button>
                   </div>
                 </div>
@@ -915,16 +108,17 @@
               <section class="doc-section collapsed" data-section="images">
                 <div class="doc-section-head">
                   <button type="button" class="doc-toggle">
-                    <span class="chevron" aria-hidden="true">▶</span>Reference images
+                    <svg class="chevron" aria-hidden="true"><use href="#icon-chevron-right" /></svg
+                    >Reference images
                   </button>
                   <button
                     type="button"
                     id="btn-add-image"
-                    class="icon-btn"
+                    class="ui-btn ui-icon-btn"
                     title="Add reference image"
                     aria-label="Add reference image"
                   >
-                    +
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-plus" /></svg>
                   </button>
                 </div>
                 <div class="doc-section-body">
@@ -936,12 +130,13 @@
             <section class="doc-section doc-grow" data-section="svg" id="doc-svg">
               <div class="doc-section-head">
                 <button type="button" class="doc-toggle">
-                  <span class="chevron" aria-hidden="true">▶</span>SVG
+                  <svg class="chevron" aria-hidden="true"><use href="#icon-chevron-right" /></svg
+                  >SVG
                 </button>
                 <div class="menu-panel-toolbar-actions">
                   <button
                     type="button"
-                    class="tool-btn"
+                    class="ui-btn ui-icon-btn"
                     id="btn-import-svg"
                     title="Import SVG"
                     aria-label="Import SVG"
@@ -950,7 +145,7 @@
                   </button>
                   <button
                     type="button"
-                    class="tool-btn"
+                    class="ui-btn ui-icon-btn"
                     id="btn-save-svg"
                     title="Export SVG"
                     aria-label="Export SVG"
@@ -959,17 +154,16 @@
                   </button>
                   <button
                     type="button"
-                    class="tool-btn"
+                    class="ui-btn ui-icon-btn"
                     id="btn-export-png"
                     title="Export PNG, at the artboard's size"
                     aria-label="Export PNG"
-                    aria-haspopup="dialog"
                   >
                     <svg class="glyph" aria-hidden="true"><use href="#icon-png" /></svg>
                   </button>
                   <button
                     type="button"
-                    class="tool-btn"
+                    class="ui-btn ui-icon-btn"
                     id="btn-copy-svg"
                     title="Copy SVG to clipboard"
                     aria-label="Copy SVG to clipboard"
@@ -1004,7 +198,7 @@
                     <span>Grid</span>
                     <button
                       type="button"
-                      class="tool-btn"
+                      class="ui-btn ui-icon-btn"
                       id="btn-grid"
                       title="Show / hide the grid (hidden anyway at a step of 1)"
                       aria-label="Show grid"
@@ -1046,28 +240,45 @@
             <section class="doc-section doc-grow" data-section="primitives" id="doc-primitives">
               <div class="doc-section-head">
                 <button type="button" class="doc-toggle">
-                  <span class="chevron" aria-hidden="true">▶</span>Primitives
+                  <svg class="chevron" aria-hidden="true"><use href="#icon-chevron-right" /></svg
+                  >Primitives
                 </button>
-                <div class="btn-row btn-row--inline">
-                  <button type="button" id="btn-group" title="Group selected (Ctrl+G)">
-                    Group
+                <div class="ui-seg" role="group" aria-label="Grouping">
+                  <button
+                    type="button"
+                    id="btn-group"
+                    title="Group selected (Ctrl+G)"
+                    class="ui-btn ui-icon-btn"
+                    aria-label="Group"
+                  >
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-group" /></svg>
                   </button>
                   <button
                     type="button"
                     id="btn-merge"
                     title="Merge the selection into one group, without nesting (Ctrl+Alt+G)"
+                    class="ui-btn ui-icon-btn"
+                    aria-label="Merge"
                   >
-                    Merge
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-merge" /></svg>
                   </button>
-                  <button type="button" id="btn-ungroup" title="Ungroup selected (Ctrl+Shift+G)">
-                    Ungroup
+                  <button
+                    type="button"
+                    id="btn-ungroup"
+                    title="Ungroup selected (Ctrl+Shift+G)"
+                    class="ui-btn ui-icon-btn"
+                    aria-label="Ungroup"
+                  >
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-ungroup" /></svg>
                   </button>
                   <button
                     type="button"
                     id="btn-join"
                     title="Join the two selected open paths at their closest ends (J)"
+                    class="ui-btn ui-icon-btn"
+                    aria-label="Join"
                   >
-                    Join
+                    <svg class="glyph" aria-hidden="true"><use href="#icon-join" /></svg>
                   </button>
                 </div>
               </div>
@@ -1082,8 +293,9 @@
         <div class="ui-seg" id="group-history" role="group" aria-label="History">
           <button
             type="button"
-            class="tool-btn"
+            class="ui-btn ui-icon-btn"
             id="btn-undo"
+            data-history="undo"
             title="Undo (Ctrl+Z)"
             aria-label="Undo"
             disabled
@@ -1092,14 +304,46 @@
           </button>
           <button
             type="button"
-            class="tool-btn"
+            class="ui-btn ui-icon-btn"
             id="btn-redo"
+            data-history="redo"
             title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
             aria-label="Redo"
             disabled
           >
             <svg class="glyph" aria-hidden="true"><use href="#icon-redo" /></svg>
           </button>
+        </div>
+        <div class="history-more">
+          <button
+            type="button"
+            class="ui-btn ui-icon-btn"
+            id="btn-history-more"
+            title="More actions"
+            aria-label="More actions"
+          >
+            <svg class="glyph" aria-hidden="true"><use href="#icon-more" /></svg>
+          </button>
+          <div class="ui-menu" id="history-more-menu" aria-label="History">
+            <button
+              type="button"
+              class="ui-menu-item"
+              data-history="undo"
+              title="Undo (Ctrl+Z)"
+              disabled
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-undo" /></svg>Undo
+            </button>
+            <button
+              type="button"
+              class="ui-menu-item"
+              data-history="redo"
+              title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+              disabled
+            >
+              <svg class="glyph" aria-hidden="true"><use href="#icon-redo" /></svg>Redo
+            </button>
+          </div>
         </div>
         <div class="tool-slot" id="tool-slot"></div>
         <!-- The drawing tools and the snap switches: one element, which a phone moves into the
@@ -1108,7 +352,7 @@
           <div class="ui-seg" role="group" aria-label="Tools">
             <button
               type="button"
-              class="tool-btn active"
+              class="ui-btn ui-icon-btn active"
               data-tool="select"
               title="Select (S) — also pans: Space or middle-drag, or one finger on empty canvas"
               aria-label="Select"
@@ -1117,7 +361,7 @@
             </button>
             <button
               type="button"
-              class="tool-btn"
+              class="ui-btn ui-icon-btn"
               data-tool="pen"
               title="Pen (P) — click for corners, drag for curves, double-click/Enter to finish, click the start point to close"
               aria-label="Pen"
@@ -1126,7 +370,7 @@
             </button>
             <button
               type="button"
-              class="tool-btn"
+              class="ui-btn ui-icon-btn"
               data-tool="rect"
               title="Rectangle (R) — hold Shift for a square"
               aria-label="Rectangle"
@@ -1135,7 +379,7 @@
             </button>
             <button
               type="button"
-              class="tool-btn"
+              class="ui-btn ui-icon-btn"
               data-tool="ellipse"
               title="Ellipse (E) — hold Shift for a circle"
               aria-label="Ellipse"
@@ -1144,7 +388,7 @@
             </button>
             <button
               type="button"
-              class="tool-btn"
+              class="ui-btn ui-icon-btn"
               data-tool="text"
               title="Text (T) — click to place"
               aria-label="Text"
@@ -1155,7 +399,7 @@
           <div class="ui-seg" role="group" aria-label="Snap">
             <button
               type="button"
-              class="tool-btn"
+              class="ui-btn ui-icon-btn"
               id="btn-snap"
               title="Snap to grid (G) — turns snap to shapes off"
               aria-label="Snap to grid"
@@ -1166,7 +410,7 @@
             <!-- Alt, as a switch: a finger has no key to hold. -->
             <button
               type="button"
-              class="tool-btn"
+              class="ui-btn ui-icon-btn"
               id="btn-align"
               title="Snap to other shapes' points (or hold Alt) — turns grid snap off"
               aria-label="Snap to other shapes"
@@ -1182,7 +426,7 @@
           <div class="zoom-wrap" id="zoom-wrap">
             <button
               type="button"
-              class="tool-btn tool-btn--text zoom-level"
+              class="ui-btn zoom-level"
               id="btn-zoom-level"
               title="Zoom — pick a level, or pinch and scroll to set your own"
               aria-label="Zoom level"
@@ -1198,7 +442,7 @@
           </div>
           <button
             type="button"
-            class="tool-btn"
+            class="ui-btn ui-icon-btn"
             id="btn-final"
             title="Final SVG: hide the grid, guides and reference images"
             aria-label="Final SVG"
@@ -1208,14 +452,14 @@
           </button>
         </div>
 
-        <!-- On a phone the bar has no room for it: the switch moves into the Help panel. -->
-        <button type="button" class="tool-btn theme-btn" data-theme-toggle></button>
+        <!-- The theme switch stays in the bar at every width. -->
+        <button type="button" class="ui-btn ui-icon-btn theme-btn" data-theme-toggle></button>
 
         <!-- Help is last in the bar, at the edge its panel opens from, and outside any menu: on a
              phone the one button you reach for when you are lost should not be behind one. -->
         <button
           type="button"
-          class="tool-btn help-btn"
+          class="ui-btn ui-icon-btn help-btn"
           id="btn-help"
           aria-expanded="false"
           title="Help — what everything does"

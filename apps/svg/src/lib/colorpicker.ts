@@ -112,11 +112,11 @@ function build(): HTMLDivElement {
     <div class="cp-slider cp-hue"><div class="cp-thumb"></div></div>
     <div class="cp-slider cp-alpha"><div class="cp-alpha-fill"></div><div class="cp-thumb"></div></div>
     <div class="cp-row">
-      <button type="button" class="cp-dropper" title="Pick a colour from the reference image" aria-label="Pick a colour from the reference image">
+      <button type="button" class="ui-btn ui-icon-btn cp-dropper" title="Pick a colour from the reference image" aria-label="Pick a colour from the reference image">
         <svg class="glyph" aria-hidden="true"><use href="#icon-dropper" /></svg>
       </button>
-      <input type="text" class="cp-hex" maxlength="7" spellcheck="false" />
-      <input type="number" class="cp-alpha-num" min="0" max="100" step="1" />
+      <input type="text" class="cp-hex" aria-label="Colour (hex)" maxlength="7" spellcheck="false" />
+      <input type="number" class="cp-alpha-num" aria-label="Opacity (%)" min="0" max="100" step="1" />
       <span class="cp-pct">%</span>
     </div>
   `;

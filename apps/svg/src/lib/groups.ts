@@ -23,6 +23,11 @@ export function groupsOf(el: SceneElement | undefined): readonly string[] {
   return el?.groups ?? [];
 }
 
+/** All members of a group, including its nested groups. */
+export function membersOf(elements: readonly SceneElement[], gid: string): SceneElement[] {
+  return elements.filter((el) => groupsOf(el).includes(gid));
+}
+
 /** The outermost group of an element, which is what selecting it selects. */
 function outerGroup(el: SceneElement | undefined): string | null {
   return groupsOf(el)[0] ?? null;
@@ -290,10 +295,15 @@ function redundantGroupIds(elements: readonly SceneElement[]): Set<string> {
 /** Drops the groups that hold only one thing, returning a new list. */
 export function pruneGroups(elements: readonly SceneElement[]): SceneElement[] {
   const gone = redundantGroupIds(elements);
-  const touched = (el: SceneElement) => groupsOf(el).some((gid) => gone.has(gid));
-  const out = elements.map((el) => (touched(el) ? { ...el } : el));
-  pruneGroupsInPlace(out);
-  return out;
+  return elements.map((el) => {
+    const chain = groupsOf(el);
+    if (!chain.some((gid) => gone.has(gid))) return el;
+    const next = { ...el };
+    const kept = chain.filter((gid) => !gone.has(gid));
+    if (kept.length) next.groups = kept;
+    else delete next.groups;
+    return next;
+  });
 }
 
 /**
@@ -680,4 +690,15 @@ export function selectedGroups(
     if (!list.every((e) => selected.has(e.id))) members.delete(gid);
   }
   return members;
+}
+
+/** The entries, by group id, of groups that still exist and have a value (a name, a hue). */
+export function ofGroupsInUse<T extends string | number>(
+  elements: readonly SceneElement[],
+  byGroup: Readonly<Record<string, T>>
+): Record<string, T> {
+  const used = new Set(elements.flatMap((e) => groupsOf(e)));
+  return Object.fromEntries(
+    Object.entries(byGroup).filter(([gid, v]) => used.has(gid) && v !== "")
+  );
 }

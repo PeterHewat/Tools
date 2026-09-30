@@ -360,7 +360,22 @@ function appHeader(appOf: AppOf): Plugin {
 function pageIcons(): Plugin {
   return {
     name: "tools-icons",
-    transformIndexHtml: { order: "pre", handler: (html) => withIcons(html) },
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        const sprite = html.includes("<!-- tools:icons -->")
+          ? readFileSync(join(dirname(ctx.filename), "src", "icons.svg"), "utf8")
+          : undefined;
+        return withIcons(html, sprite);
+      },
+    },
+    configureServer(server) {
+      server.watcher.add(APPS.map((app) => join(APPS_DIR, app.slug, "src", "icons.svg")));
+      server.watcher.on("change", (file) => {
+        if (file.replace(/\\/g, "/").endsWith("/src/icons.svg"))
+          server.ws.send({ type: "full-reload" });
+      });
+    },
   };
 }
 

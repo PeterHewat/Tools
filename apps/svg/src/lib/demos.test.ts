@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import { BACKDROP_NAME, DEMOS, demoDocument, demosToAdd } from "./demos.js";
 import { cleanTags } from "./doc-list.js";
-import { formatExportSvg, importSvgFile, readProject } from "./io.js";
+import { formatExportSvg } from "./svg-export.js";
+import { importSvgFile } from "./svg-import.js";
+import { readProject } from "./project-file.js";
 
 const dir = new URL("../../public/", import.meta.url);
 const read = (file: string) => Bun.file(new URL(file, dir)).text();

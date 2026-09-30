@@ -11,7 +11,7 @@
  * This list is the one place a demo is named: its file, its name in the list, and its tags.
  */
 
-import { importSvgFile } from "./io.js";
+import { importSvgFile } from "./svg-import.js";
 import { svgProject } from "./document-files.js";
 import type { ProjectFile } from "./types.js";
 

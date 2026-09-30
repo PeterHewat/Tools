@@ -1,7 +1,14 @@
-import { getState, setState, mutate, findElement, replaceElements, selectOnly } from "./state.js";
+import {
+  getState,
+  setState,
+  mutateDocument,
+  findElement,
+  replaceElements,
+  selectOnly,
+} from "./state.js";
 import { simplifyPathIfStraight } from "./model.js";
 import { pushUndo } from "./undo.js";
-import { type EditorState, type PathElement } from "./types.js";
+import { type EditorState, type PathElement, type Point } from "./types.js";
 
 export function setTool(tool: EditorState["tool"]): void {
   setState({ tool, selection: selectOnly(), drawing: null, dropTarget: null });
@@ -51,7 +58,7 @@ export function closeAndFinishPath(): void {
   const path = activePath();
   if (!path || path.points.length < 2) return;
   pushUndo();
-  mutate(() => {
+  mutateDocument(() => {
     path.closed = true;
   });
   endPath();
@@ -74,8 +81,28 @@ export function removeLastPenPoint(): void {
     dropActivePath(path.id);
     return;
   }
-  mutate(() => {
+  mutateDocument(() => {
     path.points.pop();
   });
   setState((s) => ({ ...s, drawing: { ...s.drawing, activePathId: path.id, preview: null } }));
+}
+
+export function updatePenPreview(path: PathElement, world: Point): void {
+  const last = path.points[path.points.length - 1];
+  if (!last) return;
+  setState((s) => ({
+    ...s,
+    drawing: {
+      ...s.drawing,
+      preview: {
+        type: "rubber",
+        x1: last.x,
+        y1: last.y,
+        x2: world.x,
+        y2: world.y,
+        stroke: path.stroke,
+        strokeWidth: path.strokeWidth,
+      },
+    },
+  }));
 }

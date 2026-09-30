@@ -1,7 +1,7 @@
 import {
   getState,
   setState,
-  mutate,
+  mutateDocument,
   findElement,
   replaceElements,
   selectOnly,
@@ -288,7 +288,7 @@ export function setSelectedHandlesLinked(linked: boolean): void {
   const p = pe && el?.type === "path" ? el.points[pe.index] : undefined;
   if (!p || !hasTwoHandles(p) || p.smooth === linked) return;
   pushUndo();
-  mutate(() => setHandlesLinked(p, linked));
+  mutateDocument(() => setHandlesLinked(p, linked));
 }
 
 /** Whether a point is a curve: it has a handle standing off it. */
@@ -349,7 +349,7 @@ export function removePointHandle(pathId: string, index: number, kind: "in" | "o
   const p = el?.type === "path" ? el.points[index] : undefined;
   if (!p || !hasHandle(p, kind)) return;
   pushUndo();
-  mutate(() => removeHandle(p, kind));
+  mutateDocument(() => removeHandle(p, kind));
   setState({ selection: onePoint(getState().selection, { pathId, index }) });
 }
 
@@ -485,14 +485,14 @@ export function nudgeSelection(dx: number, dy: number): void {
   const pointOwner = pe ? findElement(pe.pathId) : undefined;
   if (pe && pointOwner && hasPoint(pointOwner, pe.index)) {
     pushUndo();
-    mutate(() => translatePoint(pointOwner, pe.index, dx, dy, pe.handle));
+    mutateDocument(() => translatePoint(pointOwner, pe.index, dx, dy, pe.handle));
     return;
   }
   // A locked shape selected from its row stays put, as it does when the others are dragged.
   const movable = () => selectedElements().filter((el) => !el.locked);
   if (!movable().length) return;
   pushUndo();
-  mutate(() => {
+  mutateDocument(() => {
     for (const el of movable()) translateElement(el, dx, dy);
   });
 }

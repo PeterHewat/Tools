@@ -352,15 +352,15 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   with no storage to remember by, none are added. Each file is written as the app exports it, which
   a test holds it to. Each fills its artboard over a blue gradient `backdrop`, which the document
   gets locked.
-- Opening a document fits its artboard in view. Zoom, pan and open panels otherwise belong to the
-  tab: kept in `sessionStorage` by document id (`session.ts`), so a refresh returns the view it
+- Opening a document fits its artboard in view. The current tool and Final SVG view belong to the
+  tab and stay the same between documents. Zoom, pan and open panels also belong to the tab: kept in `sessionStorage` by document id (`session.ts`), so a refresh returns the view it
   left, never in the document.
 
 ### 12.2 Stored format
 
-`ProjectFile`, versioned by `PROJECT_VERSION` (`types.ts`). Every released version stays readable:
-`readProject` (`io.ts`) brings an older document up to date step by step, and refuses one from a
-newer version of the app with a message to reload. It also makes what it reads safe to draw:
+`ProjectFile` uses the initial format, version 1 (`PROJECT_VERSION` in `types.ts`).
+`readProject` (`project-file.ts`) validates document data and refuses files from a newer
+version of the app with a message to reload. It also makes what it reads safe to draw:
 a document with markup in any value but free text is refused; colours become `#rrggbb` and
 opacities 0..1, elements with an id or type the app does not write are dropped, and so are
 reference images that are not `data:` images. A document with nothing usable left is refused. The
@@ -393,9 +393,7 @@ database has its own `DB_VERSION` (`storage.ts`) for its stores.
   ],
   "groupNames": { "group-57cc1c37": "top view" },
   "groupHues": { "group-57cc1c37": 210 },
-  "guides": { "x": [256], "y": [64, 448] },
-  "tool": "select",
-  "finalOnly": false
+  "guides": { "x": [256], "y": [64, 448] }
 }
 ```
 
@@ -404,10 +402,10 @@ database has its own `DB_VERSION` (`storage.ts`) for its stores.
 Documents move between browsers as files (`document-files.ts`):
 
 - A row's export writes `Name.svg.json`:
-  `{ "tag": "svg/document", "version": 1, "exported", "name", "tags"?, "data" }`,
+  `{ "tag": "svg/document", "exported", "name", "tags"?, "data" }`,
   with `tags` only when there are some.
 - The header's export writes every document, in list order, as one library file:
-  `{ "tag": "svg/library", "version": 1, "exported", "documents": [{ "name", "tags"?, "data" }] }`.
+  `{ "tag": "svg/library", "exported", "documents": [{ "name", "tags"?, "data" }] }`.
 - Import takes any number of files of either kind. Every document in them is read by `readProject`
   and added at the top of the list, in the order the file gives, with a fresh id, a free name and
   its tags, cleaned as if typed:

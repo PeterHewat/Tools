@@ -85,18 +85,6 @@ export function statsText(s: DocStats): string {
 }
 
 /**
- * A file's size as the row shows it: bytes under a kilobyte, then kilobytes and megabytes to one
- * decimal (of 1024), written close up - "850B", "6.7KB".
- */
-export function sizeText(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  const one = (n: number) => Math.round(n * 10) / 10;
-  // Compared once rounded, so a size just under a megabyte reads 1MB rather than 1024KB.
-  const kb = one(bytes / 1024);
-  return kb < 1024 ? `${kb}KB` : `${one(bytes / 1024 / 1024)}MB`;
-}
-
-/**
  * A search as typed, as search engines read one: words separated by spaces must all be found, and
  * OR - in capitals, as a word of its own - separates alternatives: "arrow icons OR logo" is (arrow
  * and icons) or logo. A comma counts as a space; a lower-case "or" is just a word. Lower case,

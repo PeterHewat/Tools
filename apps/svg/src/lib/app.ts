@@ -18,21 +18,23 @@ import {
   selectAll,
 } from "./selection-commands.js";
 import { pushUndo, canUndo, canRedo, undo, redo, undoStepper } from "./undo.js";
-import { formatExportSvg, importSvgFile } from "./io.js";
+import { formatExportSvg } from "./svg-export.js";
+import { importSvgFile } from "./svg-import.js";
 import { pngSize, renderPng } from "./png-export.js";
 import { fileBase, isSvgFile, listed } from "./document-files.js";
 import { canJoin } from "./model.js";
 import {
   THEME_EVENT,
   bindThemeToggle,
+  bindMenu,
   byId,
   copyText,
   downloadBlob,
   downloadText,
   onFileDrop,
   pickFiles,
+  setPressed,
 } from "@tools/ui";
-import { bindTouch } from "./touch.js";
 import {
   openColorPicker,
   closeColorPicker,
@@ -43,13 +45,13 @@ import { canPickFromImages, pickFromImages } from "./eyedropper.js";
 import { initRulers, renderRulers } from "./rulers.js";
 import { initActionBar, syncActionBar } from "./actionbar.js";
 import { endTextEdit, initTextEdit, isTextEditing, positionTextEditor } from "./textedit.js";
-import { initPointerKind } from "./pointer.js";
+import { initPointerKind, initPointerTracking } from "./pointer.js";
 import {
-  followState,
-  isAlignSnap,
+  followSelection,
   setAlignSnap,
   setGridSnap,
   writeSessionView,
+  type SessionView,
 } from "./session.js";
 import { canGroup, canMergeGroups, canUngroup } from "./groups.js";
 import { MAX_ARTBOARD, type EditorState } from "./types.js";
@@ -70,6 +72,7 @@ const svg = byId<SVGSVGElement>("viewport-svg");
 const camera = byId<SVGGElement>("camera");
 const wrap = byId("canvas-wrap");
 
+initPointerTracking();
 initPointerKind(() => renderAll(getState()));
 initViewport(svg, camera);
 initRender({
@@ -86,7 +89,6 @@ initTextEdit(wrap);
 initActionBar(byId("action-bar"));
 bindInteraction(svg, wrap);
 setColorSampler({ available: canPickFromImages, pick: () => pickFromImages(wrap, svg) });
-bindTouch(svg);
 
 // Clicking the canvas takes the keyboard back from any field so the shortcuts work again, and
 // drops any leftover page text selection, which would otherwise suppress the Ctrl+C / Ctrl+X
@@ -128,15 +130,22 @@ document.addEventListener("paste", (e) => {
   if (pasteFromText(e.clipboardData?.getData("text/plain") ?? "")) e.preventDefault();
 });
 
-byId("btn-undo").addEventListener("click", () => undo());
-byId("btn-redo").addEventListener("click", () => redo());
+const historyMenu = bindMenu(byId("btn-history-more"), byId("history-more-menu"));
+const historyButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-history]")];
+for (const button of historyButtons) {
+  button.addEventListener("click", () => {
+    historyMenu.close();
+    if (button.dataset.history === "undo") undo();
+    else redo();
+  });
+}
 
 byId("btn-join").addEventListener("click", () => joinSelected());
 byId("btn-group").addEventListener("click", () => groupSelection());
 byId("btn-merge").addEventListener("click", () => mergeSelection());
 byId("btn-ungroup").addEventListener("click", () => ungroupSelection());
 
-document.querySelectorAll<HTMLElement>(".tool-btn[data-tool]").forEach((btn) => {
+document.querySelectorAll<HTMLElement>("[data-tool]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const tool = btn.dataset.tool as EditorState["tool"];
     // Tapping the active drawing tool puts the canvas back to selecting, which is the way out
@@ -158,7 +167,7 @@ document
   .querySelectorAll<HTMLElement>("[data-theme-toggle]")
   .forEach((btn) => bindThemeToggle(btn, "glyph"));
 
-let lastSavedViewport: EditorState["viewport"] | null = null;
+let lastSavedView: SessionView | null = null;
 
 subscribe((state, { pointerOnly }) => {
   if (pointerOnly) {
@@ -167,12 +176,22 @@ subscribe((state, { pointerOnly }) => {
     syncCursorReadout(state);
     return;
   }
-  followState(state);
+  followSelection(state);
   renderAll(state);
   // Where you are looking belongs to the tab, not to the drawing: kept so a refresh returns it.
-  if (state.viewport !== lastSavedViewport) {
-    lastSavedViewport = state.viewport;
-    writeSessionView({ docId: currentDoc.id, viewport: state.viewport });
+  if (
+    currentDoc.id !== lastSavedView?.docId ||
+    state.viewport !== lastSavedView?.viewport ||
+    state.tool !== lastSavedView?.tool ||
+    state.finalOnly !== lastSavedView?.finalOnly
+  ) {
+    lastSavedView = {
+      docId: currentDoc.id,
+      viewport: state.viewport,
+      tool: state.tool,
+      finalOnly: state.finalOnly,
+    };
+    writeSessionView(lastSavedView);
   }
   renderRulers(state);
   syncPanel(state);
@@ -191,18 +210,11 @@ const gridBtn = byId("btn-grid");
 const finalBtn = byId("btn-final");
 const snapBtn = byId("btn-snap");
 const alignBtn = byId("btn-align");
-const undoBtn = byId<HTMLButtonElement>("btn-undo");
-const redoBtn = byId<HTMLButtonElement>("btn-redo");
 const groupBtn = byId<HTMLButtonElement>("btn-group");
 const mergeBtn = byId<HTMLButtonElement>("btn-merge");
 const ungroupBtn = byId<HTMLButtonElement>("btn-ungroup");
 const joinBtn = byId<HTMLButtonElement>("btn-join");
-const toolButtons = [...document.querySelectorAll<HTMLElement>(".tool-btn[data-tool]")];
-
-function setToggle(btn: HTMLElement, on: boolean): void {
-  btn.classList.toggle("active", on);
-  btn.setAttribute("aria-pressed", String(on));
-}
+const toolButtons = [...document.querySelectorAll<HTMLElement>("[data-tool]")];
 
 function syncCursorReadout(state: EditorState): void {
   const c = state.cursor;
@@ -218,26 +230,28 @@ function syncPanel(state: EditorState): void {
   gridStep.value = String(state.grid.step);
   bgSwatch.style.setProperty("--c", state.background.color);
   bgSwatch.style.setProperty("--a", String(state.background.opacity));
-  setToggle(gridBtn, state.grid.visible);
-  setToggle(finalBtn, state.finalOnly);
-  setToggle(snapBtn, state.grid.snap);
-  setToggle(alignBtn, isAlignSnap());
+  setPressed(gridBtn, state.grid.visible);
+  setPressed(finalBtn, state.finalOnly);
+  setPressed(snapBtn, state.grid.snap);
+  setPressed(alignBtn, state.alignSnap);
   const percent = `${Math.round(state.viewport.zoom * 100)}%`;
   if (zoomBtn.textContent !== percent) zoomBtn.textContent = percent;
   zoomMenu.querySelectorAll<HTMLElement>("[data-zoom]").forEach((btn) => {
     const on = Math.abs(Number(btn.dataset.zoom) - state.viewport.zoom) < 1e-6;
-    btn.classList.toggle("active", on);
     btn.parentElement?.setAttribute("aria-selected", String(on));
   });
 
   syncCursorReadout(state);
 
-  for (const btn of toolButtons) btn.classList.toggle("active", btn.dataset.tool === state.tool);
+  for (const btn of toolButtons) {
+    const pressed = btn.dataset.tool === state.tool;
+    setPressed(btn, pressed);
+  }
   wrap.classList.toggle("mode-hand", state.spacePan);
   wrap.classList.toggle("mode-select", state.tool === "select" && !state.spacePan);
 
-  undoBtn.disabled = !canUndo();
-  redoBtn.disabled = !canRedo();
+  for (const button of historyButtons)
+    button.disabled = button.dataset.history === "undo" ? !canUndo() : !canRedo();
 
   imageList.sync(state);
   primitiveList.sync(state);
@@ -304,7 +318,7 @@ byId("btn-grid").addEventListener("click", () => {
   setState((s) => ({ ...s, grid: { ...s.grid, visible: !s.grid.visible } }));
 });
 byId("btn-snap").addEventListener("click", () => setGridSnap(!getState().grid.snap));
-byId("btn-align").addEventListener("click", () => setAlignSnap(!isAlignSnap()));
+byId("btn-align").addEventListener("click", () => setAlignSnap(!getState().alignSnap));
 
 byId("btn-final").addEventListener("click", () => {
   setState((s) => ({ ...s, finalOnly: !s.finalOnly }));

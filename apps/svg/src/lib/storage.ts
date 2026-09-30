@@ -1,6 +1,7 @@
 // Saved documents live in the browser's IndexedDB (localStorage's ~5 MB cap is too small once
 // reference images are embedded). A light "meta" store lets the list load without the images.
 import type { ProjectFile } from "./types.js";
+import { uid } from "./utils.js";
 
 const DB_NAME = "svg";
 /**
@@ -97,12 +98,12 @@ export async function saveDocument(doc: {
   data: ProjectFile;
   /** Where a new document goes: the top, as for anything made or imported, or the bottom. */
   place?: "top" | "bottom";
-}): Promise<void> {
+}): Promise<DocumentMeta> {
   const db = await openDb();
   const tx = db.transaction([META, DATA], "readwrite");
   const meta = tx.objectStore(META);
-  const all = await request<DocumentMeta[]>(meta.getAll());
-  const existing = all.find((m) => m.id === doc.id);
+  const existing = await request<DocumentMeta | undefined>(meta.get(doc.id));
+  const all = existing ? [] : await request<DocumentMeta[]>(meta.getAll());
   const record: DocumentMeta = {
     ...existing,
     id: doc.id,
@@ -114,6 +115,47 @@ export async function saveDocument(doc: {
   meta.put(record);
   tx.objectStore(DATA).put({ id: doc.id, data: doc.data });
   await done(tx);
+  return record;
+}
+
+/** Names and positions for an imported library, preserving its input order above existing files. */
+export function importedRecords(
+  all: readonly DocumentMeta[],
+  incoming: readonly { name: string; tags?: string[] }[],
+  updated = Date.now()
+): DocumentMeta[] {
+  const names = new Set(all.map((doc) => doc.name));
+  const order = topOrder(all) - incoming.length + 1;
+  return incoming.map((doc, index) => {
+    let name = doc.name;
+    for (let n = 2; names.has(name); n++) name = `${doc.name} ${n}`;
+    names.add(name);
+    return {
+      id: uid("doc"),
+      name,
+      updated,
+      order: order + index,
+      ...(doc.tags?.length ? { tags: [...doc.tags] } : {}),
+    };
+  });
+}
+
+/** Import atomically and return the refreshed library, with one metadata read and transaction. */
+export async function importDocuments(
+  incoming: readonly { name: string; tags?: string[]; data: ProjectFile }[]
+): Promise<DocumentMeta[]> {
+  if (!incoming.length) return [];
+  const db = await openDb();
+  const tx = db.transaction([META, DATA], "readwrite");
+  const meta = tx.objectStore(META);
+  const all = await request<DocumentMeta[]>(meta.getAll());
+  const records = importedRecords(all, incoming);
+  records.forEach((record, index) => {
+    meta.put(record);
+    tx.objectStore(DATA).put({ id: record.id, data: incoming[index]!.data });
+  });
+  await done(tx);
+  return [...records, ...all.sort((a, b) => a.order - b.order)];
 }
 
 /**
@@ -147,6 +189,23 @@ export async function loadDocument(id: string): Promise<ProjectFile | null> {
   const db = await openDb();
   const rec = await request<DataRecord | undefined>(db.transaction(DATA).objectStore(DATA).get(id));
   return rec ? rec.data : null;
+}
+
+/** Read a batch from one transaction, in request order; a missing document aborts the export. */
+export async function loadDocuments(ids: readonly string[]): Promise<ProjectFile[]> {
+  if (!ids.length) return [];
+  const db = await openDb();
+  const tx = db.transaction(DATA);
+  const completed = done(tx);
+  const store = tx.objectStore(DATA);
+  const [records] = await Promise.all([
+    Promise.all(ids.map((id) => request<DataRecord | undefined>(store.get(id)))),
+    completed,
+  ]);
+  return records.map((record, index) => {
+    if (!record) throw new Error(`Document ${ids[index]} is missing from the library.`);
+    return record.data;
+  });
 }
 
 export async function deleteDocument(id: string): Promise<void> {

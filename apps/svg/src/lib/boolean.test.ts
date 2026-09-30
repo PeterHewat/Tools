@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { combine, snapFeatures } from "./boolean.js";
+import { combine } from "./boolean.js";
+import { snapFeatures } from "./snap.js";
 import { contours, createEllipse, createPath, createRect } from "./model.js";
 import type { Anchor, PathElement, SceneElement } from "./types.js";
 
