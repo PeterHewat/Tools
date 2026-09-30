@@ -24,7 +24,7 @@ export function groupsOf(el: SceneElement | undefined): readonly string[] {
 }
 
 /** The outermost group of an element, which is what selecting it selects. */
-export function outerGroup(el: SceneElement | undefined): string | null {
+function outerGroup(el: SceneElement | undefined): string | null {
   return groupsOf(el)[0] ?? null;
 }
 
@@ -34,7 +34,7 @@ function samePrefix(a: readonly string[], b: readonly string[], depth: number): 
 }
 
 /** The run of elements around `index` that share its first `depth` groups. */
-export function groupRange(elements: readonly SceneElement[], index: number, depth: number): Block {
+function groupRange(elements: readonly SceneElement[], index: number, depth: number): Block {
   if (depth <= 0) return { start: 0, end: elements.length };
   const chain = groupsOf(elements[index]);
   let start = index;
@@ -290,25 +290,18 @@ function redundantGroupIds(elements: readonly SceneElement[]): Set<string> {
 /** Drops the groups that hold only one thing, returning a new list. */
 export function pruneGroups(elements: readonly SceneElement[]): SceneElement[] {
   const gone = redundantGroupIds(elements);
-  if (!gone.size) return [...elements];
-  return elements.map((el) => {
-    const chain = groupsOf(el);
-    if (!chain.some((gid) => gone.has(gid))) return el;
-    const kept = chain.filter((gid) => !gone.has(gid));
-    const next = { ...el };
-    if (kept.length) next.groups = kept;
-    else delete next.groups;
-    return next;
-  });
+  const touched = (el: SceneElement) => groupsOf(el).some((gid) => gone.has(gid));
+  const out = elements.map((el) => (touched(el) ? { ...el } : el));
+  pruneGroupsInPlace(out);
+  return out;
 }
 
 /**
  * The same rule, applied in place.
  *
- * Deleting members of a group used to leave the survivor still carrying the group id - a group
- * of one, which exports as a `<g>` around a single shape and behaves like a group when you
- * select it. This runs on every state change, so the moment a group is down to one child it
- * stops being a group, whatever emptied it.
+ * A group of one would export as a `<g>` around a single shape and behave like a group when
+ * selected. This runs on every state change, so the moment a group is down to one child it stops
+ * being a group, whatever emptied it.
  */
 export function pruneGroupsInPlace(elements: SceneElement[]): void {
   const gone = redundantGroupIds(elements);

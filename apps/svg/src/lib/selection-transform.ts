@@ -50,7 +50,7 @@ export function translateAll(
 }
 
 /** Every element scaled by (sx, sy) about (ox, oy). */
-export function scaleAll(
+function scaleAll(
   elements: readonly SceneElement[],
   sx: number,
   sy: number,
@@ -69,12 +69,7 @@ export function rotateAll(
   cy: number
 ): SceneElement[] {
   const angle = (deg * Math.PI) / 180;
-  return elements.map((el) => {
-    const next = rotateElementCopy(el, angle, cx, cy);
-    // A circle looks the same at any angle: only its centre moves.
-    if (next.type === "circle") delete next.rotation;
-    return next;
-  });
+  return elements.map((el) => rotateElementCopy(el, angle, cx, cy));
 }
 
 /** The box roles, one per corner of a bounding box. */
@@ -124,6 +119,9 @@ export function scaleAllByCorner(
   return scaleAll(elements, sx, sy, fixed.x, fixed.y);
 }
 
+/** An edge of a box, or its size, as a position or size field sets it. */
+export type BoxField = "x" | "y" | "width" | "height";
+
 /**
  * The elements with one edge of their shared box set to a typed value: X or Y moves them, W or
  * H stretches them from the top-left corner. Null when the value changes nothing or cannot apply
@@ -131,7 +129,7 @@ export function scaleAllByCorner(
  */
 export function setBoxField(
   elements: readonly SceneElement[],
-  field: "x" | "y" | "width" | "height",
+  field: BoxField,
   value: number
 ): SceneElement[] | null {
   const box = unionBox(elements);

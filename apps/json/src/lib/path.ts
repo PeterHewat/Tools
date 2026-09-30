@@ -9,36 +9,33 @@ export type PathSegment = string | number;
 export interface Located {
   node: JsonNode;
   path: PathSegment[];
-  /**
-   * The child position at each step. Unlike keys, positions are unambiguous when an object
-   * repeats a key, so the settings' Unwrap / Wrap follow these.
-   */
-  indices: number[];
+  /** The values from the root down to `node`, both included. */
+  chain: JsonNode[];
 }
 
 /** The deepest value at `offset`, and the path to it. A key belongs to its value. */
 export function nodeAt(root: JsonNode, offset: number): Located {
   const path: PathSegment[] = [];
-  const indices: number[] = [];
+  const chain: JsonNode[] = [root];
   let node = root;
   for (;;) {
     if (node.kind === "object") {
       const k = node.members.findIndex((m) => m.keyStart <= offset && offset <= m.value.end);
       if (k < 0) break;
       path.push(node.members[k].key);
-      indices.push(k);
       node = node.members[k].value;
+      chain.push(node);
     } else if (node.kind === "array") {
       const k = node.items.findIndex((v) => v.start <= offset && offset <= v.end);
       if (k < 0) break;
       path.push(k);
-      indices.push(k);
       node = node.items[k];
+      chain.push(node);
     } else {
       break;
     }
   }
-  return { node, path, indices };
+  return { node, path, chain };
 }
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;

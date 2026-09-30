@@ -15,7 +15,6 @@ describe("site worker", () => {
     file("manifest.webmanifest"),
     file("404.html"),
     file("sw.js"),
-    file("svg/sw.js"),
   ];
 
   test("precaches every app and the index, in one sorted list", () => {
@@ -28,9 +27,9 @@ describe("site worker", () => {
     ]);
   });
 
-  test("leaves out itself, the apps' retired workers and the not-found page", () => {
-    for (const p of ["sw.js", "svg/sw.js", "404.html"]) expect(isPrecached(p)).toBe(false);
-    expect(isPrecached("svg/sws.js")).toBe(true);
+  test("leaves out itself and the not-found page", () => {
+    for (const p of ["sw.js", "404.html"]) expect(isPrecached(p)).toBe(false);
+    expect(isPrecached("svg/sw.js")).toBe(true);
   });
 
   test("a change to any file in any app is a new version; order is not", () => {

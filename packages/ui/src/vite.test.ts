@@ -8,7 +8,6 @@ import {
   headTags,
   headerStartHtml,
   manifestFor,
-  RETIRED_WORKER,
   toolsApp,
   toolsHome,
   toolsSite,
@@ -150,13 +149,6 @@ describe("manifest", () => {
     for (const config of [toolsApp("svg"), toolsHome()]) {
       expect(config.define?.["import.meta.env.TOOLS_SITE_BASE"]).toBe(JSON.stringify(siteBase()));
     }
-  });
-});
-
-describe("retired worker", () => {
-  test("an app folder's old worker only removes itself", () => {
-    expect(RETIRED_WORKER).toContain("self.registration.unregister()");
-    expect(RETIRED_WORKER).not.toContain("fetch");
   });
 });
 

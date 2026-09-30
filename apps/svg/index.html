@@ -822,7 +822,13 @@
     </svg>
 
     <div id="app">
-      <header class="ui-header top-bar" data-tools-header role="toolbar" aria-label="Main toolbar">
+      <header
+        id="top-bar"
+        class="ui-header top-bar"
+        data-tools-header
+        role="toolbar"
+        aria-label="Main toolbar"
+      >
         <!-- "‹ Tools" and the app's name are written in at build time, from the catalog: how every
              Tools page starts (see @tools/ui/header.css). On a phone both reduce to "‹". -->
         <div class="menu" id="menu-document-wrap">
@@ -864,7 +870,7 @@
                       type="button"
                       id="btn-doc-import"
                       class="icon-btn"
-                      title="Import documents — single files or a whole library; nothing already here is replaced"
+                      title="Import documents — document files, whole libraries or SVG files; nothing already here is replaced"
                       aria-label="Import documents"
                     >
                       <svg class="glyph" aria-hidden="true"><use href="#icon-import" /></svg>
@@ -922,8 +928,6 @@
                   </button>
                 </div>
                 <div class="doc-section-body">
-                  <input type="file" id="input-image" accept="image/*" multiple hidden />
-                  <input type="file" id="input-image-replace" accept="image/*" hidden />
                   <ul id="image-list" class="image-list"></ul>
                 </div>
               </section>
@@ -1452,9 +1456,10 @@
               your own, such as <code>6 4</code>. Exported as <code>stroke-dasharray</code>.
             </li>
             <li>
-              <b>Fill type</b> — Solid, Linear Gradient or Radial Gradient. A gradient has as many
-              stops as you add, each with its own colour, alpha and position, and two handles on the
-              shape set where it runs.
+              <b>Fill type</b> and <b>Stroke type</b> — Solid, Linear Gradient or Radial Gradient. A
+              gradient has as many stops as you add, each with its own colour, alpha and position,
+              and two handles on the shape set where it runs: purple for the fill, teal for the
+              stroke.
             </li>
             <li>
               <b>Width, Line cap, Line join</b> — stroke geometry. Width 0 exports as no stroke.
@@ -1592,8 +1597,9 @@
               shape in it. A locked shape is still snapped to, and is exported like any other.
             </li>
             <li>
-              <b>Reference images</b> — add reference images to trace; each row is the file it came
-              from, and <span data-help="mouse">clicking</span
+              <b>Reference images</b> — add reference images to trace, with <b>+</b
+              ><span data-help="mouse"> or by dropping pictures anywhere on the page</span>; each
+              row is the file it came from, and <span data-help="mouse">clicking</span
               ><span data-help="touch">tapping</span>
               that file name swaps in a different one. Open the row for position, scale, rotation
               and opacity; the eye shows the overlay or hides it.
@@ -1609,7 +1615,9 @@
               the shape is not selected. Only shapes the app knows (path, line, rect, circle,
               ellipse, polyline, polygon, text) are kept. Icons import, export and copy the SVG
               (coordinates are exported as integers), and export it as a PNG at the artboard's size,
-              one pixel to a unit.
+              one pixel to a unit. An imported file's stylesheets, classes, gradients and
+              <code>&lt;use&gt;</code> copies come in as plain shapes; what the app cannot hold
+              (clip paths, masks, filters, embedded images…) is left out, and the import says what.
             </li>
             <li>
               <b>Background</b> — the swatch beside the grid paints the whole artboard, alpha
@@ -1656,8 +1664,10 @@
               that document (reference images included) as <code>Name.svg.json</code>, and the ⬆ in
               the <b>Documents</b> header saves every document in one library file — a backup, or
               everything at once for another browser. The ⬇ beside it opens files of either kind,
-              several at a time: each document in them is added beside what you already have, under
-              a free name, and never overwrites anything.<span data-help="mouse">
+              and SVG files, several at a time: each document in them (each SVG file is one) is
+              added beside what you already have, under a free name, and never overwrites anything.
+              <span data-help="mouse">Dropping those files anywhere on the page does the same.</span
+              ><span data-help="mouse">
                 To empty a document, <kbd>Ctrl</kbd>+<kbd>A</kbd> then <kbd>Delete</kbd>.</span
               >
             </li>
@@ -1870,9 +1880,6 @@
         </section>
       </main>
     </div>
-
-    <input type="file" id="input-import-svg" accept=".svg,image/svg+xml" hidden />
-    <input type="file" id="input-doc-file" accept=".json,application/json" multiple hidden />
 
     <script type="module" src="/src/lib/app.ts"></script>
   </body>

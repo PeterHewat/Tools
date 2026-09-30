@@ -1,5 +1,5 @@
 import { getState, setState, findElement, selectOnly } from "./state.js";
-import { pushUndo } from "./undo.js";
+import { undoStepper } from "./undo.js";
 import {
   elementToSvgMarkup,
   buildDefsMarkup,
@@ -18,7 +18,7 @@ import { noteChange } from "./documents.js";
 /* ---------- SVG source: editable, highlighted, synced with the selection ---------- */
 const svgError = byId("svg-error");
 const primitiveListEl = byId("primitive-list");
-let svgEditUndoPushed = false;
+let editStep = undoStepper();
 let svgApplyTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSelectionKey = "";
 /** What the highlights were last built from; see `refreshSvgHighlight`. */
@@ -34,8 +34,10 @@ const FIELD_ATTRS: Record<string, string[]> = {
   fill: ["fill", "fill-opacity"],
   fillEnabled: ["fill", "fill-opacity"],
   fillType: ["fill"],
+  strokeType: ["stroke"],
   fillRule: ["fill-rule"],
-  stopOffset: [],
+  fillStopOffset: [],
+  strokeStopOffset: [],
   rx: ["rx", "ry"],
   ry: ["rx", "ry"],
   fontSize: ["font-size"],
@@ -51,7 +53,10 @@ const FIELD_ATTRS: Record<string, string[]> = {
 const FIELD_BLOCKS: Record<string, [string, string?]> = {
   fillType: ["grad-"],
   fill: ["grad-"],
-  stopOffset: ["grad-"],
+  fillStopOffset: ["grad-"],
+  strokeType: ["grad-", "-stroke"],
+  stroke: ["grad-", "-stroke"],
+  strokeStopOffset: ["grad-", "-stroke"],
   markerStart: ["mk-", "-start"],
   markerEnd: ["mk-", "-end"],
 };
@@ -71,7 +76,7 @@ const editor = createEditor(byId("svg-editor"), {
   onSelection: selectFromCaret,
   onFocus(focused) {
     if (focused) {
-      svgEditUndoPushed = false;
+      editStep = undoStepper();
     } else if (svgApplyTimer) {
       clearTimeout(svgApplyTimer);
       applySvgText();
@@ -137,7 +142,7 @@ function refreshSvgHighlight(selectedIds: readonly string[]): void {
       if (firstSelected < 0) firstSelected = at;
     }
     if (block && focus) {
-      if (svgId.startsWith(block[0] + focus.id) && (!block[1] || svgId.endsWith(block[1]))) {
+      if (svgId === block[0] + focus.id + (block[1] ?? "")) {
         inBlock = true;
       }
       if (inBlock && line) {
@@ -319,10 +324,7 @@ function applySvgText(): void {
     background.color === st.background.color &&
     background.opacity === st.background.opacity;
   if (same) return;
-  if (!svgEditUndoPushed) {
-    pushUndo();
-    svgEditUndoPushed = true;
-  }
+  editStep();
   const ids = new Set(next.map((e) => e.id));
   setState((s) => ({
     ...s,

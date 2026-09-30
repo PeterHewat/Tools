@@ -1,10 +1,16 @@
 import { getState } from "./state.js";
-import { elementBBox, translateElement, localBBox, toLocalPoint, toWorldPoint } from "./model.js";
+import {
+  elementBBox,
+  translateElement,
+  localBBox,
+  toLocalPoint,
+  toWorldPoint,
+  PAINT_KEYS,
+  type PaintKind,
+} from "./model.js";
 import { scaleAllByCorner } from "./selection-transform.js";
 import { cornerHandleInset } from "./pointer.js";
-import { dist } from "./utils.js";
 import { type Point, type SceneElement } from "./types.js";
-import { pointIndexForRole } from "./ops.js";
 
 /**
  * Puts the corner that a resize is supposed to hold still back where it was. Resizing changes
@@ -28,16 +34,6 @@ export function hasBoxHandles(el: SceneElement): boolean {
   return !!box && (box.width > 0 || box.height > 0);
 }
 
-/** One shape stretched by a box handle: see `scaleAllByCorner`. */
-export function scaleByCorner(
-  base: SceneElement,
-  role: string,
-  at: Point,
-  uniform: boolean
-): SceneElement {
-  return scaleAllByCorner([base], role, at, uniform)[0]!;
-}
-
 export function applyResize(
   el: SceneElement,
   role: string,
@@ -50,21 +46,20 @@ export function applyResize(
   // and the result is turned back. Without this, dragging a corner of a rotated rect would
   // resize it along the artboard's axes rather than its own.
   const world = el.rotation ? toLocalPoint(base, rawWorld) : rawWorld;
-  if (role === "grad-from" || role === "grad-to") {
+  const grad = gradientEnd(role);
+  if (grad) {
     const box = localBBox(el);
     if (!box) return;
     // Back into fractions of the bounding box, which is how the gradient is stored.
-    const point = {
+    el[PAINT_KEYS[grad.kind][grad.end]] = {
       x: (world.x - box.x) / (box.width || 1),
       y: (world.y - box.y) / (box.height || 1),
     };
-    if (role === "grad-from") el.gradFrom = point;
-    else el.gradTo = point;
     return;
   }
   if (role.startsWith("box-")) {
-    const scaled = scaleByCorner(base, role, rawWorld, shift);
-    if ("points" in el && "points" in scaled) el.points = scaled.points;
+    const [scaled] = scaleAllByCorner([base], role, rawWorld, shift);
+    if ("points" in el && scaled && "points" in scaled) el.points = scaled.points;
     return;
   }
   switch (el.type) {
@@ -110,9 +105,6 @@ export function applyResize(
       reanchor(el, base, { x: fixedX, y: fixedY });
       break;
     }
-    case "circle":
-      el.r = Math.max(0.5, dist({ x: el.cx, y: el.cy }, world));
-      break;
     case "ellipse": {
       if (role === "uniform") {
         // Both radii follow the diagonal together: a circle without holding anything down.
@@ -146,4 +138,23 @@ export function applyResize(
       break;
     }
   }
+}
+
+/** The role of a gradient's end handle: `grad-from` for the fill's, `stroke-grad-to` for the stroke's. */
+export function gradientRole(kind: PaintKind, end: "from" | "to"): string {
+  return `${kind === "stroke" ? "stroke-" : ""}grad-${end}`;
+}
+
+/** Which paint and which end a gradient handle's role moves, or null for any other handle. */
+function gradientEnd(role: string): { kind: PaintKind; end: "from" | "to" } | null {
+  const m = /^(stroke-)?grad-(from|to)$/.exec(role);
+  return m ? { kind: m[1] ? "stroke" : "fill", end: m[2] as "from" | "to" } : null;
+}
+
+/** The anchor index a resize-handle role refers to, or null for box/radius handles. */
+export function pointIndexForRole(role: string): number | null {
+  if (role.startsWith("pt-")) return parseInt(role.slice(3), 10);
+  if (role === "p1") return 0;
+  if (role === "p2") return 1;
+  return null;
 }

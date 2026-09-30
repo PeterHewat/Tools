@@ -6,13 +6,11 @@
   "description": "Format, minify and validate JSON",
   "scripts": {
     "build": "vite build",
-    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "devDependencies": {
     "@tools/catalog": "workspace:*",
-    "@tools/codec": "workspace:*",
     "@tools/editor": "workspace:*",
     "@tools/ui": "workspace:*",
     "typescript": "~6.0.3",

@@ -72,6 +72,11 @@ describe("toCsv", () => {
     expect(toCsv(root('[1, "two"]'))).toEqual({ ok: true, text: "value\r\n1\r\ntwo\r\n" });
   });
 
+  test("keeps a string a spreadsheet would run as a formula as text", () => {
+    const r = toCsv(root('[{"a": "=1+1", "b": "-x", "c": -5, "d": "@me"}]'));
+    expect(r).toEqual({ ok: true, text: "a,b,c,d\r\n'=1+1,'-x,-5,'@me\r\n" });
+  });
+
   test("says what it needs when given something other than an array", () => {
     expect(toCsv(root('{"a": 1}')).ok).toBe(false);
   });
@@ -134,6 +139,12 @@ describe("toJsonSchema", () => {
       },
       required: ["id", "items"],
     });
+  });
+
+  test("a key named __proto__ is a property like any other", () => {
+    const schema = JSON.parse(toJsonSchema(root('{"__proto__": 1}')));
+    expect(Object.keys(schema.properties)).toEqual(["__proto__"]);
+    expect(schema.required).toEqual(["__proto__"]);
   });
 
   test("uses a type list for mixed scalars and anyOf when structure varies", () => {

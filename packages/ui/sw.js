@@ -6,9 +6,8 @@
  * a byte-different worker, the browser installs it, and it drops the previous build's cache — so
  * hashed assets from old deploys do not pile up forever.
  *
- * Its caches are named `tools:<scope>:<version>`, as each app's own worker named its caches
- * before the site shared this one; on activation it removes every `tools:` cache but its own,
- * theirs included.
+ * Its caches are named `tools:<scope>:<version>`; on activation it removes every `tools:` cache
+ * but its own.
  */
 /* global VERSION, PRECACHE */
 

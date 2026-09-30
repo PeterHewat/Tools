@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { createPolygon, createRect, elementBBox, toWorldPoint } from "./model.js";
 import { cornerHandleInset } from "./pointer.js";
-import { applyResize, scaleByCorner } from "./resize.js";
-import { deepClone } from "./utils.js";
-import type { RectElement } from "./types.js";
+import { applyResize } from "./resize.js";
+import { scaleAllByCorner } from "./selection-transform.js";
+import type { Point, RectElement, SceneElement } from "./types.js";
+
+/** One shape stretched by a box handle. */
+const scaleByCorner = (el: SceneElement, role: string, at: Point, uniform: boolean) =>
+  scaleAllByCorner([el], role, at, uniform)[0]!;
 
 function rotatedRect(rotation: number): RectElement {
   const r = createRect(10, 20, 100, 60);
@@ -16,7 +20,7 @@ describe("square handle", () => {
     test(`over one whole drag, holds the top-left corner and follows the pointer at ${rotation}deg`, () => {
       const base = rotatedRect(rotation);
       // One element that every move of the drag is applied to, as the pointer handler does.
-      const el = deepClone(base);
+      const el = structuredClone(base);
       const off = cornerHandleInset();
       const corner = toWorldPoint(base, { x: base.x, y: base.y });
       for (const side of [90, 120, 150, 210, 140]) {

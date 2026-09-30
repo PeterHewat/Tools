@@ -102,7 +102,7 @@ export function sizeText(bytes: number): string {
  * and icons) or logo. A comma counts as a space; a lower-case "or" is just a word. Lower case,
  * empties dropped; nothing typed is no alternative.
  */
-export function parseSearch(query: string): string[][] {
+function parseSearch(query: string): string[][] {
   const alts: string[][] = [[]];
   for (const word of query.split(/[\s,]+/).filter(Boolean)) {
     if (word === "OR") alts.push([]);

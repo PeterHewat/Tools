@@ -309,6 +309,25 @@ body {
   cursor: grabbing;
 }
 
+/* While files are dragged over the page (onFileDrop marks the body): what a drop will do. Over
+   the whole page, panels included, as a drop anywhere on it does the same. */
+body.dragging::after {
+  content: "Drop an SVG or a .svg.json to open it as a new document, or a picture to add it as a reference image";
+  position: fixed;
+  inset: 12px;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--canvas) 85%, transparent);
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
 .viewport-svg {
   display: block;
   width: 100%;
@@ -427,7 +446,7 @@ body {
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--mono);
   font-size: 12px;
 }
 
@@ -713,12 +732,17 @@ body {
   scrollbar-color: var(--scroll) transparent;
   font-size: inherit;
   line-height: normal;
+  /* No room above the sections: the section head pinned at the top sits against the panel's
+     edge, with nothing scrolling past above it. */
+  padding-top: 0;
+  /* What is scrolled into view (a field focused, a row brought up) lands below the section
+     head pinned at the top, not under it. */
+  scroll-padding-top: 44px;
 }
 
 /* Collapsible sections of the Document panel */
-/* The panel is one scroller. Sections used to bring their own - the top pair, the primitives
-   list, the SVG box - so a phone had four nested scroll areas and no way to tell which one a
-   drag would move. Everything now sizes to its content and the panel scrolls as a whole. */
+/* The panel is one scroller: every section sizes to its content and the panel scrolls as a
+   whole, so a phone never has nested scroll areas and a drag always moves the one. */
 .doc-top {
   flex: 0 0 auto;
 }
@@ -730,11 +754,18 @@ body {
   border-top: 1px solid var(--border);
 }
 
+/* The head of the section being scrolled through stays pinned at the top of the panel, so you
+   always see which section you are in; the next section's head pushes it off as it arrives,
+   since a sticky head never leaves its own section. Solid, so rows do not show through it. */
 .doc-section-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 4px 0;
+  background: var(--panel);
 }
 
 .doc-section-head > .icon-btn,
@@ -805,7 +836,7 @@ body {
 
 /* The SVG source (@tools/editor): the editor fills the box, framed like the other fields. */
 .svg-editor {
-  --editor-font: 12px / 1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --editor-font: 12px / 1.45 var(--mono);
 }
 
 .svg-editor > .cm-editor {
@@ -1003,7 +1034,7 @@ body {
   border-radius: 4px;
   background: var(--field);
   color: var(--text);
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--mono);
   font-size: 12px;
 }
 
@@ -1066,8 +1097,8 @@ body {
   margin: 0;
 }
 
-.acc-item[data-filltype="solid"] .grad-only,
-.acc-item[data-filltype="radial"] .linear-only {
+.acc-item[data-filltype="solid"] .fill-grad-only,
+.acc-item[data-stroketype="solid"] .stroke-grad-only {
   display: none;
 }
 
@@ -1204,6 +1235,15 @@ body {
   pointer-events: none;
 }
 
+/* The stroke's gradient, told from the fill's when a shape has both: a teal ring and guide. */
+.handle.grad-handle.grad-stroke {
+  stroke: #1fb5a6;
+}
+
+.grad-guide.grad-stroke {
+  stroke: #1fb5a6;
+}
+
 .handle.rotate-handle {
   fill: #fff;
   stroke: #ff4fa3;
@@ -1265,7 +1305,7 @@ body {
 }
 
 .help-keys td:first-child {
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--mono);
   font-size: 11.5px;
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   collectAlignPoints,
-  createCircle,
   createEllipse,
   createLine,
   createPath,
@@ -16,7 +15,6 @@ import {
   joinPaths,
   nearestOnElement,
   rotateElementCopy,
-  canRotate,
   closeByMerge,
   closingEnd,
   canSplitAt,
@@ -56,7 +54,12 @@ describe("bounding boxes", () => {
   });
 
   test("circle and ellipse share one code path", () => {
-    expect(elementBBox(createCircle(50, 60, 10))).toEqual({ x: 40, y: 50, width: 20, height: 20 });
+    expect(elementBBox(createEllipse(50, 60, 10, 10))).toEqual({
+      x: 40,
+      y: 50,
+      width: 20,
+      height: 20,
+    });
     expect(elementBBox(createEllipse(50, 60, 10, 4))).toEqual({
       x: 40,
       y: 56,
@@ -84,7 +87,7 @@ describe("bounding boxes", () => {
 
 describe("translation", () => {
   test("moves every geometry type by the same offset", () => {
-    const circle = createCircle(1, 1, 3);
+    const circle = createEllipse(1, 1, 3, 3);
     const ellipse = createEllipse(1, 1, 3, 4);
     const poly = createPolygon([
       { x: 0, y: 0 },
@@ -203,7 +206,7 @@ describe("alignment points", () => {
   });
 
   test("a circle contributes only its centre", () => {
-    expect(collectAlignPoints([createCircle(7, 8, 2)])).toEqual([{ x: 7, y: 8 }]);
+    expect(collectAlignPoints([createEllipse(7, 8, 2, 2)])).toEqual([{ x: 7, y: 8 }]);
   });
 
   test("the excluded anchor drops its handles too", () => {
@@ -413,11 +416,6 @@ describe("topology", () => {
 });
 
 describe("rotation", () => {
-  test("a circle is excluded because it looks the same at any angle", () => {
-    expect(canRotate(createCircle(0, 0, 1))).toBe(false);
-    expect(canRotate(createRect(0, 0, 1, 1))).toBe(true);
-  });
-
   test("a rect stays a rect and an ellipse stays an ellipse: the angle is stored", () => {
     const rect = rotateElementCopy(createRect(0, 0, 10, 10), Math.PI / 4, 5, 5);
     expect(rect.type).toBe("rect");

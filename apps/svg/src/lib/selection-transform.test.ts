@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createCircle, createRect, elementBBox } from "./model.js";
+import { createEllipse, createRect, elementBBox } from "./model.js";
 import { rotateAll, scaleAllByCorner, setBoxField, unionBox } from "./selection-transform.js";
 import type { SceneElement } from "./types.js";
 
@@ -37,9 +37,8 @@ describe("transforming a selection as one", () => {
     expect(out.every((e) => e.type === "rect" && e.rotation === 90)).toBe(true);
   });
 
-  test("a circle only moves when turned", () => {
-    const [c] = rotateAll([createCircle(10, 0, 2)], 90, 0, 0);
-    expect(c!.rotation).toBeUndefined();
+  test("a circle's box only moves when turned", () => {
+    const [c] = rotateAll([createEllipse(10, 0, 2, 2)], 90, 0, 0);
     expect(rounded(elementBBox(c!))).toEqual({ x: -2, y: 8, width: 4, height: 4 });
   });
 });

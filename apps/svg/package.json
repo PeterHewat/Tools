@@ -6,7 +6,6 @@
   "description": "Trace reference images and export clean, pure SVG",
   "scripts": {
     "build": "vite build",
-    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

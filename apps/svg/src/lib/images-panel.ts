@@ -12,7 +12,7 @@ import {
   reorder,
   towardFront,
 } from "./accordion.js";
-import { byId } from "@tools/ui";
+import { byId, pickFiles } from "@tools/ui";
 
 const imageListEl = byId("image-list");
 
@@ -39,7 +39,7 @@ function buildImageList(state: EditorState): void {
   // Back to front, like Primitives: the image drawn on top heads the list.
   [...state.images].reverse().forEach((img, row) => {
     const index = count - 1 - row;
-    const visible = img.visible !== false;
+    const visible = img.visible;
     const li = document.createElement("li");
     li.className = `acc-item${state.ui.expandedImageId === img.id ? " expanded" : ""}${visible ? "" : " acc-item--hidden"}`;
     li.dataset.imageId = img.id;
@@ -61,9 +61,9 @@ function buildImageList(state: EditorState): void {
       onDelete: () => deleteImage(img.id),
       onMove: (dir, toEnd) => reorder("images", img.id, towardFront(dir), toEnd),
     });
-    li.querySelector('[data-action="replace-file"]')!.addEventListener("click", () => {
-      replaceImageTargetId = img.id;
-      byId<HTMLInputElement>("input-image-replace").click();
+    li.querySelector('[data-action="replace-file"]')!.addEventListener("click", async () => {
+      const [file] = await pickFiles(IMAGE_TYPES);
+      if (file) await replaceImageFile(img.id, file);
     });
     imageListEl.appendChild(li);
   });
@@ -90,9 +90,7 @@ function toggleImageVisible(id: string): void {
   pushUndo();
   setState((s) => ({
     ...s,
-    images: s.images.map((img) =>
-      img.id === id ? { ...img, visible: !(img.visible !== false) } : img
-    ),
+    images: s.images.map((img) => (img.id === id ? { ...img, visible: !img.visible } : img)),
   }));
 }
 
@@ -134,26 +132,19 @@ imageListEl.addEventListener("change", (e) => {
 
 /* ---------- Reference image files ---------- */
 
-let replaceImageTargetId: string | null = null;
+const IMAGE_TYPES = "image/*";
 
-byId("btn-add-image").addEventListener("click", () => {
-  byId<HTMLInputElement>("input-image").click();
+byId("btn-add-image").addEventListener("click", async () => {
+  await addImageFiles(await pickFiles(IMAGE_TYPES, true));
 });
 
-byId("input-image").addEventListener("change", async (e) => {
-  const input = e.target as HTMLInputElement;
-  const files = [...(input.files ?? [])];
-  input.value = "";
+/** Adds each of `files` to the document as a reference image, in order. */
+export async function addImageFiles(files: readonly File[]): Promise<void> {
   for (const file of files) await addImageFile(file);
-});
+}
 
-byId("input-image-replace").addEventListener("change", async (e) => {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = "";
-  const targetId = replaceImageTargetId;
-  replaceImageTargetId = null;
-  if (!file || !targetId) return;
+/** Puts the pixels of `file` in place of a reference image's, keeping where it sits. */
+async function replaceImageFile(targetId: string, file: File): Promise<void> {
   const dataUrl = await readFileAsDataURL(file);
   const { naturalWidth, naturalHeight } = await loadImageDimensions(dataUrl);
   pushUndo();
@@ -165,7 +156,7 @@ byId("input-image-replace").addEventListener("change", async (e) => {
         : img
     ),
   }));
-});
+}
 
 function loadImageDimensions(
   dataUrl: string
@@ -208,14 +199,3 @@ export async function hydrateImageDimensions(images: ReferenceImage[]): Promise<
     mutate(() => Object.assign(img, dims));
   }
 }
-
-const wrap = byId("canvas-wrap");
-
-wrap.addEventListener("dragover", (e) => e.preventDefault());
-wrap.addEventListener("drop", async (e) => {
-  e.preventDefault();
-  const files = [...((e as DragEvent).dataTransfer?.files ?? [])].filter((f) =>
-    f.type.startsWith("image/")
-  );
-  for (const file of files) await addImageFile(file);
-});

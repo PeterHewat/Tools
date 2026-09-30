@@ -1,13 +1,14 @@
 /**
- * Documents as files, for moving them between browsers.
+ * Documents as files, for moving them between browsers - and SVG files, each made a document.
  *
  * A file holds one document, or every document of a library. Either kind imports the same way:
  * each document in it is added beside the ones already there, with a fresh id and a free name,
  * so an import never replaces or merges with anything.
  */
 
-import { readProject } from "./io.js";
+import { importSvgFile, readProject, serializeProject, type ImportResult } from "./io.js";
 import { cleanTags } from "./doc-list.js";
+import { createInitialState } from "./state.js";
 import type { ProjectFile } from "./types.js";
 
 const DOC_TAG = "svg/document";
@@ -37,6 +38,8 @@ export interface ImportedDocument {
   /** Only when there are any: a document without tags is written as it always was. */
   tags?: string[];
   data: ProjectFile;
+  /** From an SVG file: what it held that the app cannot, and left out (see `importSvgFile`). */
+  skipped?: string[];
 }
 
 /** A document and its tags, kept only when there are some. */
@@ -68,6 +71,48 @@ export function documentFileName(name: string): string {
 export function libraryFileName(now = new Date()): string {
   const day = now.toISOString().slice(0, 10);
   return `SVG library ${day}.svg.json`;
+}
+
+/** Whether a file is an SVG drawing, by its name or its type. */
+export function isSvgFile(file: { name: string; type: string }): boolean {
+  return /\.svg$/i.test(file.name) || file.type === "image/svg+xml";
+}
+
+/**
+ * An SVG file as a document of its own, named after the file: its shapes, and its size and
+ * background when it has them. Throws, with a message worth showing, when it is not SVG.
+ */
+export function svgDocument(fileName: string, text: string): ImportedDocument {
+  const imported = importSvgFile(text);
+  return {
+    name: fileName.replace(/\.svg$/i, "").trim() || "Untitled",
+    data: svgProject(imported),
+    skipped: imported.skipped,
+  };
+}
+
+/** The document an imported SVG makes: its shapes, and its size and background when it has them. */
+export function svgProject({
+  artboard,
+  background,
+  elements,
+  groupNames,
+}: Omit<ImportResult, "skipped">): ProjectFile {
+  const blank = createInitialState();
+  return serializeProject({
+    ...blank,
+    elements,
+    groupNames,
+    artboard: artboard ?? blank.artboard,
+    background: background ?? blank.background,
+  });
+}
+
+/** "2 clip paths, 1 filter and 1 mask": what an import left out, as a sentence lists it. */
+export function listed(items: readonly string[]): string {
+  return items.length < 2
+    ? (items[0] ?? "")
+    : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
 /**

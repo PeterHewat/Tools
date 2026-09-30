@@ -4,7 +4,7 @@
  *
  * Plain functions over strings and parsed values, so they are tested without a DOM.
  */
-import type { JsonPosition } from "@tools/codec";
+import type { TextPosition } from "./lines.js";
 
 export interface Excerpt {
   /** The offending line, clipped around the error when it is long. Tabs shown as one space. */
@@ -14,7 +14,7 @@ export interface Excerpt {
 }
 
 /** The line holding `position`, with a caret under its column: what a compiler would print. */
-export function excerptAt(text: string, position: JsonPosition, width = 80): Excerpt {
+export function excerptAt(text: string, position: TextPosition, width = 80): Excerpt {
   const start = position.offset - (position.column - 1);
   const newline = text.indexOf("\n", start);
   let line = text.slice(start, newline < 0 ? text.length : newline).replace(/\r$/, "");

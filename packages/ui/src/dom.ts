@@ -1,15 +1,10 @@
 /** Small DOM helpers the apps would otherwise each write for themselves. */
 
-export function byId<T extends HTMLElement>(id: string): T {
+/** The element with this id, of the type given (an `HTMLElement` unless said otherwise). */
+export function byId<T extends Element = HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Missing element #${id}`);
-  return el as T;
-}
-
-export function bySelector<T extends Element>(sel: string): T {
-  const el = document.querySelector<T>(sel);
-  if (!el) throw new Error(`Missing element ${sel}`);
-  return el;
+  return el as Element as T;
 }
 
 /** Saves a file to the user's downloads. */
@@ -57,11 +52,8 @@ export function pickFiles(accept = "", multiple = false): Promise<File[]> {
   });
 }
 
-/**
- * Accepts files dropped anywhere on `target`, marking it `.dragging` while something hovers.
- * Returns a function that removes the listeners.
- */
-export function onFileDrop(target: HTMLElement, handle: (files: File[]) => void): () => void {
+/** Accepts files dropped anywhere on `target`, marking it `.dragging` while something hovers. */
+export function onFileDrop(target: HTMLElement, handle: (files: File[]) => void): void {
   let depth = 0;
   const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes("Files") ?? false;
   const enter = (e: DragEvent) => {
@@ -87,10 +79,4 @@ export function onFileDrop(target: HTMLElement, handle: (files: File[]) => void)
   target.addEventListener("dragleave", leave);
   target.addEventListener("dragover", over);
   target.addEventListener("drop", drop);
-  return () => {
-    target.removeEventListener("dragenter", enter);
-    target.removeEventListener("dragleave", leave);
-    target.removeEventListener("dragover", over);
-    target.removeEventListener("drop", drop);
-  };
 }

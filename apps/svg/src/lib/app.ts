@@ -1,16 +1,9 @@
-import { getState, setState, subscribe, selectOnly } from "./state.js";
+import { getState, setState, subscribe } from "./state.js";
 import { initViewport } from "./viewport.js";
 import { initRender, renderAll, renderPointer } from "./render.js";
 import { bindInteraction, bindRulerGuides, cancelOperation } from "./interaction.js";
-import {
-  setTool,
-  finishPath,
-  closeAndFinishPath,
-  removeLastPenPoint,
-  discardPath,
-} from "./pen-commands.js";
-import { isAlignSnap, isSelectMore, setAlignSnap, setSelectMore } from "./modes.js";
-import { pasteFromClipboard } from "./clipboard.js";
+import { setTool, finishPath } from "./pen-commands.js";
+import { copySelectionText, cutSelection, pasteFromText } from "./clipboard.js";
 import {
   deleteSelection,
   duplicateSelection,
@@ -21,25 +14,25 @@ import {
   ungroupSelection,
   splitAtSelectedPoint,
   joinSelected,
-  setElementClosed,
-  setSelectedHandlesLinked,
-  toggleSelectedPointCurve,
-  removeSelectedHandle,
   stepOutSelection,
-  combineSelection,
-  setSelectionLocked,
-  alignSelection,
-  distributeSelection,
-  alignableCount,
+  selectAll,
 } from "./selection-commands.js";
-import { pushUndo, canUndo, canRedo } from "./undo.js";
+import { pushUndo, canUndo, canRedo, undo, redo, undoStepper } from "./undo.js";
 import { formatExportSvg, importSvgFile } from "./io.js";
-import { initPngExport } from "./png-export.js";
-import { forgetTurns } from "./turn-tally.js";
-import { fileBase } from "./document-files.js";
+import { pngSize, renderPng } from "./png-export.js";
+import { fileBase, isSvgFile, listed } from "./document-files.js";
 import { canJoin } from "./model.js";
-import { THEME_EVENT, bindThemeToggle, byId, copyText, downloadText } from "@tools/ui";
-import { bindTouch, setTouchFinishPathHandler } from "./touch.js";
+import {
+  THEME_EVENT,
+  bindThemeToggle,
+  byId,
+  copyText,
+  downloadBlob,
+  downloadText,
+  onFileDrop,
+  pickFiles,
+} from "@tools/ui";
+import { bindTouch } from "./touch.js";
 import {
   openColorPicker,
   closeColorPicker,
@@ -49,81 +42,108 @@ import {
 import { canPickFromImages, pickFromImages } from "./eyedropper.js";
 import { initRulers, renderRulers } from "./rulers.js";
 import { initActionBar, syncActionBar } from "./actionbar.js";
-import {
-  beginTextEdit,
-  endTextEdit,
-  initTextEdit,
-  isTextEditing,
-  positionTextEditor,
-} from "./textedit.js";
+import { endTextEdit, initTextEdit, isTextEditing, positionTextEditor } from "./textedit.js";
 import { initPointerKind } from "./pointer.js";
-import { writeSessionView } from "./session.js";
+import {
+  followState,
+  isAlignSnap,
+  setAlignSnap,
+  setGridSnap,
+  writeSessionView,
+} from "./session.js";
 import { canGroup, canMergeGroups, canUngroup } from "./groups.js";
-import { type EditorState } from "./types.js";
+import { MAX_ARTBOARD, type EditorState } from "./types.js";
 import { restoreLayout } from "./layout.js";
 import { zoomBtn, zoomMenu, fitToView, fitSelection, zoomToActualSize } from "./zoom.js";
-import { doUndo, doRedo } from "./edit-commands.js";
-import { imageList } from "./images-panel.js";
+import { addImageFiles, imageList } from "./images-panel.js";
 import { primitiveList } from "./primitives-panel.js";
 import { syncSvgEditor } from "./svg-source.js";
-import { currentDoc, saveNow, startDocuments, svgFileName } from "./documents.js";
+import {
+  currentDoc,
+  importDocumentFiles,
+  saveNow,
+  startDocuments,
+  svgFileName,
+} from "./documents.js";
 
-const svg = byId<HTMLElement>("viewport-svg") as unknown as SVGSVGElement;
-const camera = byId<HTMLElement>("camera") as unknown as SVGGElement;
+const svg = byId<SVGSVGElement>("viewport-svg");
+const camera = byId<SVGGElement>("camera");
 const wrap = byId("canvas-wrap");
 
 initPointerKind(() => renderAll(getState()));
 initViewport(svg, camera);
 initRender({
-  artboardChecks: byId<HTMLElement>("artboard-checks-rect") as unknown as SVGRectElement,
-  artboardBg: byId<HTMLElement>("artboard-bg") as unknown as SVGRectElement,
-  images: byId<HTMLElement>("layer-images") as unknown as SVGGElement,
-  grid: byId<HTMLElement>("layer-grid") as unknown as SVGGElement,
-  document: byId<HTMLElement>("layer-document") as unknown as SVGGElement,
-  overlay: byId<HTMLElement>("layer-overlay") as unknown as SVGGElement,
-  pointer: byId<HTMLElement>("layer-pointer") as unknown as SVGGElement,
+  artboardChecks: byId<SVGRectElement>("artboard-checks-rect"),
+  artboardBg: byId<SVGRectElement>("artboard-bg"),
+  images: byId<SVGGElement>("layer-images"),
+  grid: byId<SVGGElement>("layer-grid"),
+  document: byId<SVGGElement>("layer-document"),
+  overlay: byId<SVGGElement>("layer-overlay"),
+  pointer: byId<SVGGElement>("layer-pointer"),
 });
 
-initTextEdit(wrap, () => primitiveList.invalidate());
-initActionBar(byId("action-bar"), {
-  duplicate: () => duplicateSelection(),
-  remove: () => deleteSelection(),
-  removePoint: () => deleteSelection(false),
-  combine: (op) => combineSelection(op),
-  lock: (locked) => setSelectionLocked(locked),
-  align: (mode) => alignSelection(mode),
-  distribute: (axis) => distributeSelection(axis),
-  alignable: () => alignableCount(),
-  forward: () => moveZOrder("forward"),
-  back: () => moveZOrder("back"),
-  toggleClosed: (id, closed) => {
-    setElementClosed(id, closed);
-    primitiveList.invalidate();
-  },
-  group: () => groupSelection(),
-  merge: () => mergeSelection(),
-  ungroup: () => ungroupSelection(),
-  splitPoint: () => splitAtSelectedPoint(),
-  linkHandles: (linked) => setSelectedHandlesLinked(linked),
-  togglePointCurve: () => toggleSelectedPointCurve(),
-  removeHandle: () => removeSelectedHandle(),
-  join: () => joinSelected(),
-  editText: (id) => beginTextEdit(id),
-  finishPath: () => {
-    pushUndo();
-    finishPath();
-  },
-  closeAndFinishPath: () => closeAndFinishPath(),
-  undoPoint: () => removeLastPenPoint(),
-  discardPath: () => discardPath(),
-  selectMore: (on) => setSelectMore(on),
-  selectAll: () => selectAll(),
-  paste: () => void pasteFromClipboard(),
-});
+initTextEdit(wrap);
+initActionBar(byId("action-bar"));
 bindInteraction(svg, wrap);
 setColorSampler({ available: canPickFromImages, pick: () => pickFromImages(wrap, svg) });
-setTouchFinishPathHandler(() => finishPath());
 bindTouch(svg);
+
+// Clicking the canvas takes the keyboard back from any field so the shortcuts work again, and
+// drops any leftover page text selection, which would otherwise suppress the Ctrl+C / Ctrl+X
+// shape handlers below.
+svg.addEventListener(
+  "pointerdown",
+  () => {
+    if (isTextEditing()) endTextEdit(true);
+    const a = document.activeElement as HTMLElement | null;
+    if (a && a !== document.body && (a.matches?.("input, select, textarea") || a.isContentEditable))
+      a.blur();
+    if (window.getSelection()?.toString()) window.getSelection()?.removeAllRanges();
+  },
+  true
+);
+
+/* Clipboard: our own JSON between sessions, plain SVG markup accepted on paste. The SVG source
+   editor is contenteditable: what is copied, cut or pasted there is its text. */
+const inField = (t: EventTarget | null) =>
+  !!(t as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable]");
+document.addEventListener("copy", (e) => {
+  if (inField(e.target) || window.getSelection()?.toString()) return;
+  const text = copySelectionText();
+  if (text) {
+    e.clipboardData?.setData("text/plain", text);
+    e.preventDefault();
+  }
+});
+document.addEventListener("cut", (e) => {
+  if (inField(e.target) || window.getSelection()?.toString()) return;
+  const text = cutSelection();
+  if (text) {
+    e.clipboardData?.setData("text/plain", text);
+    e.preventDefault();
+  }
+});
+document.addEventListener("paste", (e) => {
+  if (inField(e.target)) return;
+  if (pasteFromText(e.clipboardData?.getData("text/plain") ?? "")) e.preventDefault();
+});
+
+byId("btn-undo").addEventListener("click", () => undo());
+byId("btn-redo").addEventListener("click", () => redo());
+
+byId("btn-join").addEventListener("click", () => joinSelected());
+byId("btn-group").addEventListener("click", () => groupSelection());
+byId("btn-merge").addEventListener("click", () => mergeSelection());
+byId("btn-ungroup").addEventListener("click", () => ungroupSelection());
+
+document.querySelectorAll<HTMLElement>(".tool-btn[data-tool]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tool = btn.dataset.tool as EditorState["tool"];
+    // Tapping the active drawing tool puts the canvas back to selecting, which is the way out
+    // of a tool when there is no Esc key to press.
+    setTool(tool !== "select" && getState().tool === tool ? "select" : tool);
+  });
+});
 
 bindRulerGuides(byId<HTMLCanvasElement>("ruler-top"), byId<HTMLCanvasElement>("ruler-left"));
 initRulers({
@@ -139,7 +159,6 @@ document
   .forEach((btn) => bindThemeToggle(btn, "glyph"));
 
 let lastSavedViewport: EditorState["viewport"] | null = null;
-let lastSelection = "";
 
 subscribe((state, { pointerOnly }) => {
   if (pointerOnly) {
@@ -148,16 +167,7 @@ subscribe((state, { pointerOnly }) => {
     syncCursorReadout(state);
     return;
   }
-  // Adding to a selection that has gone empty is starting a new one: the switch lets go.
-  if (isSelectMore() && !state.selection.elementIds.length) setSelectMore(false);
-  // A document opened with grid snap on keeps it: the snap to shapes the tab had lets go.
-  if (isAlignSnap() && state.grid.snap) setAlignSnap(false);
-  // A Rotate field counts from 0 again for whatever is chosen next.
-  const selection = state.selection.elementIds.join(",");
-  if (selection !== lastSelection) {
-    lastSelection = selection;
-    forgetTurns();
-  }
+  followState(state);
   renderAll(state);
   // Where you are looking belongs to the tab, not to the drawing: kept so a refresh returns it.
   if (state.viewport !== lastSavedViewport) {
@@ -171,8 +181,25 @@ subscribe((state, { pointerOnly }) => {
   if (state.ui.editingTextId) positionTextEditor();
 });
 
-function setToggle(id: string, on: boolean): void {
-  const btn = byId(id);
+/* What the panels and bars show, looked up once: they are brought up to date on every render. */
+const cursorReadout = byId("cursor-pos");
+const artboardWidth = byId<HTMLInputElement>("artboard-width");
+const artboardHeight = byId<HTMLInputElement>("artboard-height");
+const gridStep = byId<HTMLInputElement>("grid-step");
+const bgSwatch = byId("bg-swatch");
+const gridBtn = byId("btn-grid");
+const finalBtn = byId("btn-final");
+const snapBtn = byId("btn-snap");
+const alignBtn = byId("btn-align");
+const undoBtn = byId<HTMLButtonElement>("btn-undo");
+const redoBtn = byId<HTMLButtonElement>("btn-redo");
+const groupBtn = byId<HTMLButtonElement>("btn-group");
+const mergeBtn = byId<HTMLButtonElement>("btn-merge");
+const ungroupBtn = byId<HTMLButtonElement>("btn-ungroup");
+const joinBtn = byId<HTMLButtonElement>("btn-join");
+const toolButtons = [...document.querySelectorAll<HTMLElement>(".tool-btn[data-tool]")];
+
+function setToggle(btn: HTMLElement, on: boolean): void {
   btn.classList.toggle("active", on);
   btn.setAttribute("aria-pressed", String(on));
 }
@@ -182,21 +209,19 @@ function syncCursorReadout(state: EditorState): void {
   const x = c.snapActive ? c.snapX : c.x;
   const y = c.snapActive ? c.snapY : c.y;
   const text = `${Math.round(x)}, ${Math.round(y)}`;
-  const readout = byId("cursor-pos");
-  if (readout.textContent !== text) readout.textContent = text;
+  if (cursorReadout.textContent !== text) cursorReadout.textContent = text;
 }
 
 function syncPanel(state: EditorState): void {
-  byId<HTMLInputElement>("artboard-width").value = String(state.artboard.width);
-  byId<HTMLInputElement>("artboard-height").value = String(state.artboard.height);
-  byId<HTMLInputElement>("grid-step").value = String(state.grid.step);
-  const bgSwatch = byId("bg-swatch");
+  artboardWidth.value = String(state.artboard.width);
+  artboardHeight.value = String(state.artboard.height);
+  gridStep.value = String(state.grid.step);
   bgSwatch.style.setProperty("--c", state.background.color);
   bgSwatch.style.setProperty("--a", String(state.background.opacity));
-  setToggle("btn-grid", state.grid.visible);
-  setToggle("btn-final", state.finalOnly);
-  setToggle("btn-snap", state.grid.snap);
-  setToggle("btn-align", isAlignSnap());
+  setToggle(gridBtn, state.grid.visible);
+  setToggle(finalBtn, state.finalOnly);
+  setToggle(snapBtn, state.grid.snap);
+  setToggle(alignBtn, isAlignSnap());
   const percent = `${Math.round(state.viewport.zoom * 100)}%`;
   if (zoomBtn.textContent !== percent) zoomBtn.textContent = percent;
   zoomMenu.querySelectorAll<HTMLElement>("[data-zoom]").forEach((btn) => {
@@ -207,14 +232,12 @@ function syncPanel(state: EditorState): void {
 
   syncCursorReadout(state);
 
-  document.querySelectorAll<HTMLElement>(".tool-btn[data-tool]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.tool === state.tool);
-  });
+  for (const btn of toolButtons) btn.classList.toggle("active", btn.dataset.tool === state.tool);
   wrap.classList.toggle("mode-hand", state.spacePan);
   wrap.classList.toggle("mode-select", state.tool === "select" && !state.spacePan);
 
-  byId<HTMLButtonElement>("btn-undo").disabled = !canUndo();
-  byId<HTMLButtonElement>("btn-redo").disabled = !canRedo();
+  undoBtn.disabled = !canUndo();
+  redoBtn.disabled = !canRedo();
 
   imageList.sync(state);
   primitiveList.sync(state);
@@ -226,15 +249,18 @@ function syncPanel(state: EditorState): void {
 function syncGroupButtons(state: EditorState): void {
   const ids = new Set(state.selection.elementIds);
   const sel = state.elements.filter((e) => ids.has(e.id));
-  byId<HTMLButtonElement>("btn-group").disabled = !canGroup(state.elements, ids);
-  byId<HTMLButtonElement>("btn-merge").disabled = !canMergeGroups(state.elements, ids);
-  byId<HTMLButtonElement>("btn-ungroup").disabled = !canUngroup(state.elements, ids);
-  byId<HTMLButtonElement>("btn-join").disabled = !(sel.length === 2 && sel.every(canJoin));
+  groupBtn.disabled = !canGroup(state.elements, ids);
+  mergeBtn.disabled = !canMergeGroups(state.elements, ids);
+  ungroupBtn.disabled = !canUngroup(state.elements, ids);
+  joinBtn.disabled = !(sel.length === 2 && sel.every(canJoin));
 }
 
 /* ---------- Toolbar ---------- */
 
-/** Sizes and steps are whole, positive numbers; anything else puts the field back as it was. */
+/**
+ * Sizes and steps are whole numbers from 1 to `MAX_ARTBOARD`: a larger one is held to that, and
+ * anything else puts the field back as it was.
+ */
 function bindNumber(id: string, apply: (v: number) => void): void {
   byId(id).addEventListener("change", (e) => {
     const v = Math.round(parseFloat((e.target as HTMLInputElement).value));
@@ -243,7 +269,8 @@ function bindNumber(id: string, apply: (v: number) => void): void {
       return;
     }
     pushUndo();
-    apply(v);
+    apply(Math.min(v, MAX_ARTBOARD));
+    syncPanel(getState());
   });
 }
 
@@ -255,23 +282,19 @@ bindNumber("artboard-height", (v) =>
 );
 bindNumber("grid-step", (v) => setState((s) => ({ ...s, grid: { ...s.grid, step: v } })));
 
-byId("bg-swatch").addEventListener("click", () => {
-  const swatch = byId("bg-swatch");
-  if (isColorPickerOpenFor(swatch)) {
+bgSwatch.addEventListener("click", () => {
+  if (isColorPickerOpenFor(bgSwatch)) {
     closeColorPicker();
     return;
   }
   const start = getState().background;
-  let pushed = false;
+  const step = undoStepper();
   openColorPicker({
-    anchor: swatch,
+    anchor: bgSwatch,
     color: start.color,
     alpha: start.opacity,
     onChange: (color, opacity) => {
-      if (!pushed) {
-        pushUndo();
-        pushed = true;
-      }
+      step();
       setState((s) => ({ ...s, background: { color, opacity } }));
     },
   });
@@ -280,22 +303,9 @@ byId("bg-swatch").addEventListener("click", () => {
 byId("btn-grid").addEventListener("click", () => {
   setState((s) => ({ ...s, grid: { ...s.grid, visible: !s.grid.visible } }));
 });
-/** Grid snap and snap to shapes are one choice: switching this on switches the other off. */
-function setGridSnap(on: boolean): void {
-  if (on) setAlignSnap(false);
-  setState((s) => ({ ...s, grid: { ...s.grid, snap: on } }));
-}
 byId("btn-snap").addEventListener("click", () => setGridSnap(!getState().grid.snap));
 byId("btn-align").addEventListener("click", () => setAlignSnap(!isAlignSnap()));
 
-/** Every shape that is showing and not locked: the ones a click could reach. */
-function selectAll(): void {
-  setState((s) => ({
-    ...s,
-    selection: selectOnly(s.elements.filter((el) => !el.hidden && !el.locked).map((el) => el.id)),
-    tool: "select",
-  }));
-}
 byId("btn-final").addEventListener("click", () => {
   setState((s) => ({ ...s, finalOnly: !s.finalOnly }));
 });
@@ -303,10 +313,18 @@ byId("btn-final").addEventListener("click", () => {
 byId("btn-save-svg").addEventListener("click", () => {
   downloadText(svgFileName(), formatExportSvg(getState(), true), "image/svg+xml");
 });
-initPngExport({
-  artboard: () => getState().artboard,
-  svg: () => formatExportSvg(getState(), true),
-  baseName: () => fileBase(currentDoc.name),
+const pngBtn = byId<HTMLButtonElement>("btn-export-png");
+pngBtn.addEventListener("click", async () => {
+  const { width, height } = pngSize(getState().artboard);
+  pngBtn.disabled = true;
+  try {
+    const png = await renderPng(formatExportSvg(getState(), true), width, height);
+    downloadBlob(`${fileBase(currentDoc.name)}.png`, png);
+  } catch (err) {
+    window.alert(err instanceof Error ? err.message : String(err));
+  } finally {
+    pngBtn.disabled = false;
+  }
 });
 byId("btn-copy-svg").addEventListener("click", async (e) => {
   e.stopPropagation();
@@ -315,14 +333,8 @@ byId("btn-copy-svg").addEventListener("click", async (e) => {
     downloadText(svgFileName(), text, "image/svg+xml");
   }
 });
-byId("btn-import-svg").addEventListener("click", () => {
-  byId<HTMLInputElement>("input-import-svg").click();
-});
-
-byId("input-import-svg").addEventListener("change", async (e) => {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = "";
+byId("btn-import-svg").addEventListener("click", async () => {
+  const [file] = await pickFiles(".svg,image/svg+xml");
   if (!file) return;
   let imported: ReturnType<typeof importSvgFile>;
   try {
@@ -331,7 +343,7 @@ byId("input-import-svg").addEventListener("change", async (e) => {
     window.alert(`Could not import ${file.name}: ${err instanceof Error ? err.message : err}`);
     return;
   }
-  const { artboard, background, elements, groupNames } = imported;
+  const { artboard, background, elements, groupNames, skipped } = imported;
   pushUndo();
   setState((s) => ({
     ...s,
@@ -340,8 +352,29 @@ byId("input-import-svg").addEventListener("change", async (e) => {
     artboard: artboard ?? s.artboard,
     background: background ?? s.background,
   }));
-  primitiveList.invalidate();
+  if (skipped.length) {
+    window.alert(
+      `Imported ${file.name}, leaving out what the app cannot hold: ${listed(skipped)}.`
+    );
+  }
 });
+
+/* ---------- Files dropped on the page ---------- */
+
+/**
+ * Anywhere on the page: an SVG or a document file (`.svg.json`) opens as a new document, as
+ * the Documents list's import does, and a picture becomes a reference image of the document
+ * open, as the Reference images +. Adding an SVG's shapes to the drawing is Import SVG's job.
+ */
+onFileDrop(document.body, (files) => void dropFiles(files));
+
+async function dropFiles(files: readonly File[]): Promise<void> {
+  const isPicture = (f: File) => f.type.startsWith("image/") && !isSvgFile(f);
+  // The pictures first, so they land in the document that was open when they were dropped.
+  await addImageFiles(files.filter(isPicture));
+  const documents = files.filter((f) => !isPicture(f));
+  if (documents.length) await importDocumentFiles(documents);
+}
 
 /* ---------- Keyboard ---------- */
 
@@ -363,12 +396,12 @@ window.addEventListener("keydown", (e) => {
     // Ctrl+Y on Windows, Cmd+Shift+Z on a Mac; both work everywhere.
     if (key === "z") {
       e.preventDefault();
-      if (e.shiftKey) doRedo();
-      else doUndo();
+      if (e.shiftKey) redo();
+      else undo();
     }
     if (key === "y") {
       e.preventDefault();
-      doRedo();
+      redo();
     }
     if (key === "s") {
       e.preventDefault();
@@ -408,7 +441,7 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (e.shiftKey && e.code === "Digit1") {
-    setState({ viewport: fitToView() });
+    fitToView();
     return;
   }
   if (e.shiftKey && e.code === "Digit2") {
@@ -426,10 +459,7 @@ window.addEventListener("keydown", (e) => {
     if (isTextEditing()) endTextEdit(false);
     else if (st.drawing || st.tool !== "select" || !stepOutSelection()) cancelOperation();
   }
-  if (key === "enter" && getState().tool === "pen") {
-    pushUndo();
-    finishPath();
-  }
+  if (key === "enter" && getState().tool === "pen") finishPath();
   if (key === "x") splitAtSelectedPoint();
   if (key === "j") joinSelected();
   if (key === "delete" || key === "backspace") {
@@ -456,6 +486,6 @@ window.addEventListener("keyup", (e) => {
 
 restoreLayout();
 renderAll(getState());
-setState({ viewport: fitToView() });
+fitToView();
 
 startDocuments();

@@ -12,8 +12,6 @@ import type { PathSegment } from "./path.js";
 export interface Table {
   node: JsonNode & { kind: "array" };
   path: PathSegment[];
-  /** Holds objects: rows with named columns, a table proper. */
-  objects: boolean;
 }
 
 /** Past this many, the view would be no use: the rest are left out. */
@@ -24,7 +22,7 @@ export function tablesIn(root: JsonNode): Table[] {
   const walk = (node: JsonNode, path: PathSegment[]): void => {
     if (found.length >= MAX_TABLES) return;
     if (node.kind === "array") {
-      found.push({ node, path, objects: node.items.some((i) => i.kind === "object") });
+      found.push({ node, path });
     } else if (node.kind === "object") {
       for (const m of node.members) walk(m.value, [...path, m.key]);
     }
@@ -39,7 +37,7 @@ export interface CsvSheet {
   /** For each line of the text, the document offset its row comes from; -1 for none. */
   sources: number[];
   /** Each table's lines of the text, its heading included. */
-  sections: { table: Table; firstLine: number; lastLine: number }[];
+  sections: { table: Table; lastLine: number }[];
 }
 
 /**
@@ -61,12 +59,11 @@ export function csvSheet(tables: readonly Table[], heading: (t: Table) => string
   };
   for (const table of tables) {
     if (many && rows.length) add("", -1);
-    const firstLine = line;
     if (many) add(`# ${heading(table)}`, -1);
     csvRows(table.node).forEach((row, k) =>
       add(row, k === 0 ? table.node.start : table.node.items[k - 1].start)
     );
-    sections.push({ table, firstLine, lastLine: line - 1 });
+    sections.push({ table, lastLine: line - 1 });
   }
   return { text: rows.length ? rows.join("\r\n") + "\r\n" : "", sources, sections };
 }

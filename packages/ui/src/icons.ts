@@ -52,7 +52,7 @@ export const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
-export const isIconName = (name: string): name is IconName => Object.hasOwn(ICONS, name);
+const isIconName = (name: string): name is IconName => Object.hasOwn(ICONS, name);
 
 /** An icon as an element, for code that builds its own buttons. */
 export function iconSvg(name: IconName, className = ""): SVGSVGElement {
@@ -65,7 +65,7 @@ export function iconSvg(name: IconName, className = ""): SVGSVGElement {
 }
 
 /** The attribute that asks the build to draw an icon into an empty `<svg>` or `<symbol>`. */
-export const ICON_ATTR = "data-ui-icon";
+const ICON_ATTR = "data-ui-icon";
 
 /**
  * Fills every empty `<svg data-ui-icon="…">` and `<symbol data-ui-icon="…">` in a page with its

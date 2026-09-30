@@ -1,9 +1,12 @@
 import { expect, test } from "bun:test";
-import { lineCount, lineOf, lineStarts } from "./lines.js";
+import { lineOf, lineStarts, positionAt } from "./lines.js";
 
-test("lineCount counts line breaks plus one", () => {
-  expect(lineCount("")).toBe(1);
-  expect(lineCount("a\nb\n")).toBe(3);
+test("positionAt gives a 1-based line and column", () => {
+  const t = "ab\ncd";
+  expect(positionAt(t, 0)).toEqual({ offset: 0, line: 1, column: 1 });
+  expect(positionAt(t, 2)).toEqual({ offset: 2, line: 1, column: 3 });
+  expect(positionAt(t, 3)).toEqual({ offset: 3, line: 2, column: 1 });
+  expect(positionAt(t, 5)).toEqual({ offset: 5, line: 2, column: 3 });
 });
 
 test("lineOf finds the line of any offset from lineStarts", () => {

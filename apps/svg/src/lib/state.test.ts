@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createInitialState, replaceState, snapshotForUndo, getState } from "./state.js";
+import { DEFAULT_STROKE } from "./model.js";
 import type { ReferenceImage } from "./types.js";
 
 function image(dataUrl: string): ReferenceImage {
@@ -48,23 +49,7 @@ describe("snapshotForUndo", () => {
           id: "a1b2c3d4",
           name: "polyline 1",
           points: [{ x: 1, y: 2 }],
-          stroke: "#000000",
-          strokeOpacity: 1,
-          strokeWidth: 2,
-          linecap: "round",
-          linejoin: "round",
-          fillEnabled: false,
-          fillType: "solid",
-          fill: "#000000",
-          fillOpacity: 1,
-          gradStops: [
-            { offset: 0, color: "#000000", opacity: 1 },
-            { offset: 1, color: "#ffffff", opacity: 1 },
-          ],
-          gradFrom: { x: 0, y: 0.5 },
-          gradTo: { x: 1, y: 0.5 },
-          markerStart: "none",
-          markerEnd: "none",
+          ...DEFAULT_STROKE,
         },
       ],
     });

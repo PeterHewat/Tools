@@ -1,4 +1,3 @@
-import { parseJson, positionAt, type JsonPosition } from "@tools/codec";
 import {
   bindDock,
   bindMenu,
@@ -8,12 +7,15 @@ import {
   downloadText,
   onFileDrop,
   pickFiles,
+  readStored,
   registerServiceWorker,
+  writeStored,
 } from "@tools/ui";
 import { createEditor, type LineLexer } from "@tools/editor";
 import {
   applyEdits,
   parse,
+  REPAIRS,
   type Edit,
   type JsonNode,
   type ParseResult,
@@ -31,7 +33,7 @@ import {
 } from "./lib/convert.js";
 import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { unwrapString, wrapAsString } from "./lib/nested.js";
-import { lineCount, lineOf, lineStarts } from "./lib/lines.js";
+import { lineOf, lineStarts, positionAt, type TextPosition } from "./lib/lines.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson, printedSize } from "./lib/print.js";
 import { SAMPLE } from "./lib/sample.js";
@@ -81,9 +83,11 @@ const indentButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-ind
 const pathStyleButtons = [...options.querySelectorAll<HTMLButtonElement>("[data-path-style]")];
 const unwrapBtn = options.querySelector<HTMLButtonElement>('[data-action="unwrap"]')!;
 const wrapBtn = options.querySelector<HTMLButtonElement>('[data-action="wrap"]')!;
+/** The JSON's colours: its lexer, with block comments that can run over lines. */
+const JSON_COLOURS = { lexer: highlightLine, blockComment: BLOCK_COMMENT };
 const editor = createEditor(codeEl, {
   language: "json",
-  colours: jsonColours(),
+  colours: JSON_COLOURS,
   label: "JSON",
   placeholder: "Paste JSON here, or drop a .json file",
   keys: [
@@ -100,7 +104,7 @@ const editor = createEditor(codeEl, {
   onChange: (user) => {
     textCache = null;
     findVersion++;
-    if (restored) droppedDraft = false;
+    droppedDraft = false;
     if (!user) return;
     stale = true;
     validateSoon();
@@ -119,10 +123,6 @@ const exportView = createEditor(exportEl, {
     showFileControls();
   },
 });
-/** The JSON's colours: its lexer, with block comments that can run over lines. */
-function jsonColours() {
-  return { lexer: highlightLine, blockComment: BLOCK_COMMENT };
-}
 
 // ---------- State ----------
 
@@ -148,7 +148,7 @@ let pathStyle: PathStyle = "js";
 /** Syntax colours in every view: a setting, on until someone turns it off. */
 let colours = true;
 /** Why the text is not JSON, and the edits that would make it JSON when there are some. */
-let fault: { message: string; position: JsonPosition; edits: Edit[] | null } | null = null;
+let fault: { message: string; position: TextPosition; edits: Edit[] | null } | null = null;
 
 // ---------- Storage ----------
 
@@ -160,14 +160,10 @@ const PREFS_KEY = "tools.json.prefs";
 const DRAFT_KEY = "tools.json.draft";
 /** The Exact values turned on, kept beside the draft they were chosen for. */
 const EXACT_KEY = "tools.json.exact";
-/** Past this, a draft is not worth the storage quota it would eat. */
+/** Past this, a draft is not worth the storage quota it would eat: `false` is kept instead. */
 const MAX_SAVED = 2_000_000;
-/** Set when the draft was too large to keep, so a reload can say why the editor is empty. */
-const DROPPED_KEY = "tools.json.dropped";
 /** The tab reloaded after dropping a draft too large to keep: said until the next change. */
 let droppedDraft = false;
-/** The draft is back in the editor: changes from here on are new ones. */
-let restored = false;
 
 interface Prefs {
   indent: Indent;
@@ -180,36 +176,23 @@ interface Prefs {
 const VIEWS: readonly ViewMode[] = ["json", "yaml", "csv", "ts", "schema"];
 
 function restore(): void {
-  try {
-    const prefs = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null") as Partial<Prefs> | null;
-    if (prefs) {
-      if (prefs.indent === "2" || prefs.indent === "4" || prefs.indent === "tab") {
-        indentChoice = prefs.indent;
-      }
-      setOn(sortKeys, prefs.sortKeys === true);
-      if (prefs.view && VIEWS.includes(prefs.view)) mode = prefs.view;
-      if (prefs.pathStyle === "pointer") pathStyle = "pointer";
-      if (prefs.colours === false) colours = false;
-    }
-  } catch {
-    /* storage refused or holds something else: defaults */
+  // Each setting is checked: storage holds whatever was last put there.
+  const prefs = (readStored(PREFS_KEY) ?? {}) as Partial<Prefs>;
+  if (prefs.indent === "2" || prefs.indent === "4" || prefs.indent === "tab") {
+    indentChoice = prefs.indent;
   }
-  try {
-    // A tab with no draft yet opens on the sample. Cleared, the draft is "" and stays empty.
-    showDocument(sessionStorage.getItem(DRAFT_KEY) ?? SAMPLE);
-    droppedDraft = sessionStorage.getItem(DROPPED_KEY) === "1";
-  } catch {
-    /* storage refused: the sample, as for a new tab */
-    showDocument(SAMPLE);
-  }
-  // On its own: exact values that cannot be read are dropped, never the draft with them.
-  try {
-    const exact = JSON.parse(sessionStorage.getItem(EXACT_KEY) ?? "[]") as unknown;
-    if (Array.isArray(exact)) {
-      for (const place of exact) if (typeof place === "string") exactPlaces.add(place);
-    }
-  } catch {
-    /* storage refused or unreadable: none turned on */
+  setOn(sortKeys, prefs.sortKeys === true);
+  if (prefs.view && VIEWS.includes(prefs.view)) mode = prefs.view;
+  if (prefs.pathStyle === "pointer") pathStyle = "pointer";
+  if (prefs.colours === false) colours = false;
+  // A tab with no draft yet opens on the sample. Cleared, the draft is "" and stays empty.
+  const draft = readStored(DRAFT_KEY, "session");
+  showDocument(typeof draft === "string" ? draft : draft === false ? "" : SAMPLE);
+  // After the document is in: putting it there was a change, and a change ends the warning.
+  droppedDraft = draft === false;
+  const exact = readStored(EXACT_KEY, "session");
+  if (Array.isArray(exact)) {
+    for (const place of exact) if (typeof place === "string") exactPlaces.add(place);
   }
   showOptions();
 }
@@ -222,21 +205,11 @@ function save(): void {
     pathStyle,
     colours,
   };
-  try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
-  } catch {
-    /* storage refused or full */
-  }
-  try {
-    const text = documentText();
-    const tooLarge = text.length > MAX_SAVED;
-    sessionStorage.setItem(DRAFT_KEY, tooLarge ? "" : text);
-    // Kept while the empty draft still stands for the large one, so every reload says so.
-    if (tooLarge || !droppedDraft) sessionStorage.setItem(DROPPED_KEY, tooLarge ? "1" : "");
-    sessionStorage.setItem(EXACT_KEY, JSON.stringify([...exactPlaces]));
-  } catch {
-    /* storage refused or full */
-  }
+  writeStored(PREFS_KEY, prefs);
+  const text = documentText();
+  // False while the empty editor still stands for a draft too large to keep: every reload says so.
+  writeStored(DRAFT_KEY, text.length > MAX_SAVED || droppedDraft ? false : text, "session");
+  writeStored(EXACT_KEY, [...exactPlaces], "session");
 }
 
 /** Toggle buttons keep their state in aria-pressed, which is also what they are styled by. */
@@ -253,25 +226,13 @@ function indent(): number | "\t" {
 
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
 
-const REPAIR_WORDS: Record<RepairKind, string> = {
-  comment: "comment",
-  "trailing comma": "trailing comma",
-  "single quotes": "single-quoted string",
-  "unquoted key": "unquoted key",
-  "string escape": "non-JSON string escape",
-  number: "non-JSON number",
-  "NaN or Infinity": "NaN or Infinity (becomes null)",
-  literal: "Python or JavaScript literal",
-  whitespace: "non-JSON space",
-};
-
 /** "3 comments, 1 trailing comma": what a Fix would change, most common first. */
 function describeEdits(edits: readonly Edit[]): string {
   const counts = new Map<RepairKind, number>();
   for (const e of edits) counts.set(e.kind, (counts.get(e.kind) ?? 0) + 1);
   return [...counts]
     .sort((a, b) => b[1] - a[1])
-    .map(([kind, n]) => plural(n, REPAIR_WORDS[kind]))
+    .map(([kind, n]) => plural(n, REPAIRS[kind].noun))
     .join(", ");
 }
 
@@ -303,21 +264,7 @@ function atCursor(): ReturnType<typeof nodeAt> | null {
 
 /** The values from the root down to the one under the caret. */
 function contextChain(): JsonNode[] {
-  if (!doc || stale) return [];
-  const indices = atCursor()?.indices ?? [];
-  const chain: JsonNode[] = [doc.root];
-  for (const k of indices) {
-    const node = chain.at(-1)!;
-    const next =
-      node.kind === "object"
-        ? node.members[k]?.value
-        : node.kind === "array"
-          ? node.items[k]
-          : null;
-    if (!next) break;
-    chain.push(next);
-  }
-  return chain;
+  return atCursor()?.chain ?? [];
 }
 
 // ---------- Export views ----------
@@ -336,7 +283,7 @@ let sheet: CsvSheet | null = null;
 /** The JSON line each line of the CSV view comes from (see `showExport`). */
 let sheetLabels: (number | null)[] | null = null;
 
-const rows = (n: number) => `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
+const rows = (n: number) => plural(n, "row");
 
 function makeCsv(root: JsonNode): Converted {
   const tables = tablesIn(root);
@@ -508,7 +455,7 @@ function showExport(): void {
 
 /** Turns syntax colours on or off everywhere: the text and the converted views. */
 function showColours(): void {
-  editor.setColours(colours ? jsonColours() : null);
+  editor.setColours(colours ? JSON_COLOURS : null);
   if (isExport(mode)) exportView.setColours(colours ? EXPORTS[mode].lexer : null);
 }
 
@@ -611,7 +558,7 @@ function findStep(delta: number): void {
   }
   const start = textMatches[findIndex];
   if (mode === "json") selectInDocument(start, start + findInput.value.length, false);
-  else selectInExport(start, start + findInput.value.length);
+  else exportView.select(start, start + findInput.value.length);
   showFindCount();
   showMarks();
 }
@@ -620,11 +567,6 @@ function findStep(delta: number): void {
 function toggleFind(): void {
   if (findOpen()) closeFind();
   else openFind();
-}
-
-/** Selects a stretch of the converted text and scrolls it to the middle, as in the text. */
-function selectInExport(start: number, end: number): void {
-  exportView.select(start, end);
 }
 
 function openFind(): void {
@@ -657,14 +599,11 @@ function validate(): void {
   stale = false;
   fault = null;
   if (parsed && !doc) {
-    // The strict parser words errors best; the lenient one knows whether a Fix exists.
-    const strict = parseJson(text);
-    const edits = parsed.ok ? parsed.edits : null;
-    fault = !strict.ok
-      ? { message: strict.message, position: strict.position, edits }
-      : !parsed.ok
-        ? { message: parsed.message, position: positionAt(text, parsed.offset), edits }
-        : null;
+    // Almost JSON: the first thing a Fix would change is the first thing strict JSON refuses.
+    const [message, offset, edits] = parsed.ok
+      ? [REPAIRS[parsed.edits[0]!.kind].message, parsed.edits[0]!.start, parsed.edits]
+      : [parsed.message, parsed.offset, null];
+    fault = { message, position: positionAt(text, offset), edits };
   }
   minified = !!doc && !text.includes("\n");
   showLayout(text);
@@ -706,7 +645,7 @@ function validate(): void {
         (more.length ? `, and ${plural(more.length, "more")}` : "") +
         ". Formatting keeps every copy; JSON.parse would keep only the last.";
       warning.classList.remove("hidden");
-    } else if (text.length > LONG_TEXT && lineCount(text) < 100) {
+    } else if (text.length > LONG_TEXT && editor.lineCount < 100) {
       warning.textContent =
         "This is a few very long lines, which is slow to edit. Format it to edit it quickly.";
       warning.classList.remove("hidden");
@@ -791,7 +730,7 @@ function fix(): void {
 function fromCsv(): void {
   const json = csvToJson(documentText(), indent());
   if (!json) return;
-  replaceText(json.text);
+  replaceText(json);
   fileName = fileName.replace(/\.(csv|tsv|txt)$/i, "") + (/\.json$/i.test(fileName) ? "" : ".json");
 }
 
@@ -815,13 +754,13 @@ let shownPath: PathSegment[] | null = null;
 /** The path of the value under the caret; click it to copy. */
 function showPath(path: PathSegment[] | null): void {
   shownPath = path;
-  const text = path && (pathStyle === "js" ? jsPath(path) : jsonPointer(path));
   pathBtn.classList.toggle("hidden", !path || isExport(mode));
   // In a span: see .path in styles.css for why.
   const label = document.createElement("span");
-  label.textContent = text || "root";
+  label.textContent = formatPath(path ?? []);
   pathBtn.replaceChildren(label);
-  pathBtn.disabled = !text;
+  // The root has no path to copy.
+  pathBtn.disabled = !path?.length;
   fitPath();
 }
 
@@ -908,7 +847,7 @@ async function load(file: File): Promise<void> {
   const text = await file.text();
   const json = isCsvFile(file) ? csvToJson(text, indent()) : null;
   if (json) fileName = file.name.replace(/\.(csv|tsv)$/i, ".json");
-  showDocument(json ? json.text : text);
+  showDocument(json ?? text);
   validate();
   // A file opens as it is, in the text: what was opened is what you see first.
   setMode("json");
@@ -1099,7 +1038,6 @@ for (const view of [editor, exportView]) {
 
 bindThemeToggle(byId("theme-toggle"));
 restore();
-restored = true;
 editor.setIndent(indent());
 showColours();
 validate();

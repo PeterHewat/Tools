@@ -76,7 +76,7 @@ chrome.
 
 ## 4. Reference images
 
-- Any number, from the file picker. Each has a position, a scale (x and y), a rotation, an opacity
+- Any number, from the file picker or dropped on the page (§12.3). Each has a position, a scale (x and y), a rotation, an opacity
   and a visibility eye, edited in its row of the Reference images section, and a place in the
   images' own z-order, always below the document.
 - An image has no name of its own: its row shows the file it came from, and clicking that replaces
@@ -107,12 +107,17 @@ invalid characters are dropped) and is read back from that, or from a `<title>`.
 
 Every element carries a complete style, edited in its row of the Primitives list:
 
-- Stroke colour and opacity, stroke width (default 2; 0 exports `stroke="none"`), line cap and
-  line join (default round).
-- Fill: off by default. On, it is a solid colour with opacity, or a **linear or radial gradient**
-  with any number of stops (colour, opacity, offset). The first stop is also the solid colour.
-  Where a gradient runs is two handles on the shape, stored as fractions of its bounding box so it
-  follows the shape.
+- Stroke: a paint, stroke width (default 2; 0 exports `stroke="none"`), line cap and line join
+  (default round).
+- Fill: off by default; on, a paint.
+- A **paint** (fill or stroke) is a solid colour with opacity, or a **linear or radial gradient**
+  with any number of stops (colour, opacity, offset). The first stop is also the solid colour (and
+  a marker's, for the stroke). Where a gradient runs is two handles on the shape - purple for the
+  fill's, teal for the stroke's - stored as fractions of its bounding box so it follows the shape.
+  The fill's gradient exports in those fractions (`objectBoundingBox`); the stroke's in the
+  shape's own coordinates (`userSpaceOnUse`), since a box-relative gradient on a shape with no
+  height - a straight line - is not drawn at all. Fields: `fillType`, `fillStops`, `fillFrom`,
+  `fillTo`, and `strokeType`, `strokeStops`, `strokeFrom`, `strokeTo` (`PAINT_KEYS`).
 - A dash pattern (`dash`, exported as `stroke-dasharray`): dash and gap lengths in artboard units.
   Empty, `none`, negative or all-zero is a solid line. The panel offers it as a style (`dash.ts`):
   solid, dashed, dotted and dash-dot are worked out from the stroke width and cap, and worked out
@@ -125,7 +130,7 @@ Every element carries a complete style, edited in its row of the Primitives list
   past the end point just far enough to cover the line's cap (round, butt or square), so no stroke
   shows beside it.
 - Opacities of 1 are not exported. Markers and gradients go into `<defs>`, with ids derived from
-  the element id.
+  the element id (`grad-<id>` for the fill, `grad-<id>-stroke` for the stroke).
 - A shape with no stroke and no fill paints nothing, as in any viewer; the app keeps it clickable
   and shows its row dimmed so it can be found.
 
@@ -208,22 +213,22 @@ lives in the document, not in the exported SVG; the SVG panel's re-import keeps 
 - **Move:** drag the selection, or the arrow keys (1 unit, 10 with Shift). With a point picked, the
   arrow keys move only that point, or the curve handle grabbed last (a linked pair keeps
   mirroring).
-- **Rect, ellipse, circle:** corner handles for a rect, radius handles for an ellipse and circle,
-  and a diagonal handle that keeps a square or a circle without a modifier. A rect's corner-radius
+- **Rect, ellipse:** corner handles for a rect, radius handles for an ellipse (a circle is an
+  ellipse with equal radii), and a diagonal handle that keeps a square or a circle without a
+  modifier. A rect's corner-radius
   handle sits inside its top-right corner; Alt sets `rx` and `ry` apart. A faint tether joins each
   extra handle to the corner it works from.
 - **Path, polyline, polygon:** a hollow handle off each corner of the bounding box stretches the
   shape from the opposite corner (Shift keeps proportions).
-- **Rotate:** the pink handle above a shape, a two-finger twist, or the Angle field. Rect, ellipse,
-  circle and text store the angle and export `transform="rotate(a cx cy)"`, keeping their type; a
+- **Rotate:** the pink handle above a shape, a two-finger twist, or the Angle field. Rect, ellipse and
+  text store the angle and export `transform="rotate(a cx cy)"`, keeping their type; a
   path or polyline has it baked into its points.
 - **Typed geometry:** a row's X, Y, W and H are the bounding box; up and down step to whole numbers.
 - **Groups and multi-selections** move, stretch and turn as one: corner handles and a rotate
   handle around their shared box, and under an open group's row in the Primitives list, X, Y, W, H and
   **Rotate**. A group keeps no transform of its own — each change is baked into its members'
-  coordinates (`selection-transform.ts`) — so Rotate reads a running total since the shapes were chosen (`turn-tally.ts`: typing turns by the difference, the rotate handle adds to it, and a new selection or an undo starts it from 0), a rotated
-  rect or ellipse stretched off its own axes becomes a path, a circle stretched unevenly an
-  ellipse, and stroke widths do not scale.
+  coordinates (`selection-transform.ts`) — so Rotate reads a running total since the shapes were chosen (`session.ts`: typing turns by the difference, the rotate handle adds to it, and a new selection or an undo starts it from 0), a rotated
+  rect or ellipse stretched off its own axes becomes a path, and stroke widths do not scale.
 
 - **Align and distribute** (`align.ts`): the six alignments, and even spacing across or down
   for three or more. What moves is the selection's blocks - a group selected whole moves as one -
@@ -306,7 +311,7 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   **Align** and **Combine**, each a button opening a page of its own with a way back; with nothing
   selected on a touch screen it offers select everything and paste. Up to seven buttons sit in one
   row, as many as fit across a 360px phone; more split into even rows, eight as two of four, never parting backward from forward. These switches are
-  session state (`modes.ts`), so undo never flips them.
+  session state (`session.ts`), so undo never flips them.
 - **Help** (`?`) explains everything for what the device has: touch on a phone or tablet, mouse
   and keyboard on a computer, both on a laptop with a touch screen (`any-pointer`). It carries
   an About section.
@@ -337,11 +342,12 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
   stays when, for one alternative, every word is found, ignoring case, in its name or one of its
   tags. What matched is marked - in the name, from a copy laid over the field, and in the tags that
   matched, shown under a folded row, in solid yellow. ▲ ▼ are off while the list is filtered. Esc clears the field, and so do a new document and an import, which a filter would otherwise hide.
-- The last open document reopens at start. The first start, with an empty library, creates
-  **Workbench** from `public/art.svg` (320 × 320, the app's own export, also the index
-  page's card art), tagged isometric, desk and gradient; an `svg.welcomed` flag keeps it from coming back once deleted.
-- **Demos** (`demos.ts`): finished drawings in `public/demos/`, each named and tagged in one list,
-  are added at the bottom of the list, in that order. A browser remembers the files it was given
+- The last open document reopens at start; with none, the first in the list opens, and with an
+  empty library a new blank one.
+- **Demos** (`demos.ts`): finished drawings, each named and tagged in one list, are added at the
+  bottom of the list, in that order. The first is **Workbench**, `public/art.svg` (320 × 320,
+  also the index page's card art), so a first visit opens on it; the rest are in
+  `public/demos/`. A browser remembers the files it was given
   (`svg.demos`), so a deleted demo stays deleted and one added to the list later still arrives;
   with no storage to remember by, none are added. Each file is written as the app exports it, which
   a test holds it to. Each fills its artboard over a blue gradient `backdrop`, which the document
@@ -354,8 +360,11 @@ chosen, a checkbox otherwise), name, preview, eye, ▲ ▼, delete.
 
 `ProjectFile`, versioned by `PROJECT_VERSION` (`types.ts`). Every released version stays readable:
 `readProject` (`io.ts`) brings an older document up to date step by step, and refuses one from a
-newer version of the app with a message to reload. The database has its own `DB_VERSION` (`storage.ts`) for
-its stores.
+newer version of the app with a message to reload. It also makes what it reads safe to draw:
+a document with markup in any value but free text is refused; colours become `#rrggbb` and
+opacities 0..1, elements with an id or type the app does not write are dropped, and so are
+reference images that are not `data:` images. A document with nothing usable left is refused. The
+database has its own `DB_VERSION` (`storage.ts`) for its stores.
 
 ```json
 {
@@ -385,7 +394,6 @@ its stores.
   "groupNames": { "group-57cc1c37": "top view" },
   "groupHues": { "group-57cc1c37": 210 },
   "guides": { "x": [256], "y": [64, 448] },
-  "viewport": { "panX": 0, "panY": 0, "zoom": 1 },
   "tool": "select",
   "finalOnly": false
 }
@@ -403,8 +411,13 @@ Documents move between browsers as files (`document-files.ts`):
 - Import takes any number of files of either kind. Every document in them is read by `readProject`
   and added at the top of the list, in the order the file gives, with a fresh id, a free name and
   its tags, cleaned as if typed:
-  an import never replaces or merges with an existing document. Files that cannot be read are
-  listed; the rest still import.
+  an import never replaces or merges with an existing document. An SVG file imports the same way,
+  as a document of its own named after the file (`svgDocument`), its shapes read as §12.4's
+  import reads them. Files that cannot be read are listed; the rest still import.
+- **Drop:** files dropped anywhere on the page go where their kind goes (`dropFiles` in
+  `app.ts`): an SVG or a document file opens as a new document, as the import above; a picture
+  becomes a reference image of the open document (§4). Adding an SVG's shapes to the open drawing
+  is Import SVG's (§12.4). While files are dragged over the page, it says what a drop does.
 
 ### 12.4 SVG export and import
 
@@ -412,13 +425,34 @@ Documents move between browsers as files (`document-files.ts`):
   only the document: `<svg>` with `xmlns`, `viewBox`, `width` and `height`; the background rect if
   any; `<defs>` for markers and gradients; the elements in z-order, grouped in `<g>`. No image, no
   grid, no editor metadata. Pretty-printed, as the SVG panel shows it. Named `Name.svg`.
-- **Import** reads `path`, `line`, `polyline`, `polygon`, `rect`, `circle`, `ellipse` and `text`,
+- **Import** reads `path`, `line`, `polyline`, `polygon`, `rect`, `circle` (as an ellipse), `ellipse` and `text`,
   with nested `<g>`. A path's `Q`, `T`, `S` and `A` commands and implicit repeats are read, arcs
   converted to cubics (`arc.ts`), and each `M` starts an outline (§5.4). `fill-rule` and
   `stroke-dasharray` are read. A `transform` on an element or a `<g>` is baked into the
   coordinates (`transform.ts`); a shape keeps its type when the transform is one it can express
   (a rotation on a rect becomes its stored angle). Fill defaults to off when a shape has no `fill`
-  at all. Images, patterns, clip paths, masks, filters and stylesheets are skipped.
+  at all.
+- **Styles** as a browser would apply them: `<style>` sheets (by class, id, tag or any selector
+  `querySelectorAll` reads; @-rules passed over) are applied into each element's `style`, by
+  specificity then order, its own `style` last (`applyStylesheets`); a `style` beats a
+  presentation attribute. Colours may carry alpha (`rgba()`, `#rrggbbaa`, `transparent`), and
+  `currentColor` is the inherited `color`. `opacity` on a shape and its groups, and a colour's
+  alpha, are multiplied into the fill's and stroke's opacity (exact wherever the two do not
+  overlap).
+- **Gradients**, on fill or stroke: `href` chains are followed (Inkscape's stops on one gradient,
+  geometry on another), `gradientTransform` moves the gradient's ends (exact for turns, shifts
+  and even scales), and `userSpaceOnUse` coordinates are placed with the shape and turned into box
+  fractions. A `url()` that names no gradient falls back to the colour after it, or to none.
+  `spreadMethod` and a radial gradient's focal point are not read.
+- **Copies and viewports:** each `<use>` becomes a group holding a copy of what it points at,
+  placed by its `x`, `y` and `transform`; a `<symbol>` is fitted into the use's width and height
+  through its viewBox (`preserveAspectRatio` none, or by default evenly and centred). A nested
+  `<svg>` becomes a group the same way. Copies are capped at 20 000 elements; a use that points
+  nowhere, into another file, or at something holding itself is dropped.
+- **What is left out is reported** (`ImportResult.skipped`, "2 clip paths", "1 filter"), and said
+  after an import: clip paths, masks, filters, pattern paints, embedded images, HTML blocks, text
+  paths, separately placed text runs, mid-line markers, custom markers (drawn as the nearest
+  built-in one), animation, scripts and broken `<use>` references.
 - **Export → import → export is byte-for-byte stable** (`io.test.ts`): the SVG panel re-imports
   its own output while typing, and any drift would move shapes.
 

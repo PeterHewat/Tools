@@ -37,8 +37,7 @@ describe("reading CSV", () => {
 describe("CSV to JSON", () => {
   test("each row is an object; numbers, booleans and null are values, the rest strings", () => {
     const out = csvToJson("id,kb,ok,note\nsvg,191,true,\njson,043,false,null\n")!;
-    expect(out.rows).toBe(2);
-    expect(JSON.parse(out.text)).toEqual([
+    expect(JSON.parse(out)).toEqual([
       { id: "svg", kb: 191, ok: true, note: "" },
       { id: "json", kb: "043", ok: false, note: null },
     ]);
@@ -46,11 +45,11 @@ describe("CSV to JSON", () => {
 
   test("big numbers keep every digit: they are written as the CSV has them", () => {
     const out = csvToJson("id,n\na,12345678901234567890\n")!;
-    expect(out.text).toContain('"n": 12345678901234567890');
+    expect(out).toContain('"n": 12345678901234567890');
   });
 
   test("short rows fill with empty strings; long ones get extra columns", () => {
-    expect(JSON.parse(csvToJson("a,b\n1\n1,2,3")!.text)).toEqual([
+    expect(JSON.parse(csvToJson("a,b\n1\n1,2,3")!)).toEqual([
       { a: 1, b: "", column3: "" },
       { a: 1, b: 2, column3: 3 },
     ]);
@@ -66,7 +65,7 @@ describe("CSV to JSON", () => {
     if (!r.ok) throw new Error(r.message);
     const csv = toCsv(r.root);
     if (!csv.ok) throw new Error(csv.message);
-    expect(JSON.parse(csvToJson(csv.text)!.text)).toEqual([
+    expect(JSON.parse(csvToJson(csv.text)!)).toEqual([
       { id: "svg", kb: 191 },
       { id: 'a "b", c', kb: 43 },
     ]);

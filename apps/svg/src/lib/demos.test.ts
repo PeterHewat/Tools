@@ -4,15 +4,19 @@ import { BACKDROP_NAME, DEMOS, demoDocument, demosToAdd } from "./demos.js";
 import { cleanTags } from "./doc-list.js";
 import { formatExportSvg, importSvgFile, readProject } from "./io.js";
 
-const dir = new URL("../../public/demos/", import.meta.url);
+const dir = new URL("../../public/", import.meta.url);
 const read = (file: string) => Bun.file(new URL(file, dir)).text();
 
 describe("the demos", () => {
   test("every file is listed, and every listed file is there", () => {
-    const files = readdirSync(dir)
+    const files = readdirSync(new URL("demos/", dir))
       .filter((f) => f.endsWith(".svg"))
-      .sort();
-    expect(DEMOS.map((d) => d.file).sort()).toEqual(files);
+      .map((f) => `demos/${f}`);
+    expect(DEMOS.map((d) => d.file).sort()).toEqual(["art.svg", ...files].sort());
+  });
+
+  test("the first is the drawing a first visit opens on: the index card's picture", () => {
+    expect(DEMOS[0]!.file).toBe("art.svg");
   });
 
   test("names are distinct, and tags are as if typed", () => {
@@ -51,5 +55,39 @@ describe("the demos", () => {
     expect(demosToAdd([])).toEqual([...DEMOS]);
     expect(demosToAdd(DEMOS.map((d) => d.file))).toEqual([]);
     expect(demosToAdd([DEMOS[0]!.file]).map((d) => d.file)).not.toContain(DEMOS[0]!.file);
+  });
+});
+
+const ART = await read("art.svg");
+
+describe("the workbench", () => {
+  const imported = importSvgFile(ART);
+
+  test("imports whole, on its own artboard", () => {
+    expect(imported.artboard).toEqual({ width: 320, height: 320 });
+    expect(imported.elements.length).toBeGreaterThan(30);
+  });
+
+  test("reads like a layers list: every part of the desk is a named group", () => {
+    expect(Object.values(imported.groupNames).sort()).toEqual([
+      "desk",
+      "laptop",
+      "mug",
+      "pencil",
+      "plant",
+      "ruler",
+    ]);
+  });
+
+  test("shows off what it is there to show", () => {
+    const types = new Set(imported.elements.map((e) => e.type));
+    for (const t of ["polygon", "path", "ellipse", "rect"] as const) expect(types).toContain(t);
+    expect(imported.elements.some((e) => e.fillEnabled && e.fillType === "linear")).toBe(true);
+    expect(imported.elements.some((e) => e.type === "ellipse" && e.rotation)).toBe(true);
+  });
+
+  test("its backdrop is translucent, so it sits on a light page and a dark one", () => {
+    const backdrop = imported.elements.find((e) => e.name === BACKDROP_NAME);
+    expect(backdrop?.fillStops.every((s) => s.opacity < 0.5)).toBe(true);
   });
 });

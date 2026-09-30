@@ -4,6 +4,7 @@ export * from "./dom.js";
 export * from "./icons.js";
 export * from "./menu.js";
 export * from "./panel.js";
+export * from "./storage.js";
 export * from "./theme.js";
 
 declare global {

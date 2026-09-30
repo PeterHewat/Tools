@@ -52,7 +52,6 @@ packages/
   catalog/     which apps exist, and where the site is deployed
   ui/          shared styles, browser helpers, build wiring and the offline service worker
   editor/      the code editor the apps share: CodeMirror 6 behind a small API
-  codec/       pure encoding helpers: base64, hex, UTF-8, JSON with error positions
   tsconfig/    shared TypeScript config
 scripts/       build and scaffold scripts
 docs/          decisions, reference and plans

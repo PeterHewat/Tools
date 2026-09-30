@@ -1,4 +1,4 @@
-import { AUTO_NAME_RE, deepClone } from "./utils.js";
+import { AUTO_NAME_RE } from "./utils.js";
 import { isCoarsePointer } from "./pointer.js";
 import { assignGroupHuesInPlace, pruneGroupsInPlace } from "./groups.js";
 import type { EditorState, PathEdit, SceneElement, Selection } from "./types.js";
@@ -65,9 +65,9 @@ let pending: NotifyOptions | null = null;
 /**
  * Keeps the model's invariants now, and renders on the next frame.
  *
- * A single pointer move can change state two or three times (the cursor, a drag, the hover),
- * and each change used to redraw everything at once. Deferred, they cost one render per frame
- * however many there were - and that render is a pointer-only one when all of them were.
+ * A single pointer move can change state two or three times (the cursor, a drag, the hover).
+ * Deferred, they cost one render per frame however many there were - and that render is a
+ * pointer-only one when all of them were.
  */
 function notify(options: NotifyOptions): void {
   if (!options.pointerOnly) {
@@ -100,13 +100,13 @@ function ensureDefaultNames(elements: SceneElement[]): void {
   const top = new Map<string, number>();
   const seen = new Set<string>();
   for (const el of elements) {
-    const m = AUTO_NAME_RE.exec(el.name || "");
+    const m = AUTO_NAME_RE.exec(el.name);
     if (m && m[1] === el.type) {
       top.set(el.type, Math.max(top.get(el.type) ?? 0, Number(m[2])));
     }
   }
   for (const el of elements) {
-    const name = el.name || "";
+    const name = el.name;
     const m = AUTO_NAME_RE.exec(name);
     const keep = name && !(m && (m[1] !== el.type || seen.has(name)));
     if (keep) {
@@ -167,7 +167,7 @@ export function replaceState(next: EditorState): void {
  */
 export function snapshotForUndo(): EditorState {
   const urls = state.images.map((img) => img.dataUrl);
-  const snap = deepClone({
+  const snap = structuredClone({
     ...state,
     images: state.images.map((img) => ({ ...img, dataUrl: "" })),
   });
@@ -175,10 +175,6 @@ export function snapshotForUndo(): EditorState {
     img.dataUrl = urls[i] ?? "";
   });
   return snap;
-}
-
-export function restoreSnapshot(snap: EditorState): void {
-  replaceState(snap);
 }
 
 export function findElement(id: string | null | undefined): SceneElement | undefined {
@@ -190,4 +186,20 @@ export function selectedElements(): SceneElement[] {
   return state.selection.elementIds
     .map((id) => findElement(id))
     .filter((e): e is SceneElement => !!e);
+}
+
+/**
+ * Puts each of `next` in place of the shape with the same id; `patch` changes other slices in
+ * the same update (the selection, the drawing).
+ */
+export function replaceElements(
+  next: readonly SceneElement[],
+  patch: Partial<EditorState> = {}
+): void {
+  const byId = new Map(next.map((el) => [el.id, el]));
+  setState((s) => ({ ...s, ...patch, elements: s.elements.map((x) => byId.get(x.id) ?? x) }));
+}
+
+export function clearDrawing(): void {
+  setState({ drawing: null, dropTarget: null });
 }

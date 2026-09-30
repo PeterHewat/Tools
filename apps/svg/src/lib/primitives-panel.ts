@@ -1,26 +1,27 @@
-import { getState, setState, mutate, findElement, selectOnly } from "./state.js";
+import { getState, setState, mutate, findElement, replaceElements, selectOnly } from "./state.js";
 import { setElementClosed } from "./selection-commands.js";
-import { pushUndo } from "./undo.js";
+import { pushUndo, undoStepper } from "./undo.js";
 import { DASH_STYLES, dashPreset, dashStyleOf, keepDashStyle, type DashStyle } from "./dash.js";
-import { addTurn, turnedBy } from "./turn-tally.js";
+import { addTurn, turnedBy } from "./session.js";
 import {
   MARKER_TYPES,
   MARKER_SHAPES,
   canToggleClosed,
   isClosedShape,
   elementBBox,
-  translateElement,
   gradientStops,
+  PAINT_KEYS,
+  PAINT_KINDS,
+  type PaintKind,
   keepsRotation,
   parseDash,
 } from "./model.js";
-import { escapeAttr } from "./utils.js";
+import { cleanColor, cleanUnit, escapeAttr } from "./utils.js";
 import { openColorPicker, closeColorPicker, isColorPickerOpenFor } from "./colorpicker.js";
 import { canMoveGroup, canMoveWithinParent, groupColor, groupsOf, moveGroup } from "./groups.js";
 import { flattenLines, lineOffsets, visibleRange, type ListLine } from "./list-lines.js";
-import { scaleAbout, transformElement } from "./transform.js";
 import { type BBox, type EditorState, type SceneElement } from "./types.js";
-import { rotateAll, setBoxField, unionBox } from "./selection-transform.js";
+import { rotateAll, setBoxField, unionBox, type BoxField } from "./selection-transform.js";
 import { holdSvgFocus, setSvgFocus } from "./svg-source.js";
 import {
   cachedList,
@@ -36,14 +37,19 @@ const primitiveListEl = byId("primitive-list");
 
 /* ---------- Primitives list ---------- */
 
+/**
+ * What the rows are built from: a change here rebuilds the list, and anything else is written
+ * into the rows as they stand (`updatePrimitiveListValues`), so typing is never interrupted.
+ */
 function primitiveListKeyOf(state: EditorState): string {
   const els = state.elements
     .map(
       (e) =>
-        `${e.id}:${e.type}:${groupsOf(e).join("/")}:${"closed" in e && e.closed ? 1 : 0}:${e.hidden ? 1 : 0}:${e.locked ? 1 : 0}`
+        `${e.id}:${e.type}:${groupsOf(e).join("/")}:${"closed" in e && e.closed ? 1 : 0}:${e.hidden ? 1 : 0}:${e.locked ? 1 : 0}:${e.fillStops.length}:${e.strokeStops.length}`
     )
     .join(",");
-  return `${els}|${state.selection.elementIds.join(",")}|${state.ui.expandedElementId}`;
+  const collapsed = [...collapsedGroups].join(",");
+  return `${els}|${state.selection.elementIds.join(",")}|${state.ui.expandedElementId}|${collapsed}`;
 }
 
 /** Each group's colour, from the hue it was given when it appeared (see `groupHues`). */
@@ -59,7 +65,7 @@ function membersOf(elements: readonly SceneElement[], gid: string): SceneElement
 }
 
 function swatchHtml(kind: string, color: string, alpha: number, title: string): string {
-  return `<button type="button" class="color-swatch" data-picker="${kind}" title="${title}" style="--c:${escapeAttr(color)};--a:${alpha}"><span class="color-swatch-fill"></span></button>`;
+  return `<button type="button" class="color-swatch" data-picker="${kind}" title="${title}" style="--c:${cleanColor(color)};--a:${cleanUnit(alpha)}"><span class="color-swatch-fill"></span></button>`;
 }
 
 type Option = string | [string, string];
@@ -106,9 +112,9 @@ function primitiveBodyHtml(el: SceneElement): string {
   const rows: string[] = [geometryRowsHtml(el)];
   if (el.type === "text") {
     rows.push(
-      `<div class="field-row field-row--wide"><span>Text</span><input type="text" data-field="text" value="${escapeAttr(el.text || "")}" /></div>`,
-      `<div class="field-row"><span>Size</span><input type="number" data-field="fontSize" min="1" step="1" value="${el.fontSize || 48}" /></div>`,
-      `<div class="field-row"><span>Font</span>${selectHtml("fontFamily", el.fontFamily || "sans-serif", ["sans-serif", "serif", "monospace", "cursive"])}</div>`,
+      `<div class="field-row field-row--wide"><span>Text</span><input type="text" data-field="text" value="${escapeAttr(el.text)}" /></div>`,
+      `<div class="field-row"><span>Size</span><input type="number" data-field="fontSize" min="1" step="1" value="${el.fontSize}" /></div>`,
+      `<div class="field-row"><span>Font</span>${selectHtml("fontFamily", el.fontFamily, ["sans-serif", "serif", "monospace", "cursive"])}</div>`,
       `<div class="field-row"><span>Align</span>${selectHtml("anchor", el.anchor || "start", [
         ["start", "left"],
         ["middle", "center"],
@@ -117,11 +123,21 @@ function primitiveBodyHtml(el: SceneElement): string {
     );
   }
   rows.push(
-    `<div class="field-row"><span>Stroke</span>${swatchHtml("stroke", el.stroke, el.strokeOpacity ?? 1, "Stroke color and opacity")}</div>`
+    `<div class="field-row"><span>Stroke</span>${swatchHtml("stroke", el.stroke, el.strokeOpacity, "Stroke color and opacity")}</div>`,
+    `<div class="field-row"><span>Stroke type</span>${selectHtml(
+      "strokeType",
+      el.strokeType || "solid",
+      [
+        ["solid", "Solid"],
+        ["linear", "Linear Gradient"],
+        ["radial", "Radial Gradient"],
+      ]
+    )}</div>`,
+    gradientStopsHtml(el, "stroke")
   );
   if (el.type !== "line") {
     rows.push(
-      `<div class="field-row"><label class="fill-toggle"><span>Fill</span><input type="checkbox" data-field="fillEnabled"${el.fillEnabled ? " checked" : ""} /></label>${swatchHtml("fill", el.fill ?? "#000000", el.fillOpacity ?? 1, "Fill color and opacity")}</div>`,
+      `<div class="field-row"><label class="fill-toggle"><span>Fill</span><input type="checkbox" data-field="fillEnabled"${el.fillEnabled ? " checked" : ""} /></label>${swatchHtml("fill", el.fill, el.fillOpacity, "Fill color and opacity")}</div>`,
       `<div class="field-row"><span>Fill type</span>${selectHtml(
         "fillType",
         el.fillType || "solid",
@@ -131,7 +147,7 @@ function primitiveBodyHtml(el: SceneElement): string {
           ["radial", "Radial Gradient"],
         ]
       )}</div>`,
-      gradientStopsHtml(el)
+      gradientStopsHtml(el, "fill")
     );
   }
   // Where outlines overlap - a hole, a shape crossing itself - the rule decides what is inside.
@@ -161,7 +177,7 @@ function primitiveBodyHtml(el: SceneElement): string {
   );
   if (el.type === "rect") {
     rows.push(
-      `<div class="field-row"><span>Corner X</span><input type="number" data-field="rx" min="0" step="1" value="${Math.round(el.rx || 0)}" /></div>`,
+      `<div class="field-row"><span>Corner X</span><input type="number" data-field="rx" min="0" step="1" value="${Math.round(el.rx)}" /></div>`,
       `<div class="field-row"><span>Corner Y</span><input type="number" data-field="ry" min="0" step="1" value="${Math.round(el.ry ?? el.rx ?? 0)}" /></div>`
     );
   }
@@ -175,18 +191,19 @@ function primitiveBodyHtml(el: SceneElement): string {
 }
 
 /**
- * The gradient's stops, one row each: colour, where it sits along the gradient, and a way to
+ * A paint's gradient stops, one row each: colour, where it sits along the gradient, and a way to
  * remove it. Where the gradient *runs* is not here - that is the two handles on the canvas,
  * which beat typing an angle on a touch screen and can express more than an angle could.
+ * Shown only while that paint is a gradient (styles.css, by the row's paint types).
  */
-function gradientStopsHtml(el: SceneElement): string {
-  const stops = gradientStops(el);
+function gradientStopsHtml(el: SceneElement, kind: PaintKind): string {
+  const stops = gradientStops(el, kind);
   const rows = stops
     .map(
       (stop, i) =>
         `<div class="grad-stop">
-          ${swatchHtml(`stop-${i}`, stop.color, stop.opacity, `Stop ${i + 1} colour and opacity`)}
-          <input type="number" data-field="stopOffset" data-stop="${i}" min="0" max="100" step="1"
+          ${swatchHtml(`${kind}-stop-${i}`, stop.color, stop.opacity, `Stop ${i + 1} colour and opacity`)}
+          <input type="number" data-field="${kind}StopOffset" data-stop="${i}" min="0" max="100" step="1"
             value="${Math.round(stop.offset * 100)}" aria-label="Stop ${i + 1} position (%)" />
           <span class="grad-stop-unit">%</span>
           <button type="button" class="grad-stop-del" data-stop-remove="${i}" title="Remove stop"
@@ -194,7 +211,7 @@ function gradientStopsHtml(el: SceneElement): string {
         </div>`
     )
     .join("");
-  return `<div class="field-row field-row--wide grad-only grad-stops-row"><span>Stops</span>
+  return `<div class="field-row field-row--wide ${kind}-grad-only grad-stops-row" data-paint="${kind}"><span>Stops</span>
       <div class="grad-stops">${rows}
         <button type="button" class="grad-stop-add" data-stop-add title="Add a stop">+ Stop</button>
       </div>
@@ -207,7 +224,7 @@ function isInvisible(el: SceneElement): boolean {
 
 function rgba(hex: string, a: number | undefined): string {
   const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a ?? 1})`;
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${cleanUnit(a)})`;
 }
 
 /** Circle in the row header: border = stroke color, inside = fill (transparent when none). */
@@ -222,7 +239,7 @@ function headerSwatchStyle(el: SceneElement): string {
         .map((s) => `${rgba(s.color, s.opacity)} ${Math.round(s.offset * 100)}%`)
         .join(", ");
       const angle =
-        (Math.atan2(el.gradTo.y - el.gradFrom.y, el.gradTo.x - el.gradFrom.x) * 180) / Math.PI;
+        (Math.atan2(el.fillTo.y - el.fillFrom.y, el.fillTo.x - el.fillFrom.x) * 180) / Math.PI;
       inside =
         el.fillType === "radial"
           ? `radial-gradient(${stops})`
@@ -496,7 +513,7 @@ function groupHead(state: EditorState, gid: string): HTMLElement {
 /**
  * A group's position and size - the box its members share - and a turn. Nothing of it is stored
  * on the group: each value typed is baked into the members' coordinates (selection-transform.ts),
- * so Rotate reads how far it has turned since it was chosen (turn-tally.ts), not a stored angle.
+ * so Rotate reads how far it has turned since it was chosen (session.ts), not a stored angle.
  */
 function groupFieldsHtml(box: BBox | null, turned: number): string {
   if (!box) return "";
@@ -526,7 +543,7 @@ function primitiveRow(state: EditorState, index: number): HTMLElement {
         locked: !!el.locked,
         title: el.locked ? "Unlock" : "Lock: out of reach on the canvas",
       },
-      name: el.name || "",
+      name: el.name,
       placeholder: el.type,
       extra: `<span class="acc-swatch" style="${escapeAttr(headerSwatchStyle(el))}"></span>`,
       canUp: canMoveWithinParent(state.elements, el.id, towardFront(-1)),
@@ -537,6 +554,7 @@ function primitiveRow(state: EditorState, index: number): HTMLElement {
     <div class="acc-body">${primitiveBodyHtml(el)}</div>
   `;
   li.dataset.filltype = el.fillType || "solid";
+  li.dataset.stroketype = el.strokeType || "solid";
   li.classList.toggle("acc-item--hidden", !!el.hidden);
   li.classList.toggle("acc-item--invisible", isInvisible(el));
   const swatch = li.querySelector<HTMLElement>(".acc-swatch");
@@ -576,7 +594,7 @@ function updatePrimitiveListValues(state: EditorState): void {
     const row = rowRefs.get(el.id);
     if (!row) continue;
     const { li, name } = row;
-    const label = el.name || "";
+    const label = el.name;
     if (name && name !== document.activeElement && name.value !== label) name.value = label;
     // Only what changed is written: an unchanged write still restyles the row.
     const style = headerSwatchStyle(el);
@@ -587,6 +605,8 @@ function updatePrimitiveListValues(state: EditorState): void {
     li.classList.toggle("acc-item--invisible", isInvisible(el));
     const fillType = el.fillType || "solid";
     if (li.dataset.filltype !== fillType) li.dataset.filltype = fillType;
+    const strokeType = el.strokeType || "solid";
+    if (li.dataset.stroketype !== strokeType) li.dataset.stroketype = strokeType;
     if (!li.classList.contains("expanded")) continue;
     const setSwatch = (kind: string, color: string, alpha: number) => {
       const btn = li.querySelector<HTMLElement>(`[data-picker="${kind}"]`);
@@ -594,16 +614,18 @@ function updatePrimitiveListValues(state: EditorState): void {
       btn.style.setProperty("--c", color);
       btn.style.setProperty("--a", String(alpha));
     };
-    setSwatch("stroke", el.stroke, el.strokeOpacity ?? 1);
-    setSwatch("fill", el.fill ?? "#000000", el.fillOpacity ?? 1);
-    gradientStops(el).forEach((stop, i) => {
-      setSwatch(`stop-${i}`, stop.color, stop.opacity);
-      const input = li.querySelector<HTMLInputElement>(
-        `[data-field="stopOffset"][data-stop="${i}"]`
-      );
-      if (input && input !== document.activeElement)
-        input.value = String(Math.round(stop.offset * 100));
-    });
+    setSwatch("stroke", el.stroke, el.strokeOpacity);
+    setSwatch("fill", el.fill, el.fillOpacity);
+    for (const kind of PAINT_KINDS) {
+      gradientStops(el, kind).forEach((stop, i) => {
+        setSwatch(`${kind}-stop-${i}`, stop.color, stop.opacity);
+        const input = li.querySelector<HTMLInputElement>(
+          `[data-field="${kind}StopOffset"][data-stop="${i}"]`
+        );
+        if (input && input !== document.activeElement)
+          input.value = String(Math.round(stop.offset * 100));
+      });
+    }
     if (el.type === "text") {
       setField(li, "text", el.text ?? "");
       setField(li, "fontSize", el.fontSize ?? 48);
@@ -623,6 +645,7 @@ function updatePrimitiveListValues(state: EditorState): void {
     setField(li, "linecap", el.linecap);
     setField(li, "linejoin", el.linejoin);
     setField(li, "fillType", el.fillType ?? "solid");
+    setField(li, "strokeType", el.strokeType ?? "solid");
     setField(li, "fillRule", el.fillRule ?? "nonzero");
     setField(li, "dash", (el.dash ?? []).join(" "));
     const dashStyle = dashStyleFor(el);
@@ -633,7 +656,7 @@ function updatePrimitiveListValues(state: EditorState): void {
       pattern.placeholder = dashStyle === "custom" ? "6 4" : "none";
     }
     if (el.type === "rect") {
-      setField(li, "rx", Math.round(el.rx || 0));
+      setField(li, "rx", Math.round(el.rx));
       setField(li, "ry", Math.round(el.ry ?? el.rx ?? 0));
     }
     setField(li, "markerStart", el.markerStart || "none");
@@ -732,10 +755,7 @@ function renameGroup(gid: string, raw: string): void {
   const name = raw.trim();
   const st = getState();
   if ((st.groupNames[gid] ?? "") === name) return;
-  if (!textUndoPushed) {
-    pushUndo();
-    textUndoPushed = true;
-  }
+  fieldStep();
   setState((s) => {
     const groupNames = { ...s.groupNames };
     if (name) groupNames[gid] = name;
@@ -747,7 +767,6 @@ function renameGroup(gid: string, raw: string): void {
 function toggleGroupCollapsed(gid: string): void {
   if (collapsedGroups.has(gid)) collapsedGroups.delete(gid);
   else collapsedGroups.add(gid);
-  primitiveList.invalidate();
   primitiveList.sync(getState());
 }
 
@@ -795,58 +814,25 @@ function deletePrimitive(id: string): void {
   }));
 }
 
-const GEOMETRY_FIELDS = ["geomX", "geomY", "geomW", "geomH"];
-
-/** A shape's bounding box by the names of its fields, as they show it (to two decimals). */
-function geometryBox(id: string): Record<string, number> | null {
-  const el = findElement(id);
-  const box = el ? elementBBox(el) : null;
-  if (!box) return null;
-  const round = (n: number) => Math.round(n * 100) / 100;
-  return {
-    geomX: round(box.x),
-    geomY: round(box.y),
-    geomW: round(box.width),
-    geomH: round(box.height),
-  };
-}
+/** A shape's position and size fields, by the edge of its box each one sets. */
+const GEOMETRY_FIELDS: Record<string, BoxField> = {
+  geomX: "x",
+  geomY: "y",
+  geomW: "width",
+  geomH: "height",
+};
 
 /**
- * Moves or scales a shape to put one edge of its bounding box at a typed value. Scaling runs
- * through the same matrix code that bakes imported transforms, so every shape type behaves.
+ * A spinner step on a position or size field - a shape's or a group's - lands on the next whole
+ * number, so 5.2 goes to 6 and 5, not 6.2 and 4.2. `box` is what the field showed, to two
+ * decimals; the shapes themselves change on the `change` that follows.
  */
-function applyGeometryField(id: string, field: string, value: number): void {
-  const el = findElement(id);
-  const box = el ? elementBBox(el) : null;
-  if (!el || !box) return;
-  if (field === "geomX" || field === "geomY") {
-    const dx = field === "geomX" ? value - box.x : 0;
-    const dy = field === "geomY" ? value - box.y : 0;
-    if (!dx && !dy) return;
-    pushUndo();
-    mutate(() => {
-      const target = findElement(id);
-      if (target) translateElement(target, dx, dy);
-    });
-    return;
-  }
-  const horizontal = field === "geomW";
-  const from = horizontal ? box.width : box.height;
-  // A shape with no extent in that direction (a horizontal line, say) cannot be scaled into one.
-  if (from <= 0 || value <= 0 || value === from) return;
-  const factor = value / from;
-  pushUndo();
-  setState((s) => ({
-    ...s,
-    elements: s.elements.map((x) =>
-      x.id === id
-        ? transformElement(
-            x,
-            horizontal ? scaleAbout(factor, 1, box.x, box.y) : scaleAbout(1, factor, box.x, box.y)
-          )
-        : x
-    ),
-  }));
+function stepToWhole(input: HTMLInputElement, box: BBox | null, key: BoxField): void {
+  const v = parseFloat(input.value);
+  if (!box || Number.isNaN(v)) return;
+  const from = Math.round(box[key] * 100) / 100;
+  if (v === from) return;
+  input.value = String(v > from ? Math.floor(from + 1e-9) + 1 : Math.ceil(from - 1e-9) - 1);
 }
 
 function applyToElement(id: string, fn: (el: SceneElement) => void): void {
@@ -871,7 +857,8 @@ const LIVE_TEXT = ["text", "name"];
 const LIVE_NUMBER = ["fontSize", "strokeWidth", "rx", "ry"];
 const WRAPPING_ANGLES = ["rotation"];
 
-let textUndoPushed = false;
+/** The undo step of the field being edited: one for all the typing in it. */
+let fieldStep = undoStepper();
 
 /**
  * Shapes whose Dash menu reads Custom although their numbers match a named style: chosen here so
@@ -907,10 +894,7 @@ function liveDash(input: HTMLInputElement): void {
   const dash = parseDash(clean);
   if (!dash && clean.trim()) return;
   if ((dash ?? []).join(" ") === (el.dash ?? []).join(" ")) return;
-  if (!textUndoPushed) {
-    pushUndo();
-    textUndoPushed = true;
-  }
+  fieldStep();
   mutate(() => {
     if (dash) el.dash = dash;
     else delete el.dash;
@@ -922,14 +906,8 @@ primitiveListEl.addEventListener("input", (e) => {
   const input = e.target as HTMLInputElement;
   const key = input.dataset?.groupField;
   const gid = input.closest<HTMLElement>("[data-group-id]")?.dataset.groupId;
-  // A spinner step lands on a whole number, as a shape's fields do.
   if (!key || !gid || key === "turn" || (e as InputEvent).inputType) return;
-  const box = unionBox(membersOf(getState().elements, gid));
-  const v = parseFloat(input.value);
-  if (!box || Number.isNaN(v)) return;
-  const from = Math.round(box[key as "x"] * 100) / 100;
-  if (v === from) return;
-  input.value = String(v > from ? Math.floor(from + 1e-9) + 1 : Math.ceil(from - 1e-9) - 1);
+  stepToWhole(input, unionBox(membersOf(getState().elements, gid)), key as BoxField);
 });
 
 primitiveListEl.addEventListener("change", (e) => {
@@ -953,19 +931,18 @@ primitiveListEl.addEventListener("change", (e) => {
       input.value = String(turnedBy(ids));
     }
   } else {
-    next = setBoxField(members, key as "x" | "y" | "width" | "height", v);
+    next = setBoxField(members, key as BoxField, v);
   }
   if (!next) {
     primitiveList.sync(getState());
     return;
   }
-  const byId = new Map(next.map((el) => [el.id, el]));
   pushUndo();
-  setState((s) => ({ ...s, elements: s.elements.map((x) => byId.get(x.id) ?? x) }));
+  replaceElements(next);
 });
 
 primitiveListEl.addEventListener("focusin", () => {
-  textUndoPushed = false;
+  fieldStep = undoStepper();
 });
 
 primitiveListEl.addEventListener("input", (e) => {
@@ -980,15 +957,9 @@ primitiveListEl.addEventListener("input", (e) => {
     return;
   }
 
-  // The same, for position and size: a step lands on the next whole number, so 5.2 goes to 6
-  // and 5, not 6.2 and 4.2. The shape itself changes on the `change` that follows.
-  if (!(e as InputEvent).inputType && GEOMETRY_FIELDS.includes(field)) {
-    const id = input.closest<HTMLElement>("[data-element-id]")?.dataset.elementId;
-    const box = id ? geometryBox(id) : null;
-    const v = parseFloat(input.value);
-    const from = box?.[field];
-    if (from == null || Number.isNaN(v) || v === from) return;
-    input.value = String(v > from ? Math.floor(from + 1e-9) + 1 : Math.ceil(from - 1e-9) - 1);
+  if (!(e as InputEvent).inputType && field in GEOMETRY_FIELDS) {
+    const el = findElement(input.closest<HTMLElement>("[data-element-id]")?.dataset.elementId);
+    stepToWhole(input, el ? elementBBox(el) : null, GEOMETRY_FIELDS[field]!);
     return;
   }
 
@@ -1009,10 +980,7 @@ primitiveListEl.addEventListener("input", (e) => {
   }
   const target = el as unknown as Record<string, unknown>;
   if (target[field] === value) return;
-  if (!textUndoPushed) {
-    pushUndo();
-    textUndoPushed = true;
-  }
+  fieldStep();
   mutate(() => {
     const before = { ...el };
     target[field] = value;
@@ -1040,7 +1008,6 @@ primitiveListEl.addEventListener("change", (e) => {
     });
   } else if (field === "closed") {
     setElementClosed(id, input.checked);
-    primitiveList.invalidate();
   } else if (field === "dashStyle") {
     const style = input.value as DashStyle;
     if (style === "custom") {
@@ -1071,20 +1038,30 @@ primitiveListEl.addEventListener("change", (e) => {
       el.fillType = input.value as SceneElement["fillType"];
       if (input.value !== "solid") el.fillEnabled = true;
     });
-  } else if (field === "stopOffset") {
+  } else if (field === "strokeType") {
+    applyToElement(id, (el) => {
+      el.strokeType = input.value as SceneElement["strokeType"];
+    });
+  } else if (field === "fillStopOffset" || field === "strokeStopOffset") {
     const percent = parseFloat(input.value);
     if (Number.isNaN(percent)) return;
+    const kind: PaintKind = field === "fillStopOffset" ? "fill" : "stroke";
     const index = parseInt(input.dataset.stop ?? "0", 10);
     applyToElement(id, (el) => {
-      const stops = gradientStops(el);
+      const stops = gradientStops(el, kind);
       const stop = stops[index];
       if (stop) stop.offset = Math.min(1, Math.max(0, percent / 100));
-      el.gradStops = stops;
+      el[PAINT_KEYS[kind].stops] = stops;
     });
-    primitiveList.invalidate();
-  } else if (GEOMETRY_FIELDS.includes(field)) {
-    const v = parseFloat(input.value);
-    if (!Number.isNaN(v)) applyGeometryField(id, field, v);
+  } else if (field in GEOMETRY_FIELDS) {
+    // Moves or stretches the shape to put one edge of its box at the value typed, through the
+    // same matrix code that bakes imported transforms, so every shape type behaves.
+    const next =
+      current && setBoxField([current], GEOMETRY_FIELDS[field]!, parseFloat(input.value));
+    if (next) {
+      pushUndo();
+      replaceElements(next);
+    }
   } else if (field in NUMERIC_FIELDS) {
     const v = parseFloat(input.value);
     if (Number.isNaN(v)) return;
@@ -1107,49 +1084,42 @@ primitiveListEl.addEventListener("change", (e) => {
   }
 });
 
-const PICKER_FIELDS: Record<string, [string, string]> = {
-  stroke: ["stroke", "strokeOpacity"],
-  fill: ["fill", "fillOpacity"],
-};
+/** What a swatch sets: a paint's colour (`fill`, `stroke`), or one of its stops (`fill-stop-2`). */
+function swatchTarget(picker: string): { kind: PaintKind; stop: number | null } | null {
+  const m = /^(fill|stroke)(?:-stop-(\d+))?$/.exec(picker);
+  return m ? { kind: m[1] as PaintKind, stop: m[2] == null ? null : Number(m[2]) } : null;
+}
 
-/** Writes a colour into a gradient stop, or into one of the plain colour fields. */
-function writeColor(el: SceneElement, kind: string, hex: string, alpha: number): void {
-  const stopIndex = kind.startsWith("stop-") ? parseInt(kind.slice(5), 10) : -1;
-  if (stopIndex >= 0) {
-    const stops = gradientStops(el);
-    const stop = stops[stopIndex];
+/** Writes a colour into a paint, or into one of its gradient's stops. */
+function writeColor(el: SceneElement, picker: string, hex: string, alpha: number): void {
+  const target = swatchTarget(picker);
+  if (!target) return;
+  const k = PAINT_KEYS[target.kind];
+  if (target.stop != null) {
+    const stops = gradientStops(el, target.kind);
+    const stop = stops[target.stop];
     if (!stop) return;
     stop.color = hex;
     stop.opacity = alpha;
-    el.gradStops = stops;
+    el[k.stops] = stops;
     // The first stop is also the solid colour, so turning the gradient off keeps something.
-    if (stopIndex === 0) {
-      el.fill = hex;
-      el.fillOpacity = alpha;
-    }
-    el.fillEnabled = true;
-    return;
+    if (target.stop !== 0) return;
   }
-  const keys = PICKER_FIELDS[kind];
-  if (!keys) return;
-  const target = el as unknown as Record<string, unknown>;
-  target[keys[0]] = hex;
-  target[keys[1]] = alpha;
-  if (kind !== "stroke") el.fillEnabled = true;
+  el[k.color] = hex;
+  el[k.opacity] = alpha;
+  if (target.kind === "fill") el.fillEnabled = true;
 }
 
 /** The colour and alpha a swatch currently shows. */
-function readColor(el: SceneElement, kind: string): { color: string; alpha: number } {
-  if (kind.startsWith("stop-")) {
-    const stop = gradientStops(el)[parseInt(kind.slice(5), 10)];
+function readColor(el: SceneElement, picker: string): { color: string; alpha: number } {
+  const target = swatchTarget(picker);
+  if (!target) return { color: "#000000", alpha: 1 };
+  if (target.stop != null) {
+    const stop = gradientStops(el, target.kind)[target.stop];
     return { color: stop?.color ?? "#000000", alpha: stop?.opacity ?? 1 };
   }
-  const keys = PICKER_FIELDS[kind];
-  const src = el as unknown as Record<string, unknown>;
-  return {
-    color: keys ? ((src[keys[0]] as string) ?? "#000000") : "#000000",
-    alpha: keys ? ((src[keys[1]] as number) ?? 1) : 1,
-  };
+  const k = PAINT_KEYS[target.kind];
+  return { color: el[k.color], alpha: el[k.opacity] };
 }
 
 primitiveListEl.addEventListener("click", (e) => {
@@ -1163,11 +1133,12 @@ primitiveListEl.addEventListener("click", (e) => {
   const kind = btn.dataset.picker;
   const el = id ? findElement(id) : undefined;
   if (!id || !kind || !el) return;
-  if (!kind.startsWith("stop-") && !PICKER_FIELDS[kind]) return;
+  const target = swatchTarget(kind);
+  if (!target) return;
   const start = readColor(el, kind);
-  let pushed = false;
+  const step = undoStepper();
   holdSvgFocus(true);
-  setSvgFocus({ id, field: kind.startsWith("stop-") ? "fill" : kind });
+  setSvgFocus({ id, field: target.kind });
   openColorPicker({
     anchor: btn,
     onClose: () => {
@@ -1179,10 +1150,7 @@ primitiveListEl.addEventListener("click", (e) => {
     onChange: (hex, alpha) => {
       const cur = findElement(id);
       if (!cur) return;
-      if (!pushed) {
-        pushUndo();
-        pushed = true;
-      }
+      step();
       mutate(() => writeColor(cur, kind, hex, alpha));
     },
   });
@@ -1195,9 +1163,10 @@ primitiveListEl.addEventListener("click", (e) => {
   const remove = target.closest<HTMLElement>("[data-stop-remove]");
   if (!add && !remove) return;
   const id = target.closest<HTMLElement>("[data-element-id]")?.dataset.elementId;
-  if (!id) return;
+  const kind = target.closest<HTMLElement>("[data-paint]")?.dataset.paint as PaintKind | undefined;
+  if (!id || !kind) return;
   applyToElement(id, (el) => {
-    const stops = gradientStops(el);
+    const stops = gradientStops(el, kind);
     if (add) {
       // A new stop lands midway between the last two, taking a blend of their colours.
       const a = stops[stops.length - 2]!;
@@ -1210,7 +1179,6 @@ primitiveListEl.addEventListener("click", (e) => {
     } else if (stops.length > 2) {
       stops.splice(parseInt(remove!.dataset.stopRemove ?? "0", 10), 1);
     }
-    el.gradStops = stops;
+    el[PAINT_KEYS[kind].stops] = stops;
   });
-  primitiveList.invalidate();
 });

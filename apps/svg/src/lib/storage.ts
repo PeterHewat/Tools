@@ -116,16 +116,30 @@ export async function saveDocument(doc: {
   await done(tx);
 }
 
-/** Puts the list in the given order. Ids it does not name keep their place after those it does. */
+/**
+ * Each document's place once the list is put in the order `ids` gives: those take 0 … n−1, and
+ * any it does not name (one made in another tab, say) follow in the order they had.
+ */
+export function listOrder(
+  all: readonly DocumentMeta[],
+  ids: readonly string[]
+): Map<string, number> {
+  const named = new Set(ids);
+  const rest = all.filter((m) => !named.has(m.id)).sort((a, b) => a.order - b.order);
+  const known = new Set(all.map((m) => m.id));
+  return new Map(
+    [...ids.filter((id) => known.has(id)), ...rest.map((m) => m.id)].map((id, k) => [id, k])
+  );
+}
+
+/** Puts the list in the given order (see `listOrder`). */
 export async function reorderDocuments(ids: readonly string[]): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(META, "readwrite");
   const meta = tx.objectStore(META);
   const all = await request<DocumentMeta[]>(meta.getAll());
-  for (const m of all) {
-    const at = ids.indexOf(m.id);
-    meta.put({ ...m, order: at < 0 ? ids.length + m.order : at });
-  }
+  const order = listOrder(all, ids);
+  for (const m of all) meta.put({ ...m, order: order.get(m.id)! });
   await done(tx);
 }
 
@@ -143,24 +157,18 @@ export async function deleteDocument(id: string): Promise<void> {
   await done(tx);
 }
 
-export async function renameDocument(id: string, name: string): Promise<void> {
-  const db = await openDb();
-  const tx = db.transaction(META, "readwrite");
-  const store = tx.objectStore(META);
-  const rec = await request<DocumentMeta | undefined>(store.get(id));
-  if (rec) store.put({ ...rec, name });
-  await done(tx);
-}
-
-/** Replaces a document's tags; none takes the field away. */
-export async function setDocumentTags(id: string, tags: readonly string[]): Promise<void> {
+/** Renames a document, or replaces its tags (none takes the field away). */
+export async function updateMeta(
+  id: string,
+  patch: { name: string } | { tags: readonly string[] }
+): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(META, "readwrite");
   const store = tx.objectStore(META);
   const rec = await request<DocumentMeta | undefined>(store.get(id));
   if (rec) {
-    const next: DocumentMeta = { ...rec, tags: [...tags] };
-    if (!tags.length) delete next.tags;
+    const next: DocumentMeta = { ...rec, ...patch } as DocumentMeta;
+    if ("tags" in patch && !patch.tags.length) delete next.tags;
     store.put(next);
   }
   await done(tx);

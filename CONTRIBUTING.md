@@ -16,7 +16,7 @@ bun run verify
 ## Where to change things
 
 - A new tool is `bun run new-app <slug> "Display Name"`. That creates `apps/<slug>` and an unlisted catalog entry. [`packages/catalog`](./packages/catalog/src/index.ts) is the only list of apps — the index, the build, and each page's title read it.
-- Shared browser behaviour goes in `packages/ui`. Encoding helpers go in `packages/codec`. The catalog holds data, not app code.
+- Shared browser behaviour goes in `packages/ui`. Code only one app uses stays in that app until a second one needs it. The catalog holds data, not app code.
 - In the SVG app, start with [`model.ts`](./apps/svg/src/lib/model.ts) and [`io.ts`](./apps/svg/src/lib/io.ts). Those are the document. [`interaction.ts`](./apps/svg/src/lib/interaction.ts) and [`render.ts`](./apps/svg/src/lib/render.ts) draw that document; change them when the gesture or the picture is what is wrong.
 
 ## Tests

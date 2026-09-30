@@ -59,6 +59,37 @@ export type RepairKind =
   | "literal"
   | "whitespace";
 
+/**
+ * Each kind of repair in words: `message`, why the text is not strict JSON, as the status line
+ * says it; `noun`, what one of them is called when a Fix counts them ("2 comments").
+ */
+export const REPAIRS: Record<RepairKind, { message: string; noun: string }> = {
+  comment: { message: "Comments are not allowed in JSON", noun: "comment" },
+  "trailing comma": {
+    message: "Trailing comma: nothing may follow the last item",
+    noun: "trailing comma",
+  },
+  "single quotes": {
+    message: "Strings need double quotes, not single",
+    noun: "single-quoted string",
+  },
+  "unquoted key": { message: "Keys need double quotes", noun: "unquoted key" },
+  "string escape": {
+    message: "Not a JSON string: an escape or a raw control character",
+    noun: "non-JSON string escape",
+  },
+  number: { message: "Not a JSON number", noun: "non-JSON number" },
+  "NaN or Infinity": {
+    message: "NaN and Infinity are not JSON",
+    noun: "NaN or Infinity (becomes null)",
+  },
+  literal: {
+    message: "Not a JSON literal: use true, false or null",
+    noun: "Python or JavaScript literal",
+  },
+  whitespace: { message: "A space character JSON does not allow", noun: "non-JSON space" },
+};
+
 /** Replace `start`..`end` with `text` to move one step closer to strict JSON. */
 export interface Edit extends Span {
   text: string;

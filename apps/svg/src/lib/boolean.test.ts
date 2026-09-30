@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { combine, snapFeatures } from "./boolean.js";
-import { contours, createCircle, createPath, createRect } from "./model.js";
+import { contours, createEllipse, createPath, createRect } from "./model.js";
 import type { Anchor, PathElement, SceneElement } from "./types.js";
 
 /** The area a path encloses under the non-zero rule, from its outlines traced finely. */
@@ -81,7 +81,11 @@ describe("edge cases that icons are made of", () => {
   });
 
   test("curves stay curves: two circles make a lens of two arcs", () => {
-    const out = combine([createCircle(0, 0, 10), createCircle(10, 0, 10)], "intersect", style);
+    const out = combine(
+      [createEllipse(0, 0, 10, 10), createEllipse(10, 0, 10, 10)],
+      "intersect",
+      style
+    );
     // Two sharp tips where the circles cross, and each circle's own anchor on its arc.
     expect(out!.points).toHaveLength(4);
     expect(out!.points.every((p) => p.hIn && p.hOut)).toBe(true);
@@ -125,7 +129,7 @@ describe("shapes lying on each other", () => {
   });
 
   test("a circle joined with itself is the circle", () => {
-    const out = combine([createCircle(0, 0, 10), createCircle(0, 0, 10)], "union", style);
+    const out = combine([createEllipse(0, 0, 10, 10), createEllipse(0, 0, 10, 10)], "union", style);
     expect(area(out)).toBeCloseTo(Math.PI * 100, 0);
   });
 

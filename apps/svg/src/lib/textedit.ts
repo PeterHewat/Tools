@@ -13,19 +13,16 @@
 import { findElement, flushRender, getState, mutate, setState } from "./state.js";
 import { elementBBox } from "./model.js";
 import { worldToScreen } from "./viewport.js";
-import { pushUndo } from "./undo.js";
+import { undoStepper } from "./undo.js";
 import type { TextElement } from "./types.js";
 
 let input: HTMLInputElement | null = null;
 let host: HTMLElement | null = null;
 let editingId: string | null = null;
 let originalText = "";
-let undoPushed = false;
-let onChanged: () => void = () => {};
-
-export function initTextEdit(canvasWrap: HTMLElement, changed: () => void): void {
+let editStep = undoStepper();
+export function initTextEdit(canvasWrap: HTMLElement): void {
   host = canvasWrap;
-  onChanged = changed;
 }
 
 export function isTextEditing(): boolean {
@@ -53,7 +50,7 @@ export function positionTextEditor(): void {
   // Wide enough to keep typing into, and never off the edge of the canvas.
   input.style.width = `${Math.min(Math.max(box.width * zoom + size * 4, 120), rect.width - (at.x - rect.left) - 8)}px`;
   input.style.fontSize = `${size}px`;
-  input.style.fontFamily = el.fontFamily || "sans-serif";
+  input.style.fontFamily = el.fontFamily;
   input.style.color = el.fillEnabled ? el.fill : el.stroke;
   input.style.textAlign =
     el.anchor === "middle" ? "center" : el.anchor === "end" ? "right" : "left";
@@ -76,16 +73,12 @@ function ensureInput(): HTMLInputElement {
   node.addEventListener("input", () => {
     const el = textElement(editingId);
     if (!el) return;
-    if (!undoPushed) {
-      pushUndo();
-      undoPushed = true;
-    }
+    editStep();
     mutate(() => {
       const target = textElement(editingId);
       if (target) target.text = node.value;
     });
     positionTextEditor();
-    onChanged();
   });
 
   node.addEventListener("keydown", (e) => {
@@ -117,7 +110,7 @@ export function beginTextEdit(id: string): void {
   const node = ensureInput();
   editingId = id;
   originalText = el.text;
-  undoPushed = false;
+  editStep = undoStepper();
   node.value = el.text;
   node.classList.add("visible");
   setState((s) => ({ ...s, ui: { ...s.ui, editingTextId: id } }));
@@ -156,5 +149,4 @@ export function endTextEdit(commit: boolean): void {
     ui: { ...s.ui, editingTextId: null },
   }));
   if (node === document.activeElement) node.blur();
-  onChanged();
 }
