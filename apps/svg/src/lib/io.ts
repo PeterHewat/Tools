@@ -1,4 +1,5 @@
 import {
+  DEFAULT_STROKE,
   createPath,
   createLine,
   createRect,
@@ -361,12 +362,13 @@ const PLAIN_ID = /^[A-Za-z][\w-]*$/;
 
 /**
  * An element from outside, made safe to draw: its colours are `#rrggbb` and its opacities run
- * 0..1, so neither can carry CSS or a URL into a style or a paint. Null when its id or type is
- * not one the app writes.
+ * 0..1, so neither can carry CSS or a URL into a style or a paint, and a style it lacks is the
+ * default one, as every element holds a complete set. Null when its id or type is not one the
+ * app writes.
  */
 export function cleanElement(el: SceneElement): SceneElement | null {
   if (!el || !PLAIN_ID.test(el.id) || !isElementType(el.type)) return null;
-  const out = { ...el };
+  const out = { ...structuredClone(DEFAULT_STROKE), ...el };
   out.stroke = cleanColor(el.stroke);
   out.fill = cleanColor(el.fill);
   out.strokeOpacity = cleanUnit(el.strokeOpacity);

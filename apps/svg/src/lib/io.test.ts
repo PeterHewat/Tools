@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   elementIdFromSvgId,
+  cleanElement,
   elementToSvgMarkup,
   formatExportSvg,
   groupIdFromSvgId,
@@ -1131,5 +1132,16 @@ describe("what an import leaves out", () => {
 
   test("is nothing for a file the app wrote itself", () => {
     expect(importSvgFile(formatExportSvg(doc(sampleElements()), true)).skipped).toEqual([]);
+  });
+});
+
+describe("a stored element missing a style", () => {
+  test("takes the default for it, so it can still be drawn", () => {
+    const partial = { ...createRect(0, 0, 10, 10) } as Partial<SceneElement>;
+    delete partial.strokeFrom;
+    delete partial.fillStops;
+    const el = cleanElement(partial as SceneElement)!;
+    expect(el.strokeFrom).toEqual({ x: 0, y: 0.5 });
+    expect(el.fillStops).toHaveLength(2);
   });
 });
