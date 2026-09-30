@@ -713,6 +713,12 @@ body {
   scrollbar-color: var(--scroll) transparent;
   font-size: inherit;
   line-height: normal;
+  /* No room above the sections: the section head pinned at the top sits against the panel's
+     edge, with nothing scrolling past above it. */
+  padding-top: 0;
+  /* What is scrolled into view (a field focused, a row brought up) lands below the section
+     head pinned at the top, not under it. */
+  scroll-padding-top: 44px;
 }
 
 /* Collapsible sections of the Document panel */
@@ -729,11 +735,18 @@ body {
   border-top: 1px solid var(--border);
 }
 
+/* The head of the section being scrolled through stays pinned at the top of the panel, so you
+   always see which section you are in; the next section's head pushes it off as it arrives,
+   since a sticky head never leaves its own section. Solid, so rows do not show through it. */
 .doc-section-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 4px 0;
+  background: var(--panel);
 }
 
 .doc-section-head > .icon-btn,
