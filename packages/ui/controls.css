@@ -27,7 +27,6 @@
   cursor: default;
 }
 .ui-btn--primary,
-.ui-btn.active,
 .ui-btn[aria-pressed="true"],
 .ui-btn[aria-expanded="true"] {
   background: var(--accent-dim);

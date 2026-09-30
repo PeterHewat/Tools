@@ -8,8 +8,8 @@
  */
 
 import { readStored, writeStored } from "@tools/ui";
-import { setState, refreshState } from "./state.js";
-import type { EditorState, Viewport } from "./types.js";
+import { getState, setState } from "./state.js";
+import type { EditorState, ToolName, Viewport } from "./types.js";
 
 const KEY = "svg.view";
 
@@ -17,6 +17,8 @@ export interface SessionView {
   /** The document the viewport belongs to: another document deserves its own fitted view. */
   docId: string | null;
   viewport: Viewport | null;
+  tool: ToolName;
+  finalOnly: boolean;
 }
 
 function isViewport(v: unknown): v is Viewport {
@@ -28,6 +30,7 @@ function isViewport(v: unknown): v is Viewport {
     typeof p.zoom === "number" &&
     Number.isFinite(p.panX) &&
     Number.isFinite(p.panY) &&
+    Number.isFinite(p.zoom) &&
     p.zoom > 0
   );
 }
@@ -37,14 +40,18 @@ function readSessionView(): SessionView {
   return {
     docId: typeof stored.docId === "string" ? stored.docId : null,
     viewport: isViewport(stored.viewport) ? stored.viewport : null,
+    tool: ["select", "pen", "rect", "ellipse", "text"].includes(stored.tool ?? "")
+      ? stored.tool!
+      : "select",
+    finalOnly: stored.finalOnly === true,
   };
 }
 
 /** Read once, at load, before the first render would overwrite what it holds with a fitted view. */
 export const savedView = readSessionView();
 
-export function writeSessionView(patch: Partial<SessionView>): void {
-  writeStored(KEY, { ...readSessionView(), ...patch }, "session");
+export function writeSessionView(view: SessionView): void {
+  writeStored(KEY, view, "session");
 }
 
 /* ---------- Modifier switches ---------- */
@@ -53,27 +60,13 @@ export function writeSessionView(patch: Partial<SessionView>): void {
  * Sticky stand-ins for modifier keys, for a pointer with no keyboard to hold them on.
  *
  * Shift adds to a selection and Alt aligns to other shapes; a finger has neither. These are the
- * same two behaviours as switches that stay on until switched off. They belong to the session,
- * not the drawing: they are kept out of the editor state so that undo never flips them back.
+ * same two behaviours as switches that stay on until switched off. They belong to EditorSession,
+ * so document history never flips them back.
  */
 
-let selectMore = false;
-let alignSnap = false;
-
 /** Taps add shapes to the selection, or take them out, instead of replacing it (Shift). */
-export function isSelectMore(): boolean {
-  return selectMore;
-}
-
 export function setSelectMore(on: boolean): void {
-  if (selectMore === on) return;
-  selectMore = on;
-  refreshState();
-}
-
-/** Points snap to other shapes' points, as with Alt held, instead of to the grid. */
-export function isAlignSnap(): boolean {
-  return alignSnap;
+  if (getState().selectMore !== on) setState({ selectMore: on });
 }
 
 /**
@@ -82,26 +75,24 @@ export function isAlignSnap(): boolean {
  * touching either switch.
  */
 export function setAlignSnap(on: boolean): void {
-  if (alignSnap === on) return;
-  alignSnap = on;
-  setState((s) => (on && s.grid.snap ? { ...s, grid: { ...s.grid, snap: false } } : { ...s }));
+  if (getState().alignSnap === on) return;
+  setState((s) => ({
+    ...s,
+    alignSnap: on,
+    grid: on && s.grid.snap ? { ...s.grid, snap: false } : s.grid,
+  }));
 }
 
 /** Grid snap, which belongs to the document: see `setAlignSnap`. */
 export function setGridSnap(on: boolean): void {
-  if (on) alignSnap = false;
+  // State normalization clears shape snap when grid snap is enabled.
   setState((s) => ({ ...s, grid: { ...s.grid, snap: on } }));
 }
 
 /**
- * Lets the switches go when the drawing changed under them, before it is drawn: adding to a
- * selection that has gone empty is starting a new one, and a document opened (or an undo) with
- * grid snap on keeps it, so snap to shapes lets go.
+ * The Rotate field counts from zero again when another selection is chosen.
  */
-export function followState(state: EditorState): void {
-  if (!state.selection.elementIds.length) selectMore = false;
-  if (state.grid.snap) alignSnap = false;
-  // A Rotate field counts from 0 again for whatever is chosen next.
+export function followSelection(state: EditorState): void {
   const selection = keyOf(state.selection.elementIds);
   if (selection !== lastSelection) {
     lastSelection = selection;

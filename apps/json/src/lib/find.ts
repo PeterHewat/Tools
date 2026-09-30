@@ -1,4 +1,4 @@
-import { byId } from "@tools/ui";
+import { byId, isPressed, setPressed } from "@tools/ui";
 import type { Editor } from "@tools/editor";
 import { findInText, MAX_MATCHES } from "./search.js";
 
@@ -16,9 +16,6 @@ export function bindFind(
   const findCase = byId<HTMLButtonElement>("find-case");
   const findPrev = byId<HTMLButtonElement>("find-prev");
   const findNext = byId<HTMLButtonElement>("find-next");
-  const isPressed = (button: HTMLElement) => button.getAttribute("aria-pressed") === "true";
-  const setPressed = (button: HTMLElement, on: boolean) =>
-    button.setAttribute("aria-pressed", String(on));
 
   // ---------- Find ----------
 

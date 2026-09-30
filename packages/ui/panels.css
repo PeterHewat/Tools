@@ -189,7 +189,7 @@
 
 /* The item that is in effect: the zoom level shown, say. */
 .ui-menu-item[aria-current="true"],
-.ui-menu-item.active {
+[aria-selected="true"] > .ui-menu-item {
   background: var(--accent-dim);
 }
 

@@ -11,7 +11,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { APPS } from "../packages/catalog/src/index.ts";
 import { siteBase } from "../packages/catalog/src/site.ts";
-import { SITE_WORKER, readTree, siteWorker } from "../packages/ui/src/site-worker.ts";
+import { SITE_WORKER, readTree, siteWorker } from "@tools/ui/site-worker";
 
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "dist");

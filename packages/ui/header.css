@@ -151,7 +151,7 @@
 
 /* The one whose border shows (hovered, focused, pressed, open, the tool in use) is lifted above
    its neighbour, or the next button would cover its right edge. */
-.ui-seg > :is(:hover, :focus-visible, [aria-pressed="true"], [aria-expanded="true"], .active),
+.ui-seg > :is(:hover, :focus-visible, [aria-pressed="true"], [aria-expanded="true"]),
 .ui-seg > * > button:is(:hover, :focus-visible, [aria-expanded="true"]) {
   position: relative;
   z-index: 1;

@@ -31,7 +31,7 @@ import { canCombine } from "./boolean.js";
 import { pickedPoints } from "./points.js";
 import { worldToScreen } from "./viewport.js";
 import { HIT_R_COARSE, HIT_R_FINE, isCoarsePointer } from "./pointer.js";
-import { isSelectMore, setSelectMore } from "./session.js";
+import { setSelectMore } from "./session.js";
 import { HANDLE_RADIUS, outerHandlePoints, selectionHandlePoints } from "./handles.js";
 import {
   alignableCount,
@@ -439,7 +439,7 @@ function selectionActions(state: EditorState): Action[] {
   }
 
   const ids = new Set(state.selection.elementIds);
-  const more = isSelectMore();
+  const more = state.selectMore;
   out.unshift({
     // Shift for a finger: while on, a tap adds a shape to the selection or takes it out.
     key: "select-more",
@@ -572,7 +572,6 @@ function updateButtons(): void {
       btn.dataset.icon = action.icon;
     }
     btn.classList.toggle("action-danger", !!action.danger);
-    btn.classList.toggle("active", !!action.pressed);
     if (action.pressed === undefined) btn.removeAttribute("aria-pressed");
     else btn.setAttribute("aria-pressed", String(action.pressed));
     if (action.menu) btn.setAttribute("aria-haspopup", "true");

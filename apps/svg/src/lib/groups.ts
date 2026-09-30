@@ -23,6 +23,11 @@ export function groupsOf(el: SceneElement | undefined): readonly string[] {
   return el?.groups ?? [];
 }
 
+/** All members of a group, including its nested groups. */
+export function membersOf(elements: readonly SceneElement[], gid: string): SceneElement[] {
+  return elements.filter((el) => groupsOf(el).includes(gid));
+}
+
 /** The outermost group of an element, which is what selecting it selects. */
 function outerGroup(el: SceneElement | undefined): string | null {
   return groupsOf(el)[0] ?? null;

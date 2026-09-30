@@ -5,20 +5,22 @@ import {
   byId,
   copyText,
   downloadText,
+  formatBytes,
   onFileDrop,
   pickFiles,
   readStored,
   registerServiceWorker,
+  setPressed,
   writeStored,
 } from "@tools/ui";
 import { createEditor, type LineLexer } from "@tools/editor";
 import { applyEdits, REPAIRS, type Edit, type JsonNode, type RepairKind } from "./lib/ast.js";
 import { BLOCK_COMMENT, highlightLine } from "./lib/highlight.js";
 import { lexCsvSheet, lexTypeScript, lexYaml } from "./lib/lexers.js";
-import { toCsv, type Converted, type ExactCandidate } from "./lib/convert.js";
+import { toCsv, type Converted } from "./lib/convert.js";
 import { createAnalysis, type Analysis } from "./lib/analysis.js";
-import type { ExportKind } from "./lib/exports.js";
-import { excerptAt, formatBytes } from "./lib/inspect.js";
+import type { ExportKind, ExportResult } from "./lib/exports.js";
+import { excerptAt } from "./lib/inspect.js";
 import { unwrapString, wrapAsString } from "./lib/nested.js";
 import { positionAt } from "./lib/lines.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
@@ -85,6 +87,7 @@ const editor = createEditor(codeEl, {
     textCache = null;
     find.changed();
     droppedDraft = false;
+    draftChanged = true;
     if (!user) return;
     stale = true;
     validateSoon();
@@ -113,11 +116,8 @@ type Indent = "2" | "4" | "tab";
 
 let fileName = "data.json";
 const analysis = createAnalysis();
-let conversions: Analysis["exports"] = null;
-let candidates: ExactCandidate[] = [];
-/** The parsed document while the text is strict JSON; null otherwise. */
-let doc: Analysis["doc"] = null;
-/** Typed since the last parse: `doc`'s positions may be off until it is parsed again. */
+let currentAnalysis: Analysis = analysis.read("");
+/** Typed since the last parse: the analysis's positions may be off until it is parsed again. */
 let stale = false;
 /** The editor's text, read once per change: a long document is costly to join into a string. */
 let textCache: string | null = null;
@@ -128,12 +128,10 @@ let indentChoice: Indent = "2";
 let pathStyle: PathStyle = "js";
 /** Syntax colours in every view: a setting, on until someone turns it off. */
 let colours = true;
-/** Why the text is not JSON, and the edits that would make it JSON when there are some. */
-let fault: Analysis["fault"] = null;
 
 const find = bindFind([editor, exportView], () => ({
   editor: mode === "json" ? editor : exportView,
-  text: mode === "json" ? documentText() : (exported ?? ""),
+  text: mode === "json" ? documentText() : (exportedText() ?? ""),
   mode,
 }));
 
@@ -151,6 +149,8 @@ const EXACT_KEY = "tools.json.exact";
 const MAX_SAVED = 2_000_000;
 /** The tab reloaded after dropping a draft too large to keep: said until the next change. */
 let droppedDraft = false;
+/** Only text changes write the draft; settings changes leave it alone. */
+let draftChanged = true;
 
 interface Prefs {
   indent: Indent;
@@ -184,7 +184,7 @@ function restore(): void {
   showOptions();
 }
 
-function save(): void {
+function savePrefs(): void {
   const prefs: Prefs = {
     indent: indentChoice,
     sortKeys: isOn(sortKeys),
@@ -193,15 +193,20 @@ function save(): void {
     colours,
   };
   writeStored(PREFS_KEY, prefs);
+}
+
+function saveDraft(): void {
+  if (!draftChanged) return;
+  draftChanged = false;
   const text = documentText();
   // False while the empty editor still stands for a draft too large to keep: every reload says so.
   writeStored(DRAFT_KEY, text.length > MAX_SAVED || droppedDraft ? false : text, "session");
+}
+
+function saveExactChoices(): void {
   writeStored(EXACT_KEY, [...exactPlaces], "session");
 }
 
-/** Toggle buttons keep their state in aria-pressed, which is also what they are styled by. */
-const setPressed = (button: HTMLElement, on: boolean) =>
-  button.setAttribute("aria-pressed", String(on));
 /** Switches (settings that are on or off) keep theirs in aria-checked, as role="switch" has it. */
 const isOn = (button: HTMLElement) => button.getAttribute("aria-checked") === "true";
 const setOn = (button: HTMLElement, on: boolean) => button.setAttribute("aria-checked", String(on));
@@ -245,7 +250,9 @@ function selectInDocument(start: number, end: number, focus = true): void {
 
 /** The value under the caret, while the document is valid and parsed from the text as it is. */
 function atCursor(): ReturnType<typeof nodeAt> | null {
-  return doc && !stale ? nodeAt(doc.root, editor.selection.from) : null;
+  return currentAnalysis.doc && !stale
+    ? nodeAt(currentAnalysis.doc.root, editor.selection.from)
+    : null;
 }
 
 /** The values from the root down to the one under the caret. */
@@ -263,15 +270,11 @@ interface ExportSpec {
 
 // ---------- CSV: every array as a table ----------
 
-/** The CSV view's tables as last shown, for the gutter, Copy and Export. */
-let sheet: CsvSheet | null = null;
-/** The JSON line each line of the CSV view comes from (see `showExport`). */
-let sheetLabels: (number | null)[] | null = null;
-
 const rows = (n: number) => plural(n, "row");
 
 /** With several tables, the one the CSV view's cursor is in: Copy and Export take it. */
 function csvSection(): CsvSheet["sections"][number] | undefined {
+  const sheet = conversion?.sheet;
   if (mode !== "csv" || !sheet || sheet.sections.length < 2) return undefined;
   const line = exportView.position(exportView.selection.from).line - 1;
   return sheet.sections.find((s) => line <= s.lastLine) ?? sheet.sections.at(-1);
@@ -279,10 +282,11 @@ function csvSection(): CsvSheet["sections"][number] | undefined {
 
 /** Says what the tables are, and which one Copy and Export take. */
 function showCsvNote(): void {
-  const shown = mode === "csv" && !!sheet && exported !== null;
+  const sheet = conversion?.sheet;
+  const shown = mode === "csv" && !!sheet && exportedText() !== null;
   csvBar.classList.toggle("hidden", !shown);
   if (!shown) return;
-  const numbered = sheetLabels ? ", numbered by their line in the JSON" : "";
+  const numbered = conversion?.lineLabels ? ", numbered by their line in the JSON" : "";
   const [only] = sheet!.sections;
   const section = csvSection();
   if (!section) {
@@ -306,6 +310,7 @@ let exactShown = "";
 
 /** One toggle per place with a few strings, for Types and Schema. */
 function showExactBar(): void {
+  const candidates = conversion?.candidates ?? [];
   exactBar.classList.toggle("hidden", !candidates.length);
   const key = JSON.stringify(candidates);
   if (key !== exactShown) {
@@ -321,7 +326,7 @@ function showExactBar(): void {
         b.addEventListener("click", () => {
           if (!exactPlaces.delete(place)) exactPlaces.add(place);
           showExport();
-          save();
+          saveExactChoices();
         });
         return b;
       })
@@ -364,43 +369,38 @@ const EXPORTS: Record<ExportKind, ExportSpec> = {
 
 const isExport = (m: ViewMode): m is ExportKind => m in EXPORTS;
 
-/** What the export view shows, or null when it shows a message instead. */
-let exported: string | null = null;
+/** One conversion owns its text, candidates, tables and line mapping together. */
+let conversion: ExportResult | null = null;
+
+function exportedText(): string | null {
+  return conversion?.result.ok ? conversion.result.text : null;
+}
 /** The text last put in the export view, kept so it is only replaced when it changes. */
 let exportShown = "";
 
 function showExport(): void {
-  candidates = [];
   if (!isExport(mode)) {
+    conversion = null;
     exportEl.classList.add("hidden");
     exportMessage.classList.add("hidden");
     showCsvNote();
     showExactBar();
     return;
   }
-  let result: Converted;
-  if (!doc) {
-    result = {
-      ok: false,
-      message: fault
-        ? "Not valid JSON: switch to the JSON view to fix it."
-        : "Nothing to convert yet.",
-    };
-  } else {
-    const converted = conversions!.convert(mode, { exact: exactPlaces, pathStyle });
-    result = converted.result;
-    candidates = converted.candidates;
-    sheet = converted.sheet;
-    sheetLabels = converted.lineLabels;
-  }
-  exported = result.ok ? result.text : null;
+  conversion = currentAnalysis.exports?.convert(mode, { exact: exactPlaces, pathStyle }) ?? null;
+  const result: Converted = conversion?.result ?? {
+    ok: false,
+    message: currentAnalysis.fault
+      ? "Not valid JSON: switch to the JSON view to fix it."
+      : "Nothing to convert yet.",
+  };
   exportEl.classList.toggle("hidden", !result.ok);
   exportMessage.classList.toggle("hidden", result.ok);
   showCsvNote();
   showExactBar();
   if (result.ok) {
     exportView.setColours(colours ? EXPORTS[mode].lexer : null);
-    exportView.setLineLabels(mode === "csv" ? sheetLabels : null);
+    exportView.setLineLabels(mode === "csv" ? (conversion?.lineLabels ?? null) : null);
     // Only when it changed, and only what changed, so the reader keeps their place.
     if (exportShown !== result.text) {
       exportShown = result.text;
@@ -455,7 +455,8 @@ function validate(): void {
   clearTimeout(pending);
   const text = documentText();
   const empty = !text.trim();
-  ({ doc, fault, exports: conversions } = analysis.read(text));
+  currentAnalysis = analysis.read(text);
+  const { doc, fault } = currentAnalysis;
   stale = false;
   minified = !!doc && !text.includes("\n");
   showLayout(text);
@@ -521,14 +522,19 @@ function validate(): void {
         ? "This looks like CSV: each row can become an object."
         : "";
   }
-  editor.setError(fault && { from: fault.position.offset, message: fault.message });
+  editor.setError(
+    fault && {
+      from: fault.position.offset,
+      message: fault.message,
+    }
+  );
   find.changed();
   find.refresh();
   showExport();
   showOptions();
   showViewControls();
   showCursor();
-  save();
+  saveDraft();
 }
 
 let pending = 0;
@@ -562,23 +568,30 @@ function replaceText(text: string): void {
  * the text has the shape of: several lines can only be formatted, one only minified.
  */
 function showLayout(text: string): void {
-  formatBtn.disabled = minifyBtn.disabled = !doc;
+  formatBtn.disabled = minifyBtn.disabled = !currentAnalysis.doc;
   const oneLine = !text.includes("\n");
   const laidOut =
-    !!doc &&
-    text === printJson(doc.root, { indent: oneLine ? 0 : indent(), sortKeys: isOn(sortKeys) });
+    !!currentAnalysis.doc &&
+    text ===
+      printJson(currentAnalysis.doc.root, {
+        indent: oneLine ? 0 : indent(),
+        sortKeys: isOn(sortKeys),
+      });
   setPressed(formatBtn, laidOut && !oneLine);
   setPressed(minifyBtn, laidOut && oneLine);
 }
 
 function rewrite(minify: boolean): void {
-  if (!doc) return;
-  replaceText(printJson(doc.root, { indent: minify ? 0 : indent(), sortKeys: isOn(sortKeys) }));
+  if (!currentAnalysis.doc) return;
+  replaceText(
+    printJson(currentAnalysis.doc.root, { indent: minify ? 0 : indent(), sortKeys: isOn(sortKeys) })
+  );
 }
 
 /** Makes almost-JSON strict in place, keeping the layout: only the offending bits change. */
 function fix(): void {
-  if (fault?.edits) replaceText(applyEdits(documentText(), fault.edits));
+  if (currentAnalysis.fault?.edits)
+    replaceText(applyEdits(documentText(), currentAnalysis.fault.edits));
 }
 
 /** The text, read as CSV, replaced by the JSON array of its rows (Ctrl+Z takes it back). */
@@ -652,7 +665,7 @@ function setMode(next: ViewMode): void {
     showPath(shownPath);
   }
   showViewControls();
-  save();
+  savePrefs();
 }
 
 /** Controls that act on one view: disabled, not hidden, while another is shown. */
@@ -673,7 +686,7 @@ function showFoldControls(): void {
  */
 function showFileControls(): void {
   const empty = !documentText().trim();
-  copyBtn.disabled = downloadBtn.disabled = isExport(mode) ? exported === null : empty;
+  copyBtn.disabled = downloadBtn.disabled = isExport(mode) ? exportedText() === null : empty;
   const section = csvSection();
   const what = section
     ? `CSV of ${formatPath(section.table.path)}`
@@ -687,15 +700,16 @@ function showFileControls(): void {
 }
 
 function goToError(): void {
-  if (!fault) return;
+  if (!currentAnalysis.fault) return;
   if (mode !== "json") setMode("json");
-  const { offset } = fault.position;
+  const { offset } = currentAnalysis.fault.position;
   selectInDocument(offset, offset + 1);
 }
 
 async function load(file: File): Promise<void> {
   fileName = file.name;
   exactPlaces.clear();
+  saveExactChoices();
   const text = await file.text();
   const json = isCsvFile(file) ? csvToJson(text, indent()) : null;
   if (json) fileName = file.name.replace(/\.(csv|tsv)$/i, ".json");
@@ -715,8 +729,9 @@ function outgoing(): { text: string; name: string; mime: string } {
     const path = section.table.path.join("-").replace(/[^\w.-]+/g, "_");
     if (csv.ok) return { text: csv.text, name: `${base}-${path || "root"}.csv`, mime: "text/csv" };
   }
-  if (isExport(mode) && exported !== null) {
-    return { text: exported, name: base + EXPORTS[mode].extension, mime: "text/plain" };
+  const text = exportedText();
+  if (isExport(mode) && text !== null) {
+    return { text, name: base + EXPORTS[mode].extension, mime: "text/plain" };
   }
   return { text: documentText(), name: fileName, mime: "application/json" };
 }
@@ -749,22 +764,23 @@ for (const b of indentButtons) {
   b.addEventListener("click", () => {
     indentChoice = b.dataset.indent as Indent;
     editor.setIndent(indent());
-    if (doc && !minified) rewrite(false);
+    if (currentAnalysis.doc && !minified) rewrite(false);
     else validate();
+    savePrefs();
   });
 }
 sortKeys.addEventListener("click", () => {
   setOn(sortKeys, !isOn(sortKeys));
-  if (doc) rewrite(minified);
+  if (currentAnalysis.doc) rewrite(minified);
   showLayout(documentText());
   showOptions();
-  save();
+  savePrefs();
 });
 coloursBtn.addEventListener("click", () => {
   colours = !colours;
   showColours();
   showOptions();
-  save();
+  savePrefs();
 });
 for (const b of pathStyleButtons) {
   b.addEventListener("click", () => {
@@ -772,7 +788,7 @@ for (const b of pathStyleButtons) {
     showOptions();
     showPath(shownPath);
     if (mode === "csv") showExport();
-    save();
+    savePrefs();
   });
 }
 const settingsMenu = bindMenu(optionsBtn, options, {

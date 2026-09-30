@@ -1,7 +1,38 @@
 import { describe, expect, it } from "bun:test";
-import { createInitialState, replaceState, snapshotDocument, getState } from "./state.js";
-import { DEFAULT_STROKE } from "./model.js";
+import {
+  createInitialState,
+  replaceDocument,
+  replaceState,
+  selectOnly,
+  snapshotDocument,
+  getState,
+} from "./state.js";
+import { createDocument } from "./project-file.js";
+import { createRect, DEFAULT_STROKE } from "./model.js";
 import type { ReferenceImage } from "./types.js";
+
+it("opening a document keeps tab controls but clears its previous editing UI", () => {
+  const rect = createRect(0, 0, 10, 10);
+  replaceState({
+    ...createInitialState(),
+    elements: [rect],
+    selection: selectOnly([rect.id]),
+    selectMore: true,
+    alignSnap: true,
+    tool: "pen",
+    finalOnly: true,
+    drawing: { activePathId: rect.id },
+  });
+  replaceDocument(createDocument());
+  expect(getState().tool).toBe("pen");
+  expect(getState().finalOnly).toBe(true);
+  expect(getState().alignSnap).toBe(true);
+  expect(getState().selectMore).toBe(false);
+  expect(getState().selection.elementIds).toEqual([]);
+  expect(getState().drawing).toBeNull();
+  expect(getState().elements).toEqual([]);
+  replaceState(createInitialState());
+});
 
 function image(dataUrl: string): ReferenceImage {
   return {

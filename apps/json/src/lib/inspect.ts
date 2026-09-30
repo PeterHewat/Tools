@@ -29,9 +29,3 @@ export function excerptAt(text: string, position: TextPosition, width = 80): Exc
   }
   return { line: line.replace(/\t/g, " "), caret: " ".repeat(Math.max(0, col)) + "^" };
 }
-
-export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(1)} MB`;
-}

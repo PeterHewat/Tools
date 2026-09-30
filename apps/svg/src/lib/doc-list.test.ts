@@ -6,7 +6,6 @@ import {
   markHtml,
   matchesSearch,
   searchWords,
-  sizeText,
   statsText,
   tagsHit,
 } from "./doc-list.js";
@@ -49,16 +48,6 @@ describe("stats", () => {
     expect(
       statsText(docStats({ elements: [], images: [], artboard: { width: 64, height: 64 } }))
     ).toBe("0 shapes · 64 × 64");
-  });
-});
-
-describe("file size", () => {
-  test("bytes, then kilobytes and megabytes to one decimal", () => {
-    expect(sizeText(850)).toBe("850B");
-    expect(sizeText(6861)).toBe("6.7KB");
-    expect(sizeText(2048)).toBe("2KB");
-    expect(sizeText(3 * 1024 * 1024)).toBe("3MB");
-    expect(sizeText(1024 * 1024 - 10)).toBe("1MB");
   });
 });
 

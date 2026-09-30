@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { positionAt } from "./lines.js";
-import { excerptAt, formatBytes } from "./inspect.js";
+import { excerptAt } from "./inspect.js";
 
 describe("excerptAt", () => {
   test("puts the caret under the error's column", () => {
@@ -22,10 +22,4 @@ describe("excerptAt", () => {
     expect(line.startsWith("…")).toBe(true);
     expect(line[caret.length - 1]).toBe("x");
   });
-});
-
-test("formatBytes reads sizes", () => {
-  expect(formatBytes(512)).toBe("512 B");
-  expect(formatBytes(1536)).toBe("1.5 KB");
-  expect(formatBytes(3 * 1024 * 1024)).toBe("3.0 MB");
 });

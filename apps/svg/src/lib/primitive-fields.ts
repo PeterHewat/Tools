@@ -17,7 +17,7 @@ import {
 } from "./model.js";
 import { escapeAttr } from "./utils.js";
 import { openColorPicker, closeColorPicker, isColorPickerOpenFor } from "./colorpicker.js";
-import { groupsOf } from "./groups.js";
+import { membersOf } from "./groups.js";
 import type { BBox, SceneElement } from "./types.js";
 import { rotateAll, setBoxField, unionBox, type BoxField } from "./selection-transform.js";
 import { holdSvgFocus, setSvgFocus } from "./svg-source.js";
@@ -180,8 +180,6 @@ function gradientStopsHtml(el: SceneElement, kind: PaintKind): string {
 
 /** Field sessions, geometry, paint controls and undo live together; list rendering stays outside. */
 export function bindPrimitiveFields(primitiveListEl: HTMLElement, refresh: () => void): void {
-  const membersOf = (elements: readonly SceneElement[], gid: string) =>
-    elements.filter((e) => groupsOf(e).includes(gid));
   /** A shape's position and size fields, by the edge of its box each one sets. */
   const GEOMETRY_FIELDS: Record<string, BoxField> = {
     geomX: "x",

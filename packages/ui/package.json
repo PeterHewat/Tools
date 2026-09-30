@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./vite": "./src/vite.ts",
+    "./site-worker": "./src/site-worker.ts",
     "./theme": "./src/theme.ts",
     "./icons": "./src/icons.ts",
     "./base.css": "./base.css",

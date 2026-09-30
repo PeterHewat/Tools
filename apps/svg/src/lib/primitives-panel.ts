@@ -4,7 +4,14 @@ import { bindPrimitiveFields, dashStyleFor, primitiveBodyHtml } from "./primitiv
 import { turnedBy } from "./session.js";
 import { elementBBox, gradientStops, PAINT_KINDS } from "./model.js";
 import { escapeAttr } from "./utils.js";
-import { canMoveGroup, canMoveWithinParent, groupColor, groupsOf, moveGroup } from "./groups.js";
+import {
+  canMoveGroup,
+  canMoveWithinParent,
+  groupColor,
+  groupsOf,
+  membersOf,
+  moveGroup,
+} from "./groups.js";
 import { flattenLines, lineOffsets, visibleRange, type ListLine } from "./list-lines.js";
 import { type BBox, type EditorState, type SceneElement } from "./types.js";
 import { unionBox } from "./selection-transform.js";
@@ -43,11 +50,6 @@ function groupColors(state: EditorState): Map<string, string> {
   const out = new Map<string, string>();
   for (const [gid, hue] of Object.entries(state.groupHues)) out.set(gid, groupColor(hue));
   return out;
-}
-
-/** Every element in group `gid`, at any depth. */
-function membersOf(elements: readonly SceneElement[], gid: string): SceneElement[] {
-  return elements.filter((e) => groupsOf(e).includes(gid));
 }
 
 function isInvisible(el: SceneElement): boolean {

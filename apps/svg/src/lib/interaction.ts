@@ -26,7 +26,7 @@ import { createPinch } from "./pinch.js";
 import { screenToWorld, zoomAt } from "./viewport.js";
 import { dist } from "./utils.js";
 import { pushUndo } from "./undo.js";
-import { addTurn, isAlignSnap, isSelectMore } from "./session.js";
+import { addTurn } from "./session.js";
 import {
   type Anchor,
   type EditorState,
@@ -225,7 +225,7 @@ function guideAt(
   points: (s: EditorState) => readonly Point[]
 ): number {
   const s = getState();
-  if (isAlignSnap() || e.altKey) {
+  if (getState().alignSnap || e.altKey) {
     let at = raw;
     let best = ALIGN_TOL_PX / s.viewport.zoom;
     for (const p of points(s)) {
@@ -426,7 +426,7 @@ function pointerWorld(e: PointerEvent): Point {
   // While dragging a curve handle, Alt breaks its symmetry instead of aligning. The align
   // switch has no second meaning to give way to, so it aligns whatever is being dragged.
   const alignOn =
-    isAlignSnap() ||
+    getState().alignSnap ||
     (e.altKey &&
       !(drag?.type === "handle" && drag.kind !== "anchor") &&
       !(drag?.type === "resize" && drag.role === "corner"));
@@ -612,7 +612,7 @@ function onPointerDown(e: PointerEvent): void {
         drag = null;
         return;
       }
-      const additive = e.shiftKey || isSelectMore();
+      const additive = e.shiftKey || getState().selectMore;
       const wasSelected = st.selection.elementIds.includes(elId);
       const members = clickTarget(st.elements, new Set(st.selection.elementIds), elId).ids;
       // Pressing a shape already selected keeps the selection, so it can be dragged; if the
@@ -664,7 +664,8 @@ function onPointerDown(e: PointerEvent): void {
       arm(e, marquee, { undo: false, grab: false });
     }
     pointMarquee = !!st.selection.pathEdit;
-    if (!e.shiftKey && !isSelectMore() && !pointMarquee) setState({ selection: selectOnly() });
+    if (!e.shiftKey && !getState().selectMore && !pointMarquee)
+      setState({ selection: selectOnly() });
     return;
   }
 
@@ -734,7 +735,7 @@ function startSelectionDrag(e: PointerEvent, role: string, world: Point): void {
  */
 function pointGesture(e: PointerEvent, st: EditorState, ref: PointRef, world: Point): boolean {
   const sel = st.selection;
-  const additive = e.shiftKey || isSelectMore();
+  const additive = e.shiftKey || getState().selectMore;
   if (additive && sel.pathEdit && sel.elementIds.includes(ref.pathId)) {
     setState({ selection: togglePoint(sel, ref) });
     return true;
@@ -863,7 +864,7 @@ function onPointerMove(e: PointerEvent): void {
     const d = drag;
     let dx = world.x - d.start.x;
     let dy = world.y - d.start.y;
-    if (st.grid.snap && !e.altKey && !isAlignSnap()) {
+    if (st.grid.snap && !e.altKey && !getState().alignSnap) {
       // Snap the top-left of the first dragged shape to the grid.
       const firstBase = d.bases[d.ids[0] ?? ""];
       const first = firstBase ? elementBBox(firstBase) : null;
@@ -874,7 +875,7 @@ function onPointerMove(e: PointerEvent): void {
       }
     }
     // With snapping on, an edge or the centre of what is dragged lines up with a guide.
-    if (st.grid.snap || e.altKey || isAlignSnap()) {
+    if (st.grid.snap || e.altKey || getState().alignSnap) {
       const box = unionBox(Object.values(d.bases));
       if (box) {
         const fit = boxToGuides(
@@ -1052,7 +1053,7 @@ function onPointerUp(e: PointerEvent): void {
       }),
     });
   }
-  if (clickedEmpty && !e.shiftKey && !isSelectMore()) setState({ selection: selectOnly() });
+  if (clickedEmpty && !e.shiftKey && !getState().selectMore) setState({ selection: selectOnly() });
   if (clickedSelected) {
     const s = getState();
     const inner = drillTarget(s.elements, new Set(s.selection.elementIds), clickedSelected);
@@ -1076,7 +1077,7 @@ function onPointerUp(e: PointerEvent): void {
       ? pointsInMarquee(s0.elements, new Set(s0.selection.elementIds), drag)
       : [];
     if (refs.length) {
-      const additive = e.shiftKey || isSelectMore();
+      const additive = e.shiftKey || getState().selectMore;
       const next = additive ? [...pickedPoints(s0.selection), ...refs] : refs;
       setState({ selection: pickPoints(s0.selection, next) });
       clearDrawing();
@@ -1087,7 +1088,9 @@ function onPointerUp(e: PointerEvent): void {
     setState((s) => ({
       ...s,
       selection: selectOnly(
-        e.shiftKey || isSelectMore() ? [...new Set([...s.selection.elementIds, ...ids])] : ids
+        e.shiftKey || getState().selectMore
+          ? [...new Set([...s.selection.elementIds, ...ids])]
+          : ids
       ),
     }));
     clearDrawing();

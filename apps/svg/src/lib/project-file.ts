@@ -2,9 +2,24 @@ import { completeStyle } from "./model.js";
 import { cleanColor, cleanUnit, isElementType } from "./utils.js";
 import { ofGroupsInUse } from "./groups.js";
 import { MAX_ARTBOARD, PROJECT_VERSION } from "./types.js";
-import type { EditorState, ProjectFile, SceneElement } from "./types.js";
+import type { DocumentState, ProjectFile, SceneElement } from "./types.js";
 
-export function serializeProject(state: EditorState): ProjectFile {
+/** Fresh document data, independent of the editor and its input device. */
+export function createDocument(snap = false): DocumentState {
+  return {
+    // 512 / 16 gives 32 cells across, matching a 32px icon.
+    artboard: { width: 512, height: 512 },
+    background: { color: "#ffffff", opacity: 0 },
+    grid: { step: 16, visible: true, snap },
+    elements: [],
+    groupNames: {},
+    groupHues: {},
+    guides: { x: [], y: [] },
+    images: [],
+  };
+}
+
+export function serializeProject(state: DocumentState): ProjectFile {
   return {
     version: PROJECT_VERSION,
     artboard: state.artboard,
@@ -15,8 +30,6 @@ export function serializeProject(state: EditorState): ProjectFile {
     ...optional("groupNames", ofGroupsInUse(state.elements, state.groupNames)),
     ...optional("groupHues", ofGroupsInUse(state.elements, state.groupHues)),
     ...(state.guides.x.length || state.guides.y.length ? { guides: state.guides } : {}),
-    tool: state.tool,
-    finalOnly: state.finalOnly,
   };
 }
 
@@ -106,7 +119,8 @@ export function readProject(raw: unknown): Required<ProjectFile> {
     throw damaged();
   }
   return {
-    ...doc,
+    version: PROJECT_VERSION,
+    grid: doc.grid,
     artboard: {
       width: Math.min(doc.artboard.width, MAX_ARTBOARD),
       height: Math.min(doc.artboard.height, MAX_ARTBOARD),

@@ -191,6 +191,23 @@ export async function loadDocument(id: string): Promise<ProjectFile | null> {
   return rec ? rec.data : null;
 }
 
+/** Read a batch from one transaction, in request order; a missing document aborts the export. */
+export async function loadDocuments(ids: readonly string[]): Promise<ProjectFile[]> {
+  if (!ids.length) return [];
+  const db = await openDb();
+  const tx = db.transaction(DATA);
+  const completed = done(tx);
+  const store = tx.objectStore(DATA);
+  const [records] = await Promise.all([
+    Promise.all(ids.map((id) => request<DataRecord | undefined>(store.get(id)))),
+    completed,
+  ]);
+  return records.map((record, index) => {
+    if (!record) throw new Error(`Document ${ids[index]} is missing from the library.`);
+    return record.data;
+  });
+}
+
 export async function deleteDocument(id: string): Promise<void> {
   const db = await openDb();
   const tx = db.transaction([META, DATA], "readwrite");

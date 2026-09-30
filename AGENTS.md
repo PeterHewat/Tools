@@ -31,6 +31,8 @@
 
 GitHub protects the default branch (`main`) with an active ruleset: pull requests only (squash merge), linear history, required CI (“Lint, typecheck, test, build”), and related checks. Do not commit or push on `main`; land changes with a PR from a feature branch.
 
+Use short, descriptive kebab-case branch names without `codex/`, `claude/`, or other agent prefixes.
+
 Before changing code — on any branch, not only `main` — and whenever the user asks to create a branch, open or update a pull request, or push for review:
 
 1. **Inspect first** — `git fetch origin`, then the current branch, clean or dirty tree, upstream tracking, and ahead/behind vs upstream and vs `origin/main`. Say what you found if it affects the plan.

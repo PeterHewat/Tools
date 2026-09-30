@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { elementIdFromSvgId, groupIdFromSvgId, sanitizeName } from "./svg-names.js";
-import { cleanElement, isInert, readProject, serializeProject } from "./project-file.js";
+import {
+  cleanElement,
+  createDocument,
+  isInert,
+  readProject,
+  serializeProject,
+} from "./project-file.js";
 import { elementToSvgMarkup, formatExportSvg } from "./svg-export.js";
 import { importSvgFile } from "./svg-import.js";
 import {
@@ -509,10 +515,8 @@ describe("project file", () => {
       "artboard",
       "background",
       "elements",
-      "finalOnly",
       "grid",
       "images",
-      "tool",
       "version",
     ]);
   });
@@ -521,8 +525,27 @@ describe("project file", () => {
     expect(serializeProject(createInitialState())).not.toHaveProperty("defaults");
   });
 
-  test("is written as version 1, the first released format", () => {
-    expect(serializeProject(createInitialState()).version).toBe(1);
+  test("version 1 stores only document data", () => {
+    const state = {
+      ...createInitialState(),
+      tool: "pen" as const,
+      finalOnly: true,
+    };
+    const saved = serializeProject(state);
+    expect(saved.version).toBe(1);
+    expect(saved).not.toHaveProperty("tool");
+    expect(saved).not.toHaveProperty("finalOnly");
+  });
+
+  test("new documents own their default data", () => {
+    const first = createDocument(true);
+    first.guides.x.push(50);
+    first.artboard.width = 64;
+    const next = createDocument();
+    expect(next.guides.x).toEqual([]);
+    expect(next.artboard.width).toBe(512);
+    expect(next.grid.snap).toBe(false);
+    expect(first.grid.snap).toBe(true);
   });
 
   test("a document of the current version reads back as it is, what it left out filled in", () => {

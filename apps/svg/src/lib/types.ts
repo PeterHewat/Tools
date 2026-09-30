@@ -318,6 +318,8 @@ export interface EditorSession {
   viewport: Viewport;
   tool: ToolName;
   finalOnly: boolean;
+  selectMore: boolean;
+  alignSnap: boolean;
   selection: Selection;
   drawing: Drawing | null;
   hoverId: string | null;
@@ -356,18 +358,15 @@ export type StyleCarrier = Partial<StyleProps> & {
  */
 export const MAX_ARTBOARD = 8192;
 
-/**
- * The format of a stored document. A change to `ProjectFile` bumps this and teaches
- * `readProject` (project-file.ts) to bring the previous version up to date.
- */
+/** The initial stored document format. */
 export const PROJECT_VERSION = 1;
 
 /** The serialized document written to storage. */
 export interface ProjectFile {
   version: typeof PROJECT_VERSION;
-  artboard: EditorState["artboard"];
+  artboard: DocumentState["artboard"];
   background: BackgroundPaint;
-  grid: EditorState["grid"];
+  grid: DocumentState["grid"];
   images: ReferenceImage[];
   elements: SceneElement[];
   /** Absent when no group has a name. */
@@ -376,6 +375,4 @@ export interface ProjectFile {
   groupHues?: Record<string, number>;
   /** Absent when there are none. */
   guides?: Guides;
-  tool: ToolName;
-  finalOnly: boolean;
 }

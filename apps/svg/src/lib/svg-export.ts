@@ -11,7 +11,7 @@ import {
   styleAttrs,
 } from "./model.js";
 import { escapeAttr, escapeXml } from "./utils.js";
-import { groupsOf } from "./groups.js";
+import { childBlocks, groupsOf } from "./groups.js";
 
 import type { BackgroundPaint, EditorState, Point, SceneElement } from "./types.js";
 
@@ -206,21 +206,16 @@ function emitRange(
   ids: Map<string, string>,
   groupNames: Readonly<Record<string, string>>
 ): void {
-  let i = start;
-  while (i < end) {
-    const gid = groupsOf(els[i])[depth];
+  for (const block of childBlocks(els, { start, end }, depth)) {
+    const gid = groupsOf(els[block.start])[depth];
     if (gid) {
-      let j = i;
-      while (j < end && groupsOf(els[j])[depth] === gid) j++;
       lines.push({ indent, text: `<g id="${groupExportId(gid, groupNames)}">` });
-      emitRange(els, i, j, depth + 1, indent + 1, lines, ids, groupNames);
+      emitRange(els, block.start, block.end, depth + 1, indent + 1, lines, ids, groupNames);
       lines.push({ indent, text: "</g>" });
-      i = j;
     } else {
-      const el = els[i]!;
+      const el = els[block.start]!;
       const text = elementToSvgMarkup(el, ids.get(el.id));
       if (text) lines.push({ indent, text });
-      i++;
     }
   }
 }

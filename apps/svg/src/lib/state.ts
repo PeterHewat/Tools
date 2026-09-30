@@ -1,6 +1,7 @@
 import { AUTO_NAME_RE } from "./utils.js";
 import { isCoarsePointer } from "./pointer.js";
 import { assignGroupHuesInPlace, pruneGroupsInPlace } from "./groups.js";
+import { createDocument } from "./project-file.js";
 import type { DocumentState, EditorState, PathEdit, SceneElement, Selection } from "./types.js";
 
 export interface NotifyOptions {
@@ -18,23 +19,14 @@ export function selectOnly(elementIds: string[] = [], pathEdit: PathEdit | null 
   return { elementIds, pathEdit };
 }
 
-export function createInitialState(): EditorState {
+export function createInitialState(document = createDocument(isCoarsePointer())): EditorState {
   return {
-    // 512 with a step of 16 is 32 cells across: one cell per pixel of a 32px icon, and it
-    // halves cleanly all the way down. Both are editable in the Document panel.
-    artboard: { width: 512, height: 512 },
-    // Transparent, because that is what an icon is. The canvas shows it as a checkerboard so
-    // transparent and white are told apart, and nothing is exported until a colour is chosen.
-    background: { color: "#ffffff", opacity: 0 },
-    grid: { step: 16, visible: true, snap: isCoarsePointer() },
-    elements: [],
-    groupNames: {},
-    groupHues: {},
-    guides: { x: [], y: [] },
-    images: [],
+    ...document,
     viewport: { panX: 40, panY: 40, zoom: 1 },
     tool: "select",
     finalOnly: false,
+    selectMore: false,
+    alignSnap: false,
     selection: selectOnly(),
     drawing: null,
     hoverId: null,
@@ -150,6 +142,12 @@ function ensureDefaultNames(elements: SceneElement[]): void {
 
 type StatePatch = Partial<EditorState> | ((current: EditorState) => EditorState);
 
+/** An empty selection ends additive selection; grid snap takes priority over shape snap. */
+function normalizeSession(): void {
+  if (!state.selection.elementIds.length) state.selectMore = false;
+  if (state.grid.snap) state.alignSnap = false;
+}
+
 /** The slices that follow the pointer around without changing the drawing. */
 const POINTER_KEYS: ReadonlySet<string> = new Set(["cursor", "align", "hoverId", "dropTarget"]);
 
@@ -171,6 +169,7 @@ function onlyPointerChanged(prev: EditorState, next: EditorState): boolean {
 export function setState(patch: StatePatch): void {
   const prev = state;
   state = typeof patch === "function" ? patch(state) : { ...state, ...patch };
+  normalizeSession();
   if (DOCUMENT_KEYS.some((key) => prev[key] !== state[key]))
     documentChanged(prev.elements !== state.elements);
   notify({ pointerOnly: onlyPointerChanged(prev, state) });
@@ -182,20 +181,27 @@ export function setState(patch: StatePatch): void {
  */
 export function mutateDocument(fn: (current: DocumentState) => void): void {
   fn(state);
+  normalizeSession();
   documentChanged(true);
-  notify({});
-}
-
-/** A session control changed outside the state object; no document mutation is implied. */
-export function refreshState(): void {
   notify({});
 }
 
 export function replaceState(next: EditorState): void {
   state = next;
+  normalizeSession();
   normalizeDocument();
   documentRevision++;
   notify({});
+}
+
+/** Open document data with fresh editing UI while keeping this tab's tool, view and shape snap. */
+export function replaceDocument(document?: DocumentState): void {
+  replaceState({
+    ...createInitialState(document),
+    tool: state.tool,
+    finalOnly: state.finalOnly,
+    alignSnap: state.alignSnap,
+  });
 }
 
 /**

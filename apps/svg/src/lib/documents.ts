@@ -1,9 +1,7 @@
 import {
   getState,
   setState,
-  replaceState,
-  createInitialState,
-  selectOnly,
+  replaceDocument,
   getDocumentRevision,
   subscribeDocument,
 } from "./state.js";
@@ -13,6 +11,7 @@ import {
   listDocuments,
   saveDocument,
   loadDocument,
+  loadDocuments,
   deleteDocument,
   duplicateDocument,
   reorderDocuments,
@@ -38,6 +37,7 @@ import { escapeAttr, uid } from "./utils.js";
 import {
   byId,
   downloadText,
+  formatBytes,
   pickFiles,
   readStored,
   registerServiceWorker,
@@ -53,7 +53,6 @@ import { demoDocument, demoUrl, demosToAdd } from "./demos.js";
 import {
   cleanTags,
   docStats,
-  sizeText,
   markHtml,
   matchesSearch,
   searchWords,
@@ -232,7 +231,7 @@ async function fillStats(li: HTMLElement, d: DocumentMeta): Promise<void> {
     }
   }
   content.textContent = details.content;
-  file.textContent = `${sizeText(details.bytes)} saved ${when}`;
+  file.textContent = `${formatBytes(details.bytes)} saved ${when}`;
 }
 
 /* ---------- Search: names and tags ---------- */
@@ -341,7 +340,7 @@ function afterDocumentReplaced(): void {
 /** Creates and stores a fresh, named, empty document and switches to it. */
 async function createBlankDocument(): Promise<void> {
   docsCache = (await stored(listDocuments())) ?? docsCache;
-  replaceState(createInitialState());
+  replaceDocument();
   fitToView();
   currentDoc = { id: uid("doc"), name: uniqueName("Untitled") };
   await storeNew();
@@ -384,27 +383,14 @@ async function openDocument(id: string): Promise<void> {
   await flushSave();
   const data = await stored(loadDocument(id));
   if (!data) return;
-  if (showDocument(id, data)) await refreshDocList();
+  if (showDocument(id, data)) renderDocList();
 }
 
 /** Put already-loaded document data on the canvas, independently of library reads. */
 function showDocument(id: string, data: ProjectFile): boolean {
   try {
-    const doc = readProject(data);
-    replaceState({
-      ...createInitialState(),
-      artboard: doc.artboard,
-      background: doc.background,
-      grid: doc.grid,
-      images: doc.images,
-      elements: doc.elements,
-      groupNames: doc.groupNames,
-      groupHues: doc.groupHues,
-      guides: doc.guides,
-      tool: doc.tool,
-      finalOnly: doc.finalOnly,
-      selection: selectOnly(),
-    });
+    const { version: _version, ...doc } = readProject(data);
+    replaceDocument(doc);
   } catch (err) {
     window.alert(err instanceof Error ? err.message : String(err));
     return false;
@@ -515,7 +501,7 @@ docListEl.addEventListener("click", async (e) => {
   if (!id) return;
   if (target.closest("[data-doc-expand]")) {
     if (!expandedDocs.delete(id)) expandedDocs.add(id);
-    await refreshDocList();
+    renderDocList();
     return;
   }
   // The details under a row are for reading and typing tags, not a way to open the document.
@@ -552,12 +538,14 @@ async function exportDoc(id: string): Promise<void> {
 /** Every document in one file, in list order: a backup, or a whole library to move. */
 async function exportAll(): Promise<void> {
   await flushSave();
-  const documents: ImportedDocument[] = [];
-  for (const d of docsCache) {
-    const data = await stored(loadDocument(d.id));
-    if (!data) return;
-    documents.push({ name: d.name, tags: d.tags, data });
-  }
+  const metadata = docsCache;
+  const data = await stored(loadDocuments(metadata.map((doc) => doc.id)));
+  if (!data) return;
+  const documents = metadata.map((doc, index) => ({
+    name: doc.name,
+    tags: doc.tags,
+    data: data[index]!,
+  }));
   if (!documents.length) return;
   downloadText(libraryFileName(), JSON.stringify(libraryFile(documents)), "application/json");
 }
@@ -666,6 +654,7 @@ export function startDocuments(): void {
 }
 
 async function openInitialDocument(): Promise<void> {
+  setState({ tool: savedView.tool, finalOnly: savedView.finalOnly });
   await refreshDocList();
   const last = readStored(LAST_DOC_KEY);
   // A first visit's library is the demos, and it opens on the first of them.

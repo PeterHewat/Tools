@@ -1,5 +1,20 @@
 /** Small DOM helpers the apps would otherwise each write for themselves. */
 
+/** Toggle buttons expose their state to accessibility and CSS through the same attribute. */
+export const isPressed = (button: HTMLElement): boolean =>
+  button.getAttribute("aria-pressed") === "true";
+
+export function setPressed(button: HTMLElement, on: boolean): void {
+  button.setAttribute("aria-pressed", String(on));
+}
+
+/** File sizes in bytes, kilobytes and megabytes, rounded consistently at unit boundaries. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = Math.round((bytes / 1024) * 10) / 10;
+  return kb < 1024 ? `${kb} KB` : `${Math.round((bytes / 1024 / 1024) * 10) / 10} MB`;
+}
+
 /** The element with this id, of the type given (an `HTMLElement` unless said otherwise). */
 export function byId<T extends Element = HTMLElement>(id: string): T {
   const el = document.getElementById(id);
