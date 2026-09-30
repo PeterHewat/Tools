@@ -34,8 +34,10 @@ const FIELD_ATTRS: Record<string, string[]> = {
   fill: ["fill", "fill-opacity"],
   fillEnabled: ["fill", "fill-opacity"],
   fillType: ["fill"],
+  strokeType: ["stroke"],
   fillRule: ["fill-rule"],
-  stopOffset: [],
+  fillStopOffset: [],
+  strokeStopOffset: [],
   rx: ["rx", "ry"],
   ry: ["rx", "ry"],
   fontSize: ["font-size"],
@@ -51,7 +53,10 @@ const FIELD_ATTRS: Record<string, string[]> = {
 const FIELD_BLOCKS: Record<string, [string, string?]> = {
   fillType: ["grad-"],
   fill: ["grad-"],
-  stopOffset: ["grad-"],
+  fillStopOffset: ["grad-"],
+  strokeType: ["grad-", "-stroke"],
+  stroke: ["grad-", "-stroke"],
+  strokeStopOffset: ["grad-", "-stroke"],
   markerStart: ["mk-", "-start"],
   markerEnd: ["mk-", "-end"],
 };
@@ -137,7 +142,7 @@ function refreshSvgHighlight(selectedIds: readonly string[]): void {
       if (firstSelected < 0) firstSelected = at;
     }
     if (block && focus) {
-      if (svgId.startsWith(block[0] + focus.id) && (!block[1] || svgId.endsWith(block[1]))) {
+      if (svgId === block[0] + focus.id + (block[1] ?? "")) {
         inBlock = true;
       }
       if (inBlock && line) {

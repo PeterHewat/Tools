@@ -88,6 +88,6 @@ describe("the workbench", () => {
 
   test("its backdrop is translucent, so it sits on a light page and a dark one", () => {
     const backdrop = imported.elements.find((e) => e.name === BACKDROP_NAME);
-    expect(backdrop?.gradStops.every((s) => s.opacity < 0.5)).toBe(true);
+    expect(backdrop?.fillStops.every((s) => s.opacity < 0.5)).toBe(true);
   });
 });

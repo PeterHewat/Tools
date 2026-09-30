@@ -1456,9 +1456,10 @@
               your own, such as <code>6 4</code>. Exported as <code>stroke-dasharray</code>.
             </li>
             <li>
-              <b>Fill type</b> — Solid, Linear Gradient or Radial Gradient. A gradient has as many
-              stops as you add, each with its own colour, alpha and position, and two handles on the
-              shape set where it runs.
+              <b>Fill type</b> and <b>Stroke type</b> — Solid, Linear Gradient or Radial Gradient. A
+              gradient has as many stops as you add, each with its own colour, alpha and position,
+              and two handles on the shape set where it runs: purple for the fill, teal for the
+              stroke.
             </li>
             <li>
               <b>Width, Line cap, Line join</b> — stroke geometry. Width 0 exports as no stroke.
@@ -1614,7 +1615,9 @@
               the shape is not selected. Only shapes the app knows (path, line, rect, circle,
               ellipse, polyline, polygon, text) are kept. Icons import, export and copy the SVG
               (coordinates are exported as integers), and export it as a PNG at the artboard's size,
-              one pixel to a unit.
+              one pixel to a unit. An imported file's stylesheets, classes, gradients and
+              <code>&lt;use&gt;</code> copies come in as plain shapes; what the app cannot hold
+              (clip paths, masks, filters, embedded images…) is left out, and the import says what.
             </li>
             <li>
               <b>Background</b> — the swatch beside the grid paints the whole artboard, alpha

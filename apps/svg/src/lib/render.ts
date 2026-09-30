@@ -6,6 +6,8 @@ import {
   cornersOf,
   toWorldPoint,
   isGradient,
+  PAINT_KEYS,
+  PAINT_KINDS,
   cornerRadius,
   cornerRadiusY,
   geometryOf,
@@ -23,7 +25,7 @@ import {
   ROTATE_REACH_FINE,
 } from "./pointer.js";
 import { buildDefsMarkup } from "./io.js";
-import { hasBoxHandles } from "./resize.js";
+import { gradientRole, hasBoxHandles } from "./resize.js";
 import { pickedPoints } from "./points.js";
 import { BOX_ROLES, boxCorners, unionBox } from "./selection-transform.js";
 import { clickTarget, groupColor, groupsOf, selectedGroups } from "./groups.js";
@@ -614,26 +616,37 @@ export function selectionHandlePoints(sel: readonly SceneElement[], zoomLevel: n
  * that only covers part of the shape.
  */
 function renderGradientHandles(parent: Element, el: SceneElement): void {
-  const box = elementBBox(el);
-  if (!box || !isGradient(el)) return;
-  const at = (p: Point) => ({ x: box.x + p.x * box.width, y: box.y + p.y * box.height });
-  const from = at(el.gradFrom);
-  const to = at(el.gradTo);
-  add(parent, "line", {
-    class: "grad-guide",
-    x1: from.x,
-    y1: from.y,
-    x2: to.x,
-    y2: to.y,
-  });
-  for (const [point, role] of [
-    [from, "grad-from"],
-    [to, "grad-to"],
-  ] as const) {
-    addHandle(parent, point.x, point.y, "grad-handle", {
-      "data-element-id": el.id,
-      "data-handle-role": role,
+  const box = localBBox(el);
+  if (!box) return;
+  // Fractions of the shape's own box, turned with it; a side with no extent counts as one unit,
+  // as the exported gradient has it.
+  const at = (p: Point) =>
+    toWorldPoint(el, {
+      x: box.x + p.x * (box.width || 1),
+      y: box.y + p.y * (box.height || 1),
     });
+  for (const kind of PAINT_KINDS) {
+    if (!isGradient(el, kind)) continue;
+    const k = PAINT_KEYS[kind];
+    const from = at(el[k.from]);
+    const to = at(el[k.to]);
+    const variant = kind === "stroke" ? " grad-stroke" : "";
+    add(parent, "line", {
+      class: `grad-guide${variant}`,
+      x1: from.x,
+      y1: from.y,
+      x2: to.x,
+      y2: to.y,
+    });
+    for (const [point, end] of [
+      [from, "from"],
+      [to, "to"],
+    ] as const) {
+      addHandle(parent, point.x, point.y, `grad-handle${variant}`, {
+        "data-element-id": el.id,
+        "data-handle-role": gradientRole(kind, end),
+      });
+    }
   }
 }
 

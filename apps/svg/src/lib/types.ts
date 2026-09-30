@@ -12,7 +12,7 @@ export const ELEMENT_TYPES = [
 
 export type ElementType = (typeof ELEMENT_TYPES)[number];
 
-export type FillType = "solid" | "linear" | "radial";
+export type PaintType = "solid" | "linear" | "radial";
 export type MarkerShape = "none" | "arrow" | "dot" | "square" | "diamond";
 export type LineCap = "round" | "butt" | "square";
 export type LineJoin = "round" | "miter" | "bevel";
@@ -55,26 +55,37 @@ export interface GradientStop {
   opacity: number;
 }
 
-/** Every style an element carries. Elements always hold a complete set. */
+/**
+ * Every style an element carries. Elements always hold a complete set.
+ *
+ * The fill and the stroke are each a paint: a colour and opacity, or a gradient when its type
+ * says so. A gradient keeps its colour too - its first stop - so turning it back to solid keeps
+ * something, and markers (which take the stroke's colour) have one to take.
+ */
 export interface StyleProps {
   stroke: string;
   strokeOpacity: number;
   strokeWidth: number;
+  strokeType: PaintType;
+  /** The stroke's gradient, as `fillStops`, `fillFrom` and `fillTo` are the fill's. */
+  strokeStops: GradientStop[];
+  strokeFrom: Point;
+  strokeTo: Point;
   linecap: LineCap;
   linejoin: LineJoin;
   fillEnabled: boolean;
-  fillType: FillType;
+  fillType: PaintType;
   fill: string;
   fillOpacity: number;
   /** Two or more stops, in offset order. Used when `fillType` is a gradient. */
-  gradStops: GradientStop[];
+  fillStops: GradientStop[];
   /**
    * Where the gradient runs, in fractions of the shape's bounding box, so it follows the shape
    * when that is moved or resized. Linear: the two ends of the vector. Radial: the centre, and
    * a point on the circle that sets the radius. Both are dragged on the canvas.
    */
-  gradFrom: Point;
-  gradTo: Point;
+  fillFrom: Point;
+  fillTo: Point;
   markerStart: MarkerShape;
   markerEnd: MarkerShape;
 }
@@ -330,8 +341,6 @@ export type StyleCarrier = Partial<StyleProps> & {
   fillRule?: "evenodd";
   dash?: number[];
   locked?: boolean;
-  /** Import only: the gradient arrived in artboard units and still has to be converted. */
-  gradUserSpace?: boolean;
 };
 
 /**

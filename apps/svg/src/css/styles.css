@@ -1097,7 +1097,8 @@ body.dragging::after {
   margin: 0;
 }
 
-.acc-item[data-filltype="solid"] .grad-only {
+.acc-item[data-filltype="solid"] .fill-grad-only,
+.acc-item[data-stroketype="solid"] .stroke-grad-only {
   display: none;
 }
 
@@ -1232,6 +1233,15 @@ body.dragging::after {
   stroke-dasharray: 3 3;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
+}
+
+/* The stroke's gradient, told from the fill's when a shape has both: a teal ring and guide. */
+.handle.grad-handle.grad-stroke {
+  stroke: #1fb5a6;
+}
+
+.grad-guide.grad-stroke {
+  stroke: #1fb5a6;
 }
 
 .handle.rotate-handle {

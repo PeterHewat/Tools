@@ -10,6 +10,9 @@ import {
   isClosedShape,
   elementBBox,
   gradientStops,
+  PAINT_KEYS,
+  PAINT_KINDS,
+  type PaintKind,
   keepsRotation,
   parseDash,
 } from "./model.js";
@@ -42,7 +45,7 @@ function primitiveListKeyOf(state: EditorState): string {
   const els = state.elements
     .map(
       (e) =>
-        `${e.id}:${e.type}:${groupsOf(e).join("/")}:${"closed" in e && e.closed ? 1 : 0}:${e.hidden ? 1 : 0}:${e.locked ? 1 : 0}:${e.gradStops.length}`
+        `${e.id}:${e.type}:${groupsOf(e).join("/")}:${"closed" in e && e.closed ? 1 : 0}:${e.hidden ? 1 : 0}:${e.locked ? 1 : 0}:${e.fillStops.length}:${e.strokeStops.length}`
     )
     .join(",");
   const collapsed = [...collapsedGroups].join(",");
@@ -120,7 +123,17 @@ function primitiveBodyHtml(el: SceneElement): string {
     );
   }
   rows.push(
-    `<div class="field-row"><span>Stroke</span>${swatchHtml("stroke", el.stroke, el.strokeOpacity, "Stroke color and opacity")}</div>`
+    `<div class="field-row"><span>Stroke</span>${swatchHtml("stroke", el.stroke, el.strokeOpacity, "Stroke color and opacity")}</div>`,
+    `<div class="field-row"><span>Stroke type</span>${selectHtml(
+      "strokeType",
+      el.strokeType || "solid",
+      [
+        ["solid", "Solid"],
+        ["linear", "Linear Gradient"],
+        ["radial", "Radial Gradient"],
+      ]
+    )}</div>`,
+    gradientStopsHtml(el, "stroke")
   );
   if (el.type !== "line") {
     rows.push(
@@ -134,7 +147,7 @@ function primitiveBodyHtml(el: SceneElement): string {
           ["radial", "Radial Gradient"],
         ]
       )}</div>`,
-      gradientStopsHtml(el)
+      gradientStopsHtml(el, "fill")
     );
   }
   // Where outlines overlap - a hole, a shape crossing itself - the rule decides what is inside.
@@ -178,18 +191,19 @@ function primitiveBodyHtml(el: SceneElement): string {
 }
 
 /**
- * The gradient's stops, one row each: colour, where it sits along the gradient, and a way to
+ * A paint's gradient stops, one row each: colour, where it sits along the gradient, and a way to
  * remove it. Where the gradient *runs* is not here - that is the two handles on the canvas,
  * which beat typing an angle on a touch screen and can express more than an angle could.
+ * Shown only while that paint is a gradient (styles.css, by the row's paint types).
  */
-function gradientStopsHtml(el: SceneElement): string {
-  const stops = gradientStops(el);
+function gradientStopsHtml(el: SceneElement, kind: PaintKind): string {
+  const stops = gradientStops(el, kind);
   const rows = stops
     .map(
       (stop, i) =>
         `<div class="grad-stop">
-          ${swatchHtml(`stop-${i}`, stop.color, stop.opacity, `Stop ${i + 1} colour and opacity`)}
-          <input type="number" data-field="stopOffset" data-stop="${i}" min="0" max="100" step="1"
+          ${swatchHtml(`${kind}-stop-${i}`, stop.color, stop.opacity, `Stop ${i + 1} colour and opacity`)}
+          <input type="number" data-field="${kind}StopOffset" data-stop="${i}" min="0" max="100" step="1"
             value="${Math.round(stop.offset * 100)}" aria-label="Stop ${i + 1} position (%)" />
           <span class="grad-stop-unit">%</span>
           <button type="button" class="grad-stop-del" data-stop-remove="${i}" title="Remove stop"
@@ -197,7 +211,7 @@ function gradientStopsHtml(el: SceneElement): string {
         </div>`
     )
     .join("");
-  return `<div class="field-row field-row--wide grad-only grad-stops-row"><span>Stops</span>
+  return `<div class="field-row field-row--wide ${kind}-grad-only grad-stops-row" data-paint="${kind}"><span>Stops</span>
       <div class="grad-stops">${rows}
         <button type="button" class="grad-stop-add" data-stop-add title="Add a stop">+ Stop</button>
       </div>
@@ -225,7 +239,7 @@ function headerSwatchStyle(el: SceneElement): string {
         .map((s) => `${rgba(s.color, s.opacity)} ${Math.round(s.offset * 100)}%`)
         .join(", ");
       const angle =
-        (Math.atan2(el.gradTo.y - el.gradFrom.y, el.gradTo.x - el.gradFrom.x) * 180) / Math.PI;
+        (Math.atan2(el.fillTo.y - el.fillFrom.y, el.fillTo.x - el.fillFrom.x) * 180) / Math.PI;
       inside =
         el.fillType === "radial"
           ? `radial-gradient(${stops})`
@@ -540,6 +554,7 @@ function primitiveRow(state: EditorState, index: number): HTMLElement {
     <div class="acc-body">${primitiveBodyHtml(el)}</div>
   `;
   li.dataset.filltype = el.fillType || "solid";
+  li.dataset.stroketype = el.strokeType || "solid";
   li.classList.toggle("acc-item--hidden", !!el.hidden);
   li.classList.toggle("acc-item--invisible", isInvisible(el));
   const swatch = li.querySelector<HTMLElement>(".acc-swatch");
@@ -590,6 +605,8 @@ function updatePrimitiveListValues(state: EditorState): void {
     li.classList.toggle("acc-item--invisible", isInvisible(el));
     const fillType = el.fillType || "solid";
     if (li.dataset.filltype !== fillType) li.dataset.filltype = fillType;
+    const strokeType = el.strokeType || "solid";
+    if (li.dataset.stroketype !== strokeType) li.dataset.stroketype = strokeType;
     if (!li.classList.contains("expanded")) continue;
     const setSwatch = (kind: string, color: string, alpha: number) => {
       const btn = li.querySelector<HTMLElement>(`[data-picker="${kind}"]`);
@@ -599,14 +616,16 @@ function updatePrimitiveListValues(state: EditorState): void {
     };
     setSwatch("stroke", el.stroke, el.strokeOpacity);
     setSwatch("fill", el.fill, el.fillOpacity);
-    gradientStops(el).forEach((stop, i) => {
-      setSwatch(`stop-${i}`, stop.color, stop.opacity);
-      const input = li.querySelector<HTMLInputElement>(
-        `[data-field="stopOffset"][data-stop="${i}"]`
-      );
-      if (input && input !== document.activeElement)
-        input.value = String(Math.round(stop.offset * 100));
-    });
+    for (const kind of PAINT_KINDS) {
+      gradientStops(el, kind).forEach((stop, i) => {
+        setSwatch(`${kind}-stop-${i}`, stop.color, stop.opacity);
+        const input = li.querySelector<HTMLInputElement>(
+          `[data-field="${kind}StopOffset"][data-stop="${i}"]`
+        );
+        if (input && input !== document.activeElement)
+          input.value = String(Math.round(stop.offset * 100));
+      });
+    }
     if (el.type === "text") {
       setField(li, "text", el.text ?? "");
       setField(li, "fontSize", el.fontSize ?? 48);
@@ -626,6 +645,7 @@ function updatePrimitiveListValues(state: EditorState): void {
     setField(li, "linecap", el.linecap);
     setField(li, "linejoin", el.linejoin);
     setField(li, "fillType", el.fillType ?? "solid");
+    setField(li, "strokeType", el.strokeType ?? "solid");
     setField(li, "fillRule", el.fillRule ?? "nonzero");
     setField(li, "dash", (el.dash ?? []).join(" "));
     const dashStyle = dashStyleFor(el);
@@ -1018,15 +1038,20 @@ primitiveListEl.addEventListener("change", (e) => {
       el.fillType = input.value as SceneElement["fillType"];
       if (input.value !== "solid") el.fillEnabled = true;
     });
-  } else if (field === "stopOffset") {
+  } else if (field === "strokeType") {
+    applyToElement(id, (el) => {
+      el.strokeType = input.value as SceneElement["strokeType"];
+    });
+  } else if (field === "fillStopOffset" || field === "strokeStopOffset") {
     const percent = parseFloat(input.value);
     if (Number.isNaN(percent)) return;
+    const kind: PaintKind = field === "fillStopOffset" ? "fill" : "stroke";
     const index = parseInt(input.dataset.stop ?? "0", 10);
     applyToElement(id, (el) => {
-      const stops = gradientStops(el);
+      const stops = gradientStops(el, kind);
       const stop = stops[index];
       if (stop) stop.offset = Math.min(1, Math.max(0, percent / 100));
-      el.gradStops = stops;
+      el[PAINT_KEYS[kind].stops] = stops;
     });
   } else if (field in GEOMETRY_FIELDS) {
     // Moves or stretches the shape to put one edge of its box at the value typed, through the
@@ -1059,49 +1084,42 @@ primitiveListEl.addEventListener("change", (e) => {
   }
 });
 
-const PICKER_FIELDS: Record<string, [string, string]> = {
-  stroke: ["stroke", "strokeOpacity"],
-  fill: ["fill", "fillOpacity"],
-};
+/** What a swatch sets: a paint's colour (`fill`, `stroke`), or one of its stops (`fill-stop-2`). */
+function swatchTarget(picker: string): { kind: PaintKind; stop: number | null } | null {
+  const m = /^(fill|stroke)(?:-stop-(\d+))?$/.exec(picker);
+  return m ? { kind: m[1] as PaintKind, stop: m[2] == null ? null : Number(m[2]) } : null;
+}
 
-/** Writes a colour into a gradient stop, or into one of the plain colour fields. */
-function writeColor(el: SceneElement, kind: string, hex: string, alpha: number): void {
-  const stopIndex = kind.startsWith("stop-") ? parseInt(kind.slice(5), 10) : -1;
-  if (stopIndex >= 0) {
-    const stops = gradientStops(el);
-    const stop = stops[stopIndex];
+/** Writes a colour into a paint, or into one of its gradient's stops. */
+function writeColor(el: SceneElement, picker: string, hex: string, alpha: number): void {
+  const target = swatchTarget(picker);
+  if (!target) return;
+  const k = PAINT_KEYS[target.kind];
+  if (target.stop != null) {
+    const stops = gradientStops(el, target.kind);
+    const stop = stops[target.stop];
     if (!stop) return;
     stop.color = hex;
     stop.opacity = alpha;
-    el.gradStops = stops;
+    el[k.stops] = stops;
     // The first stop is also the solid colour, so turning the gradient off keeps something.
-    if (stopIndex === 0) {
-      el.fill = hex;
-      el.fillOpacity = alpha;
-    }
-    el.fillEnabled = true;
-    return;
+    if (target.stop !== 0) return;
   }
-  const keys = PICKER_FIELDS[kind];
-  if (!keys) return;
-  const target = el as unknown as Record<string, unknown>;
-  target[keys[0]] = hex;
-  target[keys[1]] = alpha;
-  if (kind !== "stroke") el.fillEnabled = true;
+  el[k.color] = hex;
+  el[k.opacity] = alpha;
+  if (target.kind === "fill") el.fillEnabled = true;
 }
 
 /** The colour and alpha a swatch currently shows. */
-function readColor(el: SceneElement, kind: string): { color: string; alpha: number } {
-  if (kind.startsWith("stop-")) {
-    const stop = gradientStops(el)[parseInt(kind.slice(5), 10)];
+function readColor(el: SceneElement, picker: string): { color: string; alpha: number } {
+  const target = swatchTarget(picker);
+  if (!target) return { color: "#000000", alpha: 1 };
+  if (target.stop != null) {
+    const stop = gradientStops(el, target.kind)[target.stop];
     return { color: stop?.color ?? "#000000", alpha: stop?.opacity ?? 1 };
   }
-  const keys = PICKER_FIELDS[kind];
-  const src = el as unknown as Record<string, unknown>;
-  return {
-    color: keys ? ((src[keys[0]] as string) ?? "#000000") : "#000000",
-    alpha: keys ? ((src[keys[1]] as number) ?? 1) : 1,
-  };
+  const k = PAINT_KEYS[target.kind];
+  return { color: el[k.color], alpha: el[k.opacity] };
 }
 
 primitiveListEl.addEventListener("click", (e) => {
@@ -1115,11 +1133,12 @@ primitiveListEl.addEventListener("click", (e) => {
   const kind = btn.dataset.picker;
   const el = id ? findElement(id) : undefined;
   if (!id || !kind || !el) return;
-  if (!kind.startsWith("stop-") && !PICKER_FIELDS[kind]) return;
+  const target = swatchTarget(kind);
+  if (!target) return;
   const start = readColor(el, kind);
   const step = undoStepper();
   holdSvgFocus(true);
-  setSvgFocus({ id, field: kind.startsWith("stop-") ? "fill" : kind });
+  setSvgFocus({ id, field: target.kind });
   openColorPicker({
     anchor: btn,
     onClose: () => {
@@ -1144,9 +1163,10 @@ primitiveListEl.addEventListener("click", (e) => {
   const remove = target.closest<HTMLElement>("[data-stop-remove]");
   if (!add && !remove) return;
   const id = target.closest<HTMLElement>("[data-element-id]")?.dataset.elementId;
-  if (!id) return;
+  const kind = target.closest<HTMLElement>("[data-paint]")?.dataset.paint as PaintKind | undefined;
+  if (!id || !kind) return;
   applyToElement(id, (el) => {
-    const stops = gradientStops(el);
+    const stops = gradientStops(el, kind);
     if (add) {
       // A new stop lands midway between the last two, taking a blend of their colours.
       const a = stops[stops.length - 2]!;
@@ -1159,6 +1179,6 @@ primitiveListEl.addEventListener("click", (e) => {
     } else if (stops.length > 2) {
       stops.splice(parseInt(remove!.dataset.stopRemove ?? "0", 10), 1);
     }
-    el.gradStops = stops;
+    el[PAINT_KEYS[kind].stops] = stops;
   });
 });

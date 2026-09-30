@@ -54,14 +54,26 @@ function sampleElements(): SceneElement[] {
     Object.assign(createRect(0, 0, 9, 9), {
       fillEnabled: true,
       fillType: "linear" as const,
-      gradFrom: { x: 0.5, y: 0 },
-      gradTo: { x: 0.5, y: 1 },
+      fillFrom: { x: 0.5, y: 0 },
+      fillTo: { x: 0.5, y: 1 },
     }),
     Object.assign(createRect(0, 0, 9, 9), {
       fillEnabled: true,
       fillType: "radial" as const,
     }),
     Object.assign(createLine(0, 0, 9, 9), { markerEnd: "arrow" as const }),
+    Object.assign(createPath([anchor(20, 48), anchor(56, 48)], false), {
+      strokeWidth: 6,
+      strokeType: "linear" as const,
+      strokeFrom: { x: -0.2, y: 0 },
+      strokeTo: { x: 2.1, y: 0 },
+    }),
+    Object.assign(createRect(10, 10, 40, 20), {
+      rotation: 30,
+      strokeType: "radial" as const,
+      strokeFrom: { x: 0.5, y: 0.5 },
+      strokeTo: { x: 1, y: 0.5 },
+    }),
     Object.assign(createPath([anchor(0, 0, null, { x: 0, y: 50 }), anchor(100, 0)], false), {
       name: "curve",
     }),
@@ -73,6 +85,10 @@ function doc(elements: SceneElement[]) {
 }
 
 const OPAQUE_BLUE = { color: "#3355ff", opacity: 1 };
+
+/** A small SVG document around `body`, with `defs` when given, for the import tests. */
+const svg = (body: string, defs = "") =>
+  `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100">${defs ? `<defs>${defs}</defs>` : ""}${body}</svg>`;
 
 describe("export markup", () => {
   test("coordinates are rounded but style values are not", () => {
@@ -566,14 +582,14 @@ describe("project file", () => {
           stroke: "#000;position:fixed",
           fill: "url(https://example.invalid/p)",
           strokeOpacity: "1;inset:0" as unknown as number,
-          gradStops: [{ offset: 0, color: "red;x:y", opacity: Number.NaN }],
+          fillStops: [{ offset: 0, color: "red;x:y", opacity: Number.NaN }],
         }),
       ],
     });
     const doc = readProject(saved);
     const el = doc.elements[0]!;
     expect([el.stroke, el.fill, el.strokeOpacity]).toEqual(["#000000", "#000000", 1]);
-    expect(el.gradStops[0]).toMatchObject({ color: "#000000", opacity: 1 });
+    expect(el.fillStops[0]).toMatchObject({ color: "#000000", opacity: 1 });
     expect(doc.background).toEqual({ color: "#000000", opacity: 1 });
   });
 
@@ -765,7 +781,7 @@ describe("gradients", () => {
 
   test("every stop is written out, in order", () => {
     const el = gradient({
-      gradStops: [
+      fillStops: [
         { offset: 0, color: "#ff0000", opacity: 1 },
         { offset: 0.4, color: "#00ff00", opacity: 0.5 },
         { offset: 1, color: "#0000ff", opacity: 1 },
@@ -777,30 +793,30 @@ describe("gradients", () => {
   });
 
   test("the gradient's ends are written as coordinates, not an angle", () => {
-    const el = gradient({ gradFrom: { x: 0.25, y: 0 }, gradTo: { x: 0.75, y: 1 } });
+    const el = gradient({ fillFrom: { x: 0.25, y: 0 }, fillTo: { x: 0.75, y: 1 } });
     expect(formatExportSvg(doc([el]), true)).toContain('x1="0.25" y1="0" x2="0.75" y2="1"');
   });
 
   test("a radial gradient's centre and radius come from the same two points", () => {
     const el = gradient({
       fillType: "radial",
-      gradFrom: { x: 0.5, y: 0.5 },
-      gradTo: { x: 0.9, y: 0.5 },
+      fillFrom: { x: 0.5, y: 0.5 },
+      fillTo: { x: 0.9, y: 0.5 },
     });
     expect(formatExportSvg(doc([el]), true)).toContain('cx="0.5" cy="0.5" r="0.4"');
   });
 
   test("three stops survive a round trip", () => {
     const el = gradient({
-      gradStops: [
+      fillStops: [
         { offset: 0, color: "#ff0000", opacity: 1 },
         { offset: 0.4, color: "#00ff00", opacity: 1 },
         { offset: 1, color: "#0000ff", opacity: 1 },
       ],
     });
     const back = importSvgFile(formatExportSvg(doc([el]), true), { keepIds: true });
-    expect(back.elements[0]!.gradStops).toHaveLength(3);
-    expect(back.elements[0]!.gradStops[1]).toMatchObject({ offset: 0.4, color: "#00ff00" });
+    expect(back.elements[0]!.fillStops).toHaveLength(3);
+    expect(back.elements[0]!.fillStops[1]).toMatchObject({ offset: 0.4, color: "#00ff00" });
   });
 
   test("percentages are read as fractions", () => {
@@ -811,8 +827,8 @@ describe("gradients", () => {
         "</linearGradient></defs>" +
         '<rect width="10" height="10" fill="url(#g)"/></svg>'
     );
-    expect(r.elements[0]!.gradFrom).toEqual({ x: 0.1, y: 0 });
-    expect(r.elements[0]!.gradStops[0]!.offset).toBeCloseTo(0.2);
+    expect(r.elements[0]!.fillFrom).toEqual({ x: 0.1, y: 0 });
+    expect(r.elements[0]!.fillStops[0]!.offset).toBeCloseTo(0.2);
   });
 
   test("a userSpaceOnUse gradient is converted to the shape's own box", () => {
@@ -823,8 +839,8 @@ describe("gradients", () => {
         "</linearGradient></defs>" +
         '<rect x="100" y="0" width="100" height="50" fill="url(#g)"/></svg>'
     );
-    expect(r.elements[0]!.gradFrom).toEqual({ x: 0, y: 0 });
-    expect(r.elements[0]!.gradTo).toEqual({ x: 1, y: 0 });
+    expect(r.elements[0]!.fillFrom).toEqual({ x: 0, y: 0 });
+    expect(r.elements[0]!.fillTo).toEqual({ x: 1, y: 0 });
   });
 });
 
@@ -924,5 +940,196 @@ describe("guides", () => {
     const withGuides = { ...state, guides: { x: [100], y: [50] } };
     expect(serializeProject(withGuides).guides).toEqual({ x: [100], y: [50] });
     expect(formatExportSvg(withGuides, true)).not.toContain("100");
+  });
+});
+
+describe("paints", () => {
+  const STOPS = '<stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/>';
+
+  test("a stroke can be a gradient, written in the shape's own coordinates", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<path d="M20 48 H56" stroke="url(#g)" stroke-width="6"/>',
+        `<linearGradient id="g" gradientUnits="userSpaceOnUse" x1="12" y1="48" x2="94" y2="48">${STOPS}</linearGradient>`
+      )
+    ).elements;
+    expect(el!.strokeType).toBe("linear");
+    expect(el!.stroke).toBe("#ff0000");
+    const out = formatExportSvg(doc([el!]));
+    // Box fractions would draw nothing on a line with no height: the stroke's are absolute.
+    expect(out).toContain('gradientUnits="userSpaceOnUse" x1="12" y1="48" x2="94" y2="48"');
+    expect(out).toContain(`stroke="url(#grad-${el!.id}-stroke)"`);
+  });
+
+  test("a fill and a stroke can each have their own gradient", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<rect x="0" y="0" width="10" height="10" fill="url(#a)" stroke="url(#b)"/>',
+        `<linearGradient id="a">${STOPS}</linearGradient><radialGradient id="b">${STOPS}</radialGradient>`
+      )
+    ).elements;
+    expect([el!.fillType, el!.strokeType]).toEqual(["linear", "radial"]);
+  });
+
+  test("a gradient takes its stops and geometry through href, as Inkscape writes it", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<rect x="0" y="0" width="10" height="10" fill="url(#geometry)"/>',
+        `<linearGradient id="colours">${STOPS}</linearGradient><linearGradient id="geometry" xlink:href="#colours" x1="0" y1="0" x2="0" y2="1"/>`
+      )
+    ).elements;
+    expect(el!.fillType).toBe("linear");
+    expect(el!.fillStops.map((s) => s.color)).toEqual(["#ff0000", "#0000ff"]);
+    expect([el!.fillFrom, el!.fillTo]).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+    ]);
+  });
+
+  test("gradientTransform turns the gradient", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<rect x="0" y="0" width="10" height="10" fill="url(#g)"/>',
+        `<linearGradient id="g" gradientTransform="rotate(90 0.5 0.5)">${STOPS}</linearGradient>`
+      )
+    ).elements;
+    const r = (p: { x: number; y: number }) => ({ x: +p.x.toFixed(6), y: +p.y.toFixed(6) });
+    // Left to right, turned a quarter about the middle: top to bottom.
+    expect([r(el!.fillFrom), r(el!.fillTo)]).toEqual([
+      { x: 1, y: 0 },
+      { x: 1, y: 1 },
+    ]);
+  });
+
+  test("opacity on a shape and its groups, and a colour's alpha, fold into its paints", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<g opacity="0.5"><rect width="10" height="10" opacity="0.5" fill="rgba(255, 0, 0, 0.5)" stroke="#00ff0080"/></g>'
+      )
+    ).elements;
+    expect(el!.fill).toBe("#ff0000");
+    expect(el!.fillOpacity).toBeCloseTo(0.125);
+    expect(el!.stroke).toBe("#00ff00");
+    expect(el!.strokeOpacity).toBeCloseTo(0.25 * (128 / 255));
+  });
+
+  test("currentColor is the inherited color", () => {
+    const [el] = importSvgFile(
+      svg('<g color="#123456"><rect width="10" height="10" fill="currentColor"/></g>')
+    ).elements;
+    expect(el!.fill).toBe("#123456");
+  });
+
+  test("a url paint that names nothing falls back to what follows it, or to none", () => {
+    const [a, b] = importSvgFile(
+      svg(
+        '<rect width="10" height="10" fill="url(#nothing) #00ff00"/><rect width="10" height="10" fill="url(#nothing)" stroke="#000"/>'
+      )
+    ).elements;
+    expect([a!.fillEnabled, a!.fill]).toEqual([true, "#00ff00"]);
+    expect(b!.fillEnabled).toBe(false);
+  });
+});
+
+describe("stylesheets", () => {
+  test("a class styles the shapes it is on, as Illustrator writes them", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<rect class="cls-1" width="10" height="10"/>',
+        "<style>.cls-1 { fill: #ff0000; stroke: #0000ff; stroke-width: 3px; }</style>"
+      )
+    ).elements;
+    expect([el!.fillEnabled, el!.fill, el!.stroke, el!.strokeWidth]).toEqual([
+      true,
+      "#ff0000",
+      "#0000ff",
+      3,
+    ]);
+  });
+
+  test("the more specific rule wins, and the element's own style beats every rule", () => {
+    const [a, b] = importSvgFile(
+      svg(
+        '<rect id="x" class="c" width="1" height="1"/><rect class="c" width="1" height="1" style="fill: #00ff00"/>',
+        "<style>#x { fill: #0000ff } .c { fill: #ff0000 } rect { fill: #ffffff }</style>"
+      )
+    ).elements;
+    expect(a!.fill).toBe("#0000ff");
+    expect(b!.fill).toBe("#00ff00");
+  });
+
+  test("a rule beats a presentation attribute, and media queries are passed over", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<rect class="c" width="1" height="1" fill="#000000"/>',
+        "<style>@media print { .c { fill: #0000ff } } .c { fill: #ff0000 }</style>"
+      )
+    ).elements;
+    expect(el!.fill).toBe("#ff0000");
+  });
+});
+
+describe("copies and viewports", () => {
+  test("a <use> places a copy of what it points at", () => {
+    const { elements } = importSvgFile(
+      svg(
+        '<rect id="box" x="0" y="0" width="10" height="10" fill="#ff0000"/><use href="#box" x="20" y="5"/><use xlink:href="#box" transform="translate(40 0)"/>'
+      )
+    );
+    expect(elements.map((e) => (e.type === "rect" ? [e.x, e.y] : null))).toEqual([
+      [0, 0],
+      [20, 5],
+      [40, 0],
+    ]);
+  });
+
+  test("a <symbol> is fitted into the size its <use> gives it", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<use href="#icon" x="10" y="10" width="20" height="20" fill="#ff0000"/>',
+        '<symbol id="icon" viewBox="0 0 10 10"><rect width="10" height="10"/></symbol>'
+      )
+    ).elements;
+    expect(el).toMatchObject({
+      type: "rect",
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      fill: "#ff0000",
+    });
+  });
+
+  test("a <use> of something that holds it, or of nothing, is dropped and reported", () => {
+    const result = importSvgFile(
+      svg('<g id="loop"><rect width="1" height="1"/><use href="#loop"/></g><use href="#none"/>')
+    );
+    expect(result.elements).toHaveLength(1);
+    expect(result.skipped).toEqual(["2 broken <use> references"]);
+  });
+
+  test("an <svg> inside the file is placed where its viewport puts it", () => {
+    const [el] = importSvgFile(
+      svg(
+        '<svg x="50" y="50" width="20" height="20" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
+      )
+    ).elements;
+    expect(el).toMatchObject({ type: "rect", x: 50, y: 50, width: 20, height: 20 });
+  });
+});
+
+describe("what an import leaves out", () => {
+  test("is listed, counted", () => {
+    const { skipped } = importSvgFile(
+      svg(
+        '<rect width="1" height="1" clip-path="url(#c)"/><rect width="1" height="1" clip-path="url(#c)" filter="url(#f)"/><image href="x.png"/>',
+        '<clipPath id="c"><rect width="1" height="1"/></clipPath><filter id="f"/>'
+      )
+    );
+    expect(skipped).toEqual(["2 clip paths", "1 filter", "1 embedded image"]);
+  });
+
+  test("is nothing for a file the app wrote itself", () => {
+    expect(importSvgFile(formatExportSvg(doc(sampleElements()), true)).skipped).toEqual([]);
   });
 });

@@ -11,8 +11,8 @@
  * This list is the one place a demo is named: its file, its name in the list, and its tags.
  */
 
-import { importSvgFile, serializeProject } from "./io.js";
-import { createInitialState } from "./state.js";
+import { importSvgFile } from "./io.js";
+import { svgProject } from "./document-files.js";
 import type { ProjectFile } from "./types.js";
 
 export interface Demo {
@@ -49,15 +49,8 @@ function withBackdropLocked<T extends { name: string; locked?: boolean }>(
  * be read.
  */
 export function demoDocument(svg: string): ProjectFile {
-  const { artboard, background, elements, groupNames } = importSvgFile(svg);
-  const base = createInitialState();
-  return serializeProject({
-    ...base,
-    artboard: artboard ?? base.artboard,
-    background: background ?? base.background,
-    elements: withBackdropLocked(elements),
-    groupNames,
-  });
+  const imported = importSvgFile(svg);
+  return svgProject({ ...imported, elements: withBackdropLocked(imported.elements) });
 }
 
 /** Where a demo is fetched from: the app's own folder, precached for offline with the build. */

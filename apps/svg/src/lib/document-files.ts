@@ -6,7 +6,7 @@
  * so an import never replaces or merges with anything.
  */
 
-import { importSvgFile, readProject, serializeProject } from "./io.js";
+import { importSvgFile, readProject, serializeProject, type ImportResult } from "./io.js";
 import { cleanTags } from "./doc-list.js";
 import { createInitialState } from "./state.js";
 import type { ProjectFile } from "./types.js";
@@ -38,6 +38,8 @@ export interface ImportedDocument {
   /** Only when there are any: a document without tags is written as it always was. */
   tags?: string[];
   data: ProjectFile;
+  /** From an SVG file: what it held that the app cannot, and left out (see `importSvgFile`). */
+  skipped?: string[];
 }
 
 /** A document and its tags, kept only when there are some. */
@@ -81,16 +83,36 @@ export function isSvgFile(file: { name: string; type: string }): boolean {
  * background when it has them. Throws, with a message worth showing, when it is not SVG.
  */
 export function svgDocument(fileName: string, text: string): ImportedDocument {
-  const { artboard, background, elements, groupNames } = importSvgFile(text);
+  const imported = importSvgFile(text);
+  return {
+    name: fileName.replace(/\.svg$/i, "").trim() || "Untitled",
+    data: svgProject(imported),
+    skipped: imported.skipped,
+  };
+}
+
+/** The document an imported SVG makes: its shapes, and its size and background when it has them. */
+export function svgProject({
+  artboard,
+  background,
+  elements,
+  groupNames,
+}: Omit<ImportResult, "skipped">): ProjectFile {
   const blank = createInitialState();
-  const data = serializeProject({
+  return serializeProject({
     ...blank,
     elements,
     groupNames,
     artboard: artboard ?? blank.artboard,
     background: background ?? blank.background,
   });
-  return { name: fileName.replace(/\.svg$/i, "").trim() || "Untitled", data };
+}
+
+/** "2 clip paths, 1 filter and 1 mask": what an import left out, as a sentence lists it. */
+export function listed(items: readonly string[]): string {
+  return items.length < 2
+    ? (items[0] ?? "")
+    : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
 /**

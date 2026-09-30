@@ -107,12 +107,17 @@ invalid characters are dropped) and is read back from that, or from a `<title>`.
 
 Every element carries a complete style, edited in its row of the Primitives list:
 
-- Stroke colour and opacity, stroke width (default 2; 0 exports `stroke="none"`), line cap and
-  line join (default round).
-- Fill: off by default. On, it is a solid colour with opacity, or a **linear or radial gradient**
-  with any number of stops (colour, opacity, offset). The first stop is also the solid colour.
-  Where a gradient runs is two handles on the shape, stored as fractions of its bounding box so it
-  follows the shape.
+- Stroke: a paint, stroke width (default 2; 0 exports `stroke="none"`), line cap and line join
+  (default round).
+- Fill: off by default; on, a paint.
+- A **paint** (fill or stroke) is a solid colour with opacity, or a **linear or radial gradient**
+  with any number of stops (colour, opacity, offset). The first stop is also the solid colour (and
+  a marker's, for the stroke). Where a gradient runs is two handles on the shape - purple for the
+  fill's, teal for the stroke's - stored as fractions of its bounding box so it follows the shape.
+  The fill's gradient exports in those fractions (`objectBoundingBox`); the stroke's in the
+  shape's own coordinates (`userSpaceOnUse`), since a box-relative gradient on a shape with no
+  height - a straight line - is not drawn at all. Fields: `fillType`, `fillStops`, `fillFrom`,
+  `fillTo`, and `strokeType`, `strokeStops`, `strokeFrom`, `strokeTo` (`PAINT_KEYS`).
 - A dash pattern (`dash`, exported as `stroke-dasharray`): dash and gap lengths in artboard units.
   Empty, `none`, negative or all-zero is a solid line. The panel offers it as a style (`dash.ts`):
   solid, dashed, dotted and dash-dot are worked out from the stroke width and cap, and worked out
@@ -125,7 +130,7 @@ Every element carries a complete style, edited in its row of the Primitives list
   past the end point just far enough to cover the line's cap (round, butt or square), so no stroke
   shows beside it.
 - Opacities of 1 are not exported. Markers and gradients go into `<defs>`, with ids derived from
-  the element id.
+  the element id (`grad-<id>` for the fill, `grad-<id>-stroke` for the stroke).
 - A shape with no stroke and no fill paints nothing, as in any viewer; the app keeps it clickable
   and shows its row dimmed so it can be found.
 
@@ -426,7 +431,28 @@ Documents move between browsers as files (`document-files.ts`):
   `stroke-dasharray` are read. A `transform` on an element or a `<g>` is baked into the
   coordinates (`transform.ts`); a shape keeps its type when the transform is one it can express
   (a rotation on a rect becomes its stored angle). Fill defaults to off when a shape has no `fill`
-  at all. Images, patterns, clip paths, masks, filters and stylesheets are skipped.
+  at all.
+- **Styles** as a browser would apply them: `<style>` sheets (by class, id, tag or any selector
+  `querySelectorAll` reads; @-rules passed over) are applied into each element's `style`, by
+  specificity then order, its own `style` last (`applyStylesheets`); a `style` beats a
+  presentation attribute. Colours may carry alpha (`rgba()`, `#rrggbbaa`, `transparent`), and
+  `currentColor` is the inherited `color`. `opacity` on a shape and its groups, and a colour's
+  alpha, are multiplied into the fill's and stroke's opacity (exact wherever the two do not
+  overlap).
+- **Gradients**, on fill or stroke: `href` chains are followed (Inkscape's stops on one gradient,
+  geometry on another), `gradientTransform` moves the gradient's ends (exact for turns, shifts
+  and even scales), and `userSpaceOnUse` coordinates are placed with the shape and turned into box
+  fractions. A `url()` that names no gradient falls back to the colour after it, or to none.
+  `spreadMethod` and a radial gradient's focal point are not read.
+- **Copies and viewports:** each `<use>` becomes a group holding a copy of what it points at,
+  placed by its `x`, `y` and `transform`; a `<symbol>` is fitted into the use's width and height
+  through its viewBox (`preserveAspectRatio` none, or by default evenly and centred). A nested
+  `<svg>` becomes a group the same way. Copies are capped at 20 000 elements; a use that points
+  nowhere, into another file, or at something holding itself is dropped.
+- **What is left out is reported** (`ImportResult.skipped`, "2 clip paths", "1 filter"), and said
+  after an import: clip paths, masks, filters, pattern paints, embedded images, HTML blocks, text
+  paths, separately placed text runs, mid-line markers, custom markers (drawn as the nearest
+  built-in one), animation, scripts and broken `<use>` references.
 - **Export → import → export is byte-for-byte stable** (`io.test.ts`): the SVG panel re-imports
   its own output while typing, and any drift would move shapes.
 

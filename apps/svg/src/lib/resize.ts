@@ -1,5 +1,13 @@
 import { getState } from "./state.js";
-import { elementBBox, translateElement, localBBox, toLocalPoint, toWorldPoint } from "./model.js";
+import {
+  elementBBox,
+  translateElement,
+  localBBox,
+  toLocalPoint,
+  toWorldPoint,
+  PAINT_KEYS,
+  type PaintKind,
+} from "./model.js";
 import { scaleAllByCorner } from "./selection-transform.js";
 import { cornerHandleInset } from "./pointer.js";
 import { type Point, type SceneElement } from "./types.js";
@@ -38,16 +46,15 @@ export function applyResize(
   // and the result is turned back. Without this, dragging a corner of a rotated rect would
   // resize it along the artboard's axes rather than its own.
   const world = el.rotation ? toLocalPoint(base, rawWorld) : rawWorld;
-  if (role === "grad-from" || role === "grad-to") {
+  const grad = gradientEnd(role);
+  if (grad) {
     const box = localBBox(el);
     if (!box) return;
     // Back into fractions of the bounding box, which is how the gradient is stored.
-    const point = {
+    el[PAINT_KEYS[grad.kind][grad.end]] = {
       x: (world.x - box.x) / (box.width || 1),
       y: (world.y - box.y) / (box.height || 1),
     };
-    if (role === "grad-from") el.gradFrom = point;
-    else el.gradTo = point;
     return;
   }
   if (role.startsWith("box-")) {
@@ -131,6 +138,17 @@ export function applyResize(
       break;
     }
   }
+}
+
+/** The role of a gradient's end handle: `grad-from` for the fill's, `stroke-grad-to` for the stroke's. */
+export function gradientRole(kind: PaintKind, end: "from" | "to"): string {
+  return `${kind === "stroke" ? "stroke-" : ""}grad-${end}`;
+}
+
+/** Which paint and which end a gradient handle's role moves, or null for any other handle. */
+function gradientEnd(role: string): { kind: PaintKind; end: "from" | "to" } | null {
+  const m = /^(stroke-)?grad-(from|to)$/.exec(role);
+  return m ? { kind: m[1] ? "stroke" : "fill", end: m[2] as "from" | "to" } : null;
 }
 
 /** The anchor index a resize-handle role refers to, or null for box/radius handles. */

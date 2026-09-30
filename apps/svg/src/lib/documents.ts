@@ -18,6 +18,7 @@ import {
   isSvgFile,
   libraryFile,
   libraryFileName,
+  listed,
   readDocumentFile,
   svgDocument,
   type ImportedDocument,
@@ -573,7 +574,13 @@ export async function importDocumentFiles(files: readonly File[]): Promise<void>
     }
   }
   if (incoming.length) await addDocuments(incoming);
-  if (problems.length) window.alert(`Could not import:\n${problems.join("\n")}`);
+  const leftOut = incoming
+    .filter((d) => d.skipped?.length)
+    .map((d) => `${d.name}: ${listed(d.skipped!)}`);
+  const said: string[] = [];
+  if (problems.length) said.push(`Could not import:\n${problems.join("\n")}`);
+  if (leftOut.length) said.push(`Left out, as the app cannot hold them:\n${leftOut.join("\n")}`);
+  if (said.length) window.alert(said.join("\n\n"));
 }
 
 async function addDocuments(incoming: readonly ImportedDocument[]): Promise<void> {

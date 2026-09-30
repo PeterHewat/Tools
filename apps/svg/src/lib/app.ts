@@ -20,7 +20,7 @@ import {
 import { pushUndo, canUndo, canRedo, undo, redo, undoStepper } from "./undo.js";
 import { formatExportSvg, importSvgFile } from "./io.js";
 import { pngSize, renderPng } from "./png-export.js";
-import { fileBase, isSvgFile } from "./document-files.js";
+import { fileBase, isSvgFile, listed } from "./document-files.js";
 import { canJoin } from "./model.js";
 import {
   THEME_EVENT,
@@ -343,7 +343,7 @@ byId("btn-import-svg").addEventListener("click", async () => {
     window.alert(`Could not import ${file.name}: ${err instanceof Error ? err.message : err}`);
     return;
   }
-  const { artboard, background, elements, groupNames } = imported;
+  const { artboard, background, elements, groupNames, skipped } = imported;
   pushUndo();
   setState((s) => ({
     ...s,
@@ -352,6 +352,11 @@ byId("btn-import-svg").addEventListener("click", async () => {
     artboard: artboard ?? s.artboard,
     background: background ?? s.background,
   }));
+  if (skipped.length) {
+    window.alert(
+      `Imported ${file.name}, leaving out what the app cannot hold: ${listed(skipped)}.`
+    );
+  }
 });
 
 /* ---------- Files dropped on the page ---------- */
