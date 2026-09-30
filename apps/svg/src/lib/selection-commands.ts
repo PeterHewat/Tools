@@ -1,6 +1,14 @@
-import { getState, setState, mutate, findElement, selectOnly, selectedElements } from "./state.js";
+import {
+  getState,
+  setState,
+  mutate,
+  findElement,
+  replaceElements,
+  selectOnly,
+  selectedElements,
+} from "./state.js";
 import { canCombine, combine, type BooleanOp } from "./boolean.js";
-import { byShape, movePoints, pickedPoints } from "./points.js";
+import { byShape, movePoints, onePoint, pickedPoints } from "./points.js";
 import {
   alignBlocks,
   alignPoints,
@@ -36,7 +44,6 @@ import {
   canGroup,
   canMergeGroups,
   canUngroup,
-  expandToGroups,
   groupElements,
   groupsOf,
   mergeGroups,
@@ -47,23 +54,25 @@ import {
   ungroupElements,
   type ZDirection,
 } from "./groups.js";
-import { deepClone, uid } from "./utils.js";
+import { uid } from "./utils.js";
 import { pushUndo } from "./undo.js";
 import { type Point, type SceneElement } from "./types.js";
-import { commit } from "./ops.js";
 
 /** Z-order moves whole top-level blocks, so a group never gets split across the list. */
+/** Every shape that is showing and not locked: the ones a click could reach. */
+export function selectAll(): void {
+  setState((s) => ({
+    ...s,
+    selection: selectOnly(s.elements.filter((el) => !el.hidden && !el.locked).map((el) => el.id)),
+    tool: "select",
+  }));
+}
+
 export function moveZOrder(direction: ZDirection): void {
   const ids = new Set(getState().selection.elementIds);
   if (!ids.size) return;
-  commit(() => {
-    setState((s) => ({ ...s, elements: moveSelectionZ(s.elements, ids, direction) }));
-  });
-}
-
-/** Selecting one member of a group selects the whole outermost group. */
-export function expandGroups(ids: string[]): string[] {
-  return expandToGroups(getState().elements, ids);
+  pushUndo();
+  setState((s) => ({ ...s, elements: moveSelectionZ(s.elements, ids, direction) }));
 }
 
 /**
@@ -131,7 +140,9 @@ export function alignSelection(mode: AlignMode): void {
           y: 0,
           ...st.artboard,
         });
-  if (moved.length) replaceShapes(moved);
+  if (!moved.length) return;
+  pushUndo();
+  replaceElements(moved);
 }
 
 /** Spaces three or more blocks, or picked points, evenly along an axis. */
@@ -142,7 +153,9 @@ export function distributeSelection(axis: Axis): void {
     picked.length > 1
       ? distributePoints(st.elements, picked, axis)
       : distributeBlocks(blocksOf(st.elements, new Set(st.selection.elementIds)), axis);
-  if (moved.length) replaceShapes(moved);
+  if (!moved.length) return;
+  pushUndo();
+  replaceElements(moved);
 }
 
 /** How many things align and distribute would move: picked points, or the selection's blocks. */
@@ -156,22 +169,21 @@ export function alignableCount(): number {
 export function setSelectionLocked(locked: boolean): void {
   const ids = new Set(getState().selection.elementIds);
   if (!ids.size) return;
-  commit(() => {
-    setState((s) => ({
-      ...s,
-      elements: s.elements.map((e) => {
-        if (!ids.has(e.id) || !!e.locked === locked) return e;
-        const next = { ...e };
-        if (locked) next.locked = true;
-        else delete next.locked;
-        return next;
-      }),
-    }));
-  });
+  pushUndo();
+  setState((s) => ({
+    ...s,
+    elements: s.elements.map((e) => {
+      if (!ids.has(e.id) || !!e.locked === locked) return e;
+      const next = { ...e };
+      if (locked) next.locked = true;
+      else delete next.locked;
+      return next;
+    }),
+  }));
 }
 
 /** Whether the selection can be combined: two or more shapes, every one enclosing an area. */
-export function canCombineSelection(): boolean {
+function canCombineSelection(): boolean {
   const sel = selectedElements();
   return sel.length >= 2 && sel.every(canCombine);
 }
@@ -194,13 +206,12 @@ export function combineSelection(op: BooleanOp): void {
     window.alert("Nothing would be left of these shapes, so they are unchanged.");
     return;
   }
-  commit(() => {
-    setState((s) => ({
-      ...s,
-      elements: s.elements.flatMap((e) => (e.id === back.id ? [result] : ids.has(e.id) ? [] : [e])),
-      selection: selectOnly([result.id]),
-    }));
-  });
+  pushUndo();
+  setState((s) => ({
+    ...s,
+    elements: s.elements.flatMap((e) => (e.id === back.id ? [result] : ids.has(e.id) ? [] : [e])),
+    selection: selectOnly([result.id]),
+  }));
 }
 
 /** Peels off the outermost group of the selection, leaving any nested groups inside it intact. */
@@ -230,46 +241,43 @@ export function deleteSelection(handleFirst = true): void {
       const el = findElement(id);
       if (el) changed.set(id, deletePoints(el, indices));
     }
-    commit(() => {
-      setState((s) => {
-        const elements = s.elements.flatMap((x) => {
-          if (!changed.has(x.id)) return [x];
-          const next = changed.get(x.id);
-          return next ? [next] : [];
-        });
-        const left = new Set(elements.map((e) => e.id));
-        return {
-          ...s,
-          elements,
-          selection: selectOnly(s.selection.elementIds.filter((id) => left.has(id))),
-        };
+    pushUndo();
+    setState((s) => {
+      const elements = s.elements.flatMap((x) => {
+        if (!changed.has(x.id)) return [x];
+        const next = changed.get(x.id);
+        return next ? [next] : [];
       });
+      const left = new Set(elements.map((e) => e.id));
+      return {
+        ...s,
+        elements,
+        selection: selectOnly(s.selection.elementIds.filter((id) => left.has(id))),
+      };
     });
     return;
   }
-  if (pe && pe.kind === "anchor") {
+  if (pe) {
     const el = findElement(pe.pathId);
     if (!el) return;
     const next = deletePoints(el, [pe.index]);
-    commit(() => {
-      setState((s) => ({
-        ...s,
-        elements: next
-          ? s.elements.map((x) => (x.id === el.id ? next : x))
-          : s.elements.filter((x) => x.id !== el.id),
-        selection: selectOnly(next ? [next.id] : []),
-      }));
-    });
+    pushUndo();
+    setState((s) => ({
+      ...s,
+      elements: next
+        ? s.elements.map((x) => (x.id === el.id ? next : x))
+        : s.elements.filter((x) => x.id !== el.id),
+      selection: selectOnly(next ? [next.id] : []),
+    }));
     return;
   }
   if (st.selection.elementIds.length) {
-    commit(() => {
-      setState((s) => ({
-        ...s,
-        elements: s.elements.filter((e) => !s.selection.elementIds.includes(e.id)),
-        selection: selectOnly(),
-      }));
-    });
+    pushUndo();
+    setState((s) => ({
+      ...s,
+      elements: s.elements.filter((e) => !s.selection.elementIds.includes(e.id)),
+      selection: selectOnly(),
+    }));
   }
 }
 
@@ -279,19 +287,8 @@ export function setSelectedHandlesLinked(linked: boolean): void {
   const el = pe ? findElement(pe.pathId) : undefined;
   const p = pe && el?.type === "path" ? el.points[pe.index] : undefined;
   if (!p || !hasTwoHandles(p) || p.smooth === linked) return;
-  commit(() => mutate(() => setHandlesLinked(p, linked)));
-}
-
-/**
- * Turns the selected point into a curve, or a curved one back into a corner: what double-clicking
- * the point does. A line, polyline or polygon becomes a path first, as it has no curves to give.
- */
-/** Puts `next` in place of the shapes with the same ids, as one undo step. */
-function replaceShapes(next: readonly SceneElement[]): void {
-  const byId = new Map(next.map((el) => [el.id, el] as const));
-  commit(() => {
-    setState((s) => ({ ...s, elements: s.elements.map((x) => byId.get(x.id) ?? x) }));
-  });
+  pushUndo();
+  mutate(() => setHandlesLinked(p, linked));
 }
 
 /** Whether a point is a curve: it has a handle standing off it. */
@@ -314,63 +311,67 @@ function setPickedPointsCurve(): void {
   for (const [id, indices] of byShape(picked)) {
     const el = findElement(id);
     if (!el || !canToggleClosed(el)) continue;
-    const path = toPathElement(deepClone(el));
+    const path = toPathElement(structuredClone(el));
     for (const i of indices) if (isCurvePoint(path, i) !== makeCurves) togglePointSmooth(path, i);
     next.push(path);
   }
-  replaceShapes(next);
+  pushUndo();
+  replaceElements(next);
 }
 
+/**
+ * Turns a point into a curve, or a curved one back into a corner, and selects it: what
+ * double-clicking a point does. A line, polyline or polygon becomes a path first, as it has no
+ * curves to give.
+ */
+export function togglePointCurve(elementId: string, index: number): void {
+  const el = findElement(elementId);
+  if (!el || !(canToggleClosed(el) || el.type === "line")) return;
+  pushUndo();
+  const path = toPathElement(structuredClone(el));
+  togglePointSmooth(path, index);
+  replaceElements([path], { selection: selectOnly([path.id], { pathId: path.id, index }) });
+}
+
+/** The bar's Curve / Corner: every picked point, or the one selected. */
 export function toggleSelectedPointCurve(): void {
   if (pickedPoints(getState().selection).length > 1) {
     setPickedPointsCurve();
     return;
   }
   const pe = getState().selection.pathEdit;
-  const el = pe ? findElement(pe.pathId) : undefined;
-  if (!pe || !el || !canToggleClosed(el)) return;
-  commit(() => {
-    setState((s) => {
-      const path = toPathElement(el);
-      togglePointSmooth(path, pe.index);
-      return {
-        ...s,
-        elements: s.elements.map((x) => (x.id === el.id ? path : x)),
-        selection: selectOnly([path.id], { pathId: path.id, kind: "anchor", index: pe.index }),
-      };
-    });
-  });
+  if (pe) togglePointCurve(pe.pathId, pe.index);
+}
+
+/** Takes one curve handle off a path's point, and selects the point. */
+export function removePointHandle(pathId: string, index: number, kind: "in" | "out"): void {
+  const el = findElement(pathId);
+  const p = el?.type === "path" ? el.points[index] : undefined;
+  if (!p || !hasHandle(p, kind)) return;
+  pushUndo();
+  mutate(() => removeHandle(p, kind));
+  setState({ selection: onePoint(getState().selection, { pathId, index }) });
 }
 
 /** Takes the selected point's last-grabbed curve handle off it. */
 export function removeSelectedHandle(): void {
   const pe = getState().selection.pathEdit;
-  const el = pe ? findElement(pe.pathId) : undefined;
-  const p = pe && el?.type === "path" ? el.points[pe.index] : undefined;
-  const kind = pe?.handle;
-  if (!pe || !p || !kind || !hasHandle(p, kind)) return;
-  commit(() => {
-    mutate(() => removeHandle(p, kind));
-    setState({
-      selection: selectOnly([pe.pathId], { pathId: pe.pathId, kind: "anchor", index: pe.index }),
-    });
-  });
+  if (pe?.handle) removePointHandle(pe.pathId, pe.index, pe.handle);
 }
 
 /** Cuts the selected path at the selected anchor. */
 export function splitAtSelectedPoint(): void {
   const pe = getState().selection.pathEdit;
-  if (!pe || pe.kind !== "anchor") return;
+  if (!pe) return;
   const el = findElement(pe.pathId);
   const parts = el ? splitAt(el, pe.index) : null;
   if (!el || !parts) return;
-  commit(() => {
-    setState((s) => ({
-      ...s,
-      elements: s.elements.flatMap((x) => (x.id === el.id ? parts : [x])),
-      selection: selectOnly(parts.map((p) => p.id)),
-    }));
-  });
+  pushUndo();
+  setState((s) => ({
+    ...s,
+    elements: s.elements.flatMap((x) => (x.id === el.id ? parts : [x])),
+    selection: selectOnly(parts.map((p) => p.id)),
+  }));
 }
 
 /** Joins the two selected open shapes at their closest ends. */
@@ -382,13 +383,12 @@ export function joinSelected(): void {
   if (!a || !b) return;
   const joined = joinPaths(a, b);
   if (!joined) return;
-  commit(() => {
-    setState((s) => ({
-      ...s,
-      elements: s.elements.filter((x) => x.id !== b.id).map((x) => (x.id === a.id ? joined : x)),
-      selection: selectOnly([joined.id]),
-    }));
-  });
+  pushUndo();
+  setState((s) => ({
+    ...s,
+    elements: s.elements.filter((x) => x.id !== b.id).map((x) => (x.id === a.id ? joined : x)),
+    selection: selectOnly([joined.id]),
+  }));
 }
 
 export function ends(el: SceneElement): [Point, Point] | null {
@@ -411,18 +411,8 @@ function canJoinEnds(el: SceneElement, idx: number): boolean {
 export function setElementClosed(id: string, closed: boolean): void {
   const el = findElement(id);
   if (!el || !canToggleClosed(el)) return;
-  commit(() => {
-    setState((s) => {
-      const cur = findElement(id);
-      if (!cur) return s;
-      const next = setClosed(cur, closed);
-      return {
-        ...s,
-        elements: s.elements.map((x) => (x.id === id ? next : x)),
-        selection: selectOnly([id]),
-      };
-    });
-  });
+  pushUndo();
+  replaceElements([setClosed(el, closed)], { selection: selectOnly([id]) });
 }
 
 /**
@@ -459,25 +449,22 @@ export function copyElements(
 
 export function duplicateSelection(): void {
   if (!getState().selection.elementIds.length) return;
-  commit(() => {
-    setState((s) => {
-      const source = s.selection.elementIds
-        .map((id) => findElement(id))
-        .filter((e): e is SceneElement => !!e);
-      // A group only partly selected - one member picked inside it - takes the copies in, right
-      // above its other members; a group selected whole is copied along with its members.
-      const picked = new Set(source.map((e) => e.id));
-      const partial = new Set(
-        s.elements.filter((e) => !picked.has(e.id)).flatMap((e) => groupsOf(e))
-      );
-      const { copies, groupNames } = copyElements(source, s.grid.step, s.groupNames, partial);
-      return {
-        ...s,
-        elements: normalizeGroups([...s.elements, ...copies]),
-        groupNames: { ...s.groupNames, ...groupNames },
-        selection: selectOnly(copies.map((c) => c.id)),
-      };
-    });
+  pushUndo();
+  setState((s) => {
+    const source = selectedElements();
+    // A group only partly selected - one member picked inside it - takes the copies in, right
+    // above its other members; a group selected whole is copied along with its members.
+    const picked = new Set(source.map((e) => e.id));
+    const partial = new Set(
+      s.elements.filter((e) => !picked.has(e.id)).flatMap((e) => groupsOf(e))
+    );
+    const { copies, groupNames } = copyElements(source, s.grid.step, s.groupNames, partial);
+    return {
+      ...s,
+      elements: normalizeGroups([...s.elements, ...copies]),
+      groupNames: { ...s.groupNames, ...groupNames },
+      selection: selectOnly(copies.map((c) => c.id)),
+    };
   });
 }
 
@@ -490,23 +477,24 @@ export function nudgeSelection(dx: number, dy: number): void {
   const picked = pickedPoints(selection);
   if (picked.length > 1) {
     const bases = new Map(selectedElements().map((el) => [el.id, el] as const));
-    replaceShapes(movePoints(bases, picked, dx, dy));
+    pushUndo();
+    replaceElements(movePoints(bases, picked, dx, dy));
     return;
   }
   const pe = selection.pathEdit;
   const pointOwner = pe ? findElement(pe.pathId) : undefined;
   if (pe && pointOwner && hasPoint(pointOwner, pe.index)) {
-    commit(() => mutate(() => translatePoint(pointOwner, pe.index, dx, dy, pe.handle)));
+    pushUndo();
+    mutate(() => translatePoint(pointOwner, pe.index, dx, dy, pe.handle));
     return;
   }
   // A locked shape selected from its row stays put, as it does when the others are dragged.
   const movable = () => selectedElements().filter((el) => !el.locked);
   if (!movable().length) return;
-  commit(() =>
-    mutate(() => {
-      for (const el of movable()) translateElement(el, dx, dy);
-    })
-  );
+  pushUndo();
+  mutate(() => {
+    for (const el of movable()) translateElement(el, dx, dy);
+  });
 }
 
 /**

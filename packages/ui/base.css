@@ -137,9 +137,7 @@ a {
   color: var(--ok);
 }
 
-.ui-input,
-.ui-select,
-.ui-code {
+.ui-input {
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -148,32 +146,8 @@ a {
   font: inherit;
 }
 
-.ui-input:focus,
-.ui-select:focus,
-.ui-code:focus {
+.ui-input:focus {
   outline: none;
-  border-color: var(--accent);
-}
-
-.ui-code {
-  display: block;
-  width: 100%;
-  min-height: 12rem;
-  resize: vertical;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.5;
-  tab-size: 2;
-  white-space: pre;
-}
-
-pre.ui-code {
-  margin: 0;
-  overflow: auto;
-}
-
-.ui-code.dragging {
-  border-style: dashed;
   border-color: var(--accent);
 }
 
@@ -233,20 +207,6 @@ pre.ui-code {
 
 /* ---------- Layout pieces ---------- */
 
-.ui-panel {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
-  padding: 12px;
-}
-
-.ui-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
 .ui-label {
   color: var(--muted);
   font-size: 0.85rem;
@@ -264,10 +224,6 @@ pre.ui-code {
 
 .ui-status--ok {
   color: var(--ok);
-}
-
-.ui-mono {
-  font-family: var(--mono);
 }
 
 .hidden {

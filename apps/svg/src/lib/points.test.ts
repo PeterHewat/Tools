@@ -88,13 +88,10 @@ describe("picking several points", () => {
   });
 
   test("picking one point keeps the shapes selected with it", () => {
-    const sel = onePoint(none, { pathId: "tri", kind: "anchor", index: 1 });
+    const sel = onePoint(none, { pathId: "tri", index: 1 });
     expect(sel.elementIds).toEqual(["tri", "line"]);
     expect(
-      onePoint(
-        { elementIds: ["line"], pathEdit: null },
-        { pathId: "tri", kind: "anchor", index: 1 }
-      ).elementIds
+      onePoint({ elementIds: ["line"], pathEdit: null }, { pathId: "tri", index: 1 }).elementIds
     ).toEqual(["tri"]);
   });
 });

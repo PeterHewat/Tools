@@ -6,24 +6,17 @@ import { type EditorState } from "./types.js";
 
 /* ---------- Accordion lists (Primitives and Reference images share the row layout) ---------- */
 
-interface CachedList {
-  sync(state: EditorState): void;
-  invalidate(): void;
-}
-
 /**
- * Rebuilds a list only when its structure changed; otherwise just refreshes the values in place,
- * so typing in a field is never interrupted by a re-render.
+ * Rebuilds a list only when its structure, as `keyOf` gives it, changed; otherwise just refreshes
+ * the values in place, so typing in a field is never interrupted by a re-render.
  */
-const lists: CachedList[] = [];
-
 export function cachedList(
   keyOf: (state: EditorState) => string,
   build: (state: EditorState) => void,
   update: (state: EditorState) => void
-): CachedList {
+): { sync(state: EditorState): void } {
   let key: string | null = null;
-  const list: CachedList = {
+  return {
     sync(state) {
       const next = keyOf(state);
       if (next === key) {
@@ -33,17 +26,7 @@ export function cachedList(
       key = next;
       build(state);
     },
-    invalidate() {
-      key = null;
-    },
   };
-  lists.push(list);
-  return list;
-}
-
-/** Forces every list to rebuild on its next sync, for when the document was replaced wholesale. */
-export function invalidateLists(): void {
-  for (const list of lists) list.invalidate();
 }
 
 interface AccHeaderOptions {
@@ -93,11 +76,7 @@ export function rowDotHtml(
  * The eye: whether a thing is drawn. Separate from the checkbox, which says whether it is
  * selected - one control, one meaning, in every list.
  */
-export function eyeHtml(
-  visible: boolean,
-  title: string,
-  extra = ' data-action="toggle-eye"'
-): string {
+function eyeHtml(visible: boolean, title: string, extra = ' data-action="toggle-eye"'): string {
   return `<button type="button" class="btn-visibility btn-eye${visible ? "" : " is-off"}"${extra} title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}" aria-pressed="${!visible}">
       <svg class="glyph" aria-hidden="true"><use href="#${visible ? "icon-eye" : "icon-eye-off"}" /></svg>
     </button>`;

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { cardHtml, escapeHtml, pageHtml } from "./render.js";
+import { escapeHtml } from "@tools/ui/vite";
+import { cardHtml, pageHtml } from "./render.js";
 import type { ToolsApp } from "@tools/catalog";
 
 const app: ToolsApp = {

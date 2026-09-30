@@ -1,6 +1,6 @@
 import { getState } from "./state.js";
 import { renderRulers, setRulerOffset } from "./rulers.js";
-import { bindDock, byId } from "@tools/ui";
+import { bindDock, byId, readStored, writeStored } from "@tools/ui";
 
 /**
  * Where the tools move to the bottom bar: the phone layout's media query in styles.css, which
@@ -80,11 +80,9 @@ const sectionOpen: Record<string, boolean> = {
   svg: true,
   primitives: true,
 };
-try {
-  Object.assign(sectionOpen, JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}"));
-} catch {
-  /* defaults */
-}
+const storedSections = readStored(SECTIONS_KEY);
+if (storedSections && typeof storedSections === "object")
+  Object.assign(sectionOpen, storedSections);
 
 function applySections(): void {
   docDock.panel.querySelectorAll<HTMLElement>(".doc-section").forEach((sec) => {
@@ -95,11 +93,7 @@ function applySections(): void {
 export function setSectionOpen(key: string, open: boolean): void {
   sectionOpen[key] = open;
   applySections();
-  try {
-    localStorage.setItem(SECTIONS_KEY, JSON.stringify(sectionOpen));
-  } catch {
-    /* not remembered */
-  }
+  writeStored(SECTIONS_KEY, sectionOpen);
 }
 
 docDock.panel.querySelectorAll<HTMLElement>(".doc-toggle").forEach((btn) => {

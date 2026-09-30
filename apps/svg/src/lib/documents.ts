@@ -1,17 +1,16 @@
-import { getState, setState, replaceState, createInitialState } from "./state.js";
+import { getState, setState, replaceState, createInitialState, selectOnly } from "./state.js";
 import { clearHistory, setHistoryListener } from "./undo.js";
 import {
   listDocuments,
   saveDocument,
   loadDocument,
   deleteDocument,
-  renameDocument,
   duplicateDocument,
   reorderDocuments,
-  setDocumentTags,
+  updateMeta,
   type DocumentMeta,
 } from "./storage.js";
-import { serializeProject, loadProject, formatExportSvg, type ExportDoc } from "./io.js";
+import { serializeProject, readProject, formatExportSvg, type ExportDoc } from "./io.js";
 import {
   documentFile,
   documentFileName,
@@ -21,15 +20,21 @@ import {
   readDocumentFile,
   type ImportedDocument,
 } from "./document-files.js";
-import { deepClone, escapeAttr, uid } from "./utils.js";
-import { byId, downloadText, registerServiceWorker } from "@tools/ui";
+import { escapeAttr, uid } from "./utils.js";
+import {
+  byId,
+  downloadText,
+  pickFiles,
+  readStored,
+  registerServiceWorker,
+  writeStored,
+} from "@tools/ui";
 import { type ProjectFile } from "./types.js";
 import { savedView } from "./session.js";
 import { setSectionOpen } from "./layout.js";
 import { fitToView } from "./zoom.js";
-import { invalidateLists, rowDotHtml } from "./accordion.js";
+import { rowDotHtml } from "./accordion.js";
 import { hydrateImageDimensions } from "./images-panel.js";
-import { WELCOME_NAME, WELCOME_TAGS, loadWelcome } from "./welcome.js";
 import { demoDocument, demoUrl, demosToAdd } from "./demos.js";
 import {
   cleanTags,
@@ -47,8 +52,6 @@ export let currentDoc: { id: string | null; name: string } = { id: null, name: "
 
 /* ---------- Documents: autosaved to browser storage, macOS-style ---------- */
 const LAST_DOC_KEY = "svg.lastDoc";
-/** Set once the welcome drawing has been added: deleting it must not bring it back. */
-const WELCOMED_KEY = "svg.welcomed";
 /** The demo files this browser has been given, so a deleted one is not given again. */
 const DEMOS_KEY = "svg.demos";
 const docDirtyEl = byId("doc-dirty");
@@ -81,6 +84,16 @@ function storageError(err: unknown): void {
   window.alert(`Could not access browser storage: ${message}`);
 }
 
+/** Waits for a storage call: its result, or undefined when it failed (the failure is shown). */
+async function stored<T>(op: Promise<T>): Promise<T | undefined> {
+  try {
+    return await op;
+  } catch (err) {
+    storageError(err);
+    return undefined;
+  }
+}
+
 function uniqueName(base: string): string {
   const names = new Set(docsCache.map((d) => d.name));
   if (!names.has(base)) return base;
@@ -93,17 +106,12 @@ function storeCurrent(): Promise<void> {
   return saveDocument({
     id: currentDoc.id,
     name: currentDoc.name,
-    data: deepClone(serializeProject(getState())),
+    data: structuredClone(serializeProject(getState())),
   });
 }
 
 async function refreshDocList(): Promise<void> {
-  try {
-    docsCache = await listDocuments();
-  } catch (err) {
-    storageError(err);
-    docsCache = [];
-  }
+  docsCache = (await stored(listDocuments())) ?? [];
   const active = document.activeElement as HTMLInputElement | null;
   // Don't rebuild the list under a name or tags being edited.
   const editing = active?.closest<HTMLElement>("#doc-list [data-doc-id]")?.dataset.docId;
@@ -285,12 +293,7 @@ docListEl.addEventListener("input", (e) => {
 });
 
 function rememberLast(id: string | null): void {
-  try {
-    if (id) localStorage.setItem(LAST_DOC_KEY, id);
-    else localStorage.removeItem(LAST_DOC_KEY);
-  } catch {
-    /* not remembered */
-  }
+  writeStored(LAST_DOC_KEY, id ?? undefined);
 }
 
 function flushSave(): Promise<void> {
@@ -302,12 +305,7 @@ function flushSave(): Promise<void> {
   saveChain = saveChain.then(async () => {
     if (changeSeq === savedSeq || !currentDoc.id) return;
     const seq = changeSeq;
-    try {
-      await storeCurrent();
-    } catch (err) {
-      storageError(err);
-      return;
-    }
+    if (!(await stored(storeCurrent().then(() => true)))) return;
     savedSeq = seq;
     updateStatus();
     await refreshDocList();
@@ -323,54 +321,29 @@ export function saveNow(): Promise<void> {
 function afterDocumentReplaced(): void {
   void hydrateImageDimensions(getState().images);
   clearHistory();
-  invalidateLists();
   savedSeq = changeSeq;
   updateStatus();
 }
 
 /** Creates and stores a fresh, named, empty document and switches to it. */
 async function createBlankDocument(): Promise<void> {
-  try {
-    docsCache = await listDocuments();
-  } catch (err) {
-    storageError(err);
-  }
+  docsCache = (await stored(listDocuments())) ?? docsCache;
   replaceState(createInitialState());
-  setState({ viewport: fitToView() });
+  fitToView();
   currentDoc = { id: uid("doc"), name: uniqueName("Untitled") };
   await storeNew();
 }
 
-/**
- * Creates the welcome drawing as a document and switches to it. False, with nothing stored, when
- * the drawing cannot be fetched (offline before a first load).
- */
-async function createWelcomeDocument(): Promise<boolean> {
-  replaceState(createInitialState());
-  if (!(await loadWelcome())) return false;
-  markWelcomed();
-  setState({ viewport: fitToView() });
-  currentDoc = { id: uid("doc"), name: uniqueName(WELCOME_NAME) };
-  await storeNew(WELCOME_TAGS);
-  return true;
-}
-
-/**
- * Stores the document just put on the canvas, at the top of the list, and makes it the open one,
- * with `tags` when it comes with some.
- */
-async function storeNew(tags?: string[]): Promise<void> {
+/** Stores the document just put on the canvas, at the top of the list, and makes it the open one. */
+async function storeNew(): Promise<void> {
   afterDocumentReplaced();
-  try {
-    await saveDocument({
+  await stored(
+    saveDocument({
       id: currentDoc.id!,
       name: currentDoc.name,
-      tags,
-      data: deepClone(serializeProject(getState())),
-    });
-  } catch (err) {
-    storageError(err);
-  }
+      data: structuredClone(serializeProject(getState())),
+    })
+  );
   rememberLast(currentDoc.id);
   await refreshDocList();
 }
@@ -396,22 +369,30 @@ async function newDocument(): Promise<void> {
 async function openDocument(id: string): Promise<void> {
   if (id === currentDoc.id) return;
   await flushSave();
-  let data: ProjectFile | null;
-  try {
-    data = await loadDocument(id);
-  } catch (err) {
-    storageError(err);
-    return;
-  }
+  const data = await stored(loadDocument(id));
   if (!data) return;
   try {
-    loadProject(data);
+    const doc = readProject(data);
+    replaceState({
+      ...createInitialState(),
+      artboard: doc.artboard,
+      background: doc.background,
+      grid: doc.grid,
+      images: doc.images,
+      elements: doc.elements,
+      groupNames: doc.groupNames,
+      groupHues: doc.groupHues,
+      guides: doc.guides,
+      tool: doc.tool,
+      finalOnly: doc.finalOnly,
+      selection: selectOnly(),
+    });
   } catch (err) {
     window.alert(err instanceof Error ? err.message : String(err));
     return;
   }
   // A document opens showing all of its artboard, whatever view it was last left in.
-  setState({ viewport: fitToView() });
+  fitToView();
   currentDoc = { id, name: docsCache.find((d) => d.id === id)?.name ?? "" };
   rememberLast(id);
   afterDocumentReplaced();
@@ -423,28 +404,22 @@ async function renameCurrent(raw: string): Promise<void> {
   if (!name || name === currentDoc.name || !currentDoc.id) return;
   await flushSave();
   currentDoc.name = name;
-  try {
-    await renameDocument(currentDoc.id, name);
-  } catch (err) {
-    storageError(err);
-  }
+  await stored(updateMeta(currentDoc.id, { name }));
 }
 
 byId("btn-new-doc").addEventListener("click", () => void newDocument());
 
 // Inline rename of the open document's name.
+// Enter keeps what was typed in a name or tags field; Esc puts the name back as it was.
 docListEl.addEventListener("keydown", (e) => {
   const target = e.target as HTMLInputElement;
-  if (!target.classList?.contains("doc-title-input")) return;
+  const title = target.classList?.contains("doc-title-input");
+  if (!title && !target.classList?.contains("doc-tags-input")) return;
   if (e.key === "Enter") target.blur();
-  if (e.key === "Escape") {
+  if (title && e.key === "Escape") {
     target.value = currentDoc.name;
     target.blur();
   }
-});
-docListEl.addEventListener("keydown", (e) => {
-  const target = e.target as HTMLInputElement;
-  if (target.classList?.contains("doc-tags-input") && e.key === "Enter") target.blur();
 });
 docListEl.addEventListener("change", async (e) => {
   const target = e.target as HTMLInputElement;
@@ -452,11 +427,7 @@ docListEl.addEventListener("change", async (e) => {
   if (id && target.classList?.contains("doc-tags-input")) {
     const tags = cleanTags(target.value);
     target.value = tags.join(", ");
-    try {
-      await setDocumentTags(id, tags);
-    } catch (err) {
-      storageError(err);
-    }
+    await stored(updateMeta(id, { tags }));
     await refreshDocList();
     return;
   }
@@ -469,11 +440,7 @@ docListEl.addEventListener("change", async (e) => {
 async function duplicateDoc(id: string): Promise<void> {
   if (id === currentDoc.id) await flushSave();
   const name = uniqueName(`${docsCache.find((d) => d.id === id)?.name ?? "Untitled"} copy`);
-  try {
-    await duplicateDocument(id, uid("doc"), name);
-  } catch (err) {
-    storageError(err);
-  }
+  await stored(duplicateDocument(id, uid("doc"), name));
   await refreshDocList();
 }
 
@@ -499,11 +466,7 @@ async function moveDoc(id: string, step: number): Promise<void> {
   const to = from + step;
   if (from < 0 || to < 0 || to >= ids.length) return;
   [ids[from], ids[to]] = [ids[to]!, ids[from]!];
-  try {
-    await reorderDocuments(ids);
-  } catch (err) {
-    storageError(err);
-  }
+  await stored(reorderDocuments(ids));
   await refreshDocList();
 }
 
@@ -515,12 +478,7 @@ async function deleteDoc(id: string): Promise<void> {
     savedSeq = changeSeq;
     updateStatus();
   }
-  try {
-    await deleteDocument(id);
-  } catch (err) {
-    storageError(err);
-    return;
-  }
+  if (!(await stored(deleteDocument(id).then(() => true)))) return;
   if (!wasCurrent) {
     await refreshDocList();
     return;
@@ -560,19 +518,9 @@ export function svgFileName(): string {
   return `${fileBase(currentDoc.name)}.svg`;
 }
 
-/** A stored document's data, or null (with the error shown) when storage fails. */
-async function storedData(id: string): Promise<ProjectFile | null> {
-  try {
-    return await loadDocument(id);
-  } catch (err) {
-    storageError(err);
-    return null;
-  }
-}
-
 async function exportDoc(id: string): Promise<void> {
   if (id === currentDoc.id) await flushSave();
-  const data = await storedData(id);
+  const data = await stored(loadDocument(id));
   if (!data) return;
   const meta = docsCache.find((d) => d.id === id);
   const name = meta?.name ?? "Untitled";
@@ -588,7 +536,7 @@ async function exportAll(): Promise<void> {
   await flushSave();
   const documents: ImportedDocument[] = [];
   for (const d of docsCache) {
-    const data = await storedData(d.id);
+    const data = await stored(loadDocument(d.id));
     if (!data) return;
     documents.push({ name: d.name, tags: d.tags, data });
   }
@@ -598,18 +546,12 @@ async function exportAll(): Promise<void> {
 
 byId("btn-doc-export-all").addEventListener("click", () => void exportAll());
 
-byId("btn-doc-import").addEventListener("click", () => {
-  byId<HTMLInputElement>("input-doc-file").click();
-});
-
 /**
  * Adds every document in the chosen files - single documents and whole libraries alike - beside
  * the ones already here, each with a fresh id and a free name, then opens the first of them.
  */
-byId("input-doc-file").addEventListener("change", async (e) => {
-  const input = e.target as HTMLInputElement;
-  const files = [...(input.files ?? [])];
-  input.value = "";
+byId("btn-doc-import").addEventListener("click", async () => {
+  const files = await pickFiles(".json,application/json", true);
   if (!files.length) return;
   const incoming: ImportedDocument[] = [];
   const problems: string[] = [];
@@ -670,36 +612,16 @@ window.addEventListener("beforeunload", (e) => {
   }
 });
 
-/** True until the drawing has been added once: an empty library on a later visit gets an empty document. */
-function firstVisit(): boolean {
-  try {
-    return !localStorage.getItem(WELCOMED_KEY);
-  } catch {
-    return true;
-  }
-}
-
-function markWelcomed(): void {
-  try {
-    localStorage.setItem(WELCOMED_KEY, "1");
-  } catch {
-    /* no storage: the drawing is offered again next time, which beats never */
-  }
-}
-
 /**
  * Adds the demos this browser has not had yet, at the bottom of the list, in the order they are
  * listed. Without storage to remember them by, none are added: better than adding them again at
  * every start. One that cannot be fetched (offline before a first load) is tried next time.
  */
 async function addDemos(): Promise<void> {
-  let given: string[];
-  try {
-    given = JSON.parse(localStorage.getItem(DEMOS_KEY) ?? "[]") as string[];
-    if (!Array.isArray(given)) given = [];
-  } catch {
-    return;
-  }
+  const stored = readStored(DEMOS_KEY);
+  // Storage that will not keep the list would hand out every demo again at the next start.
+  if (stored === undefined && !writeStored(DEMOS_KEY, [])) return;
+  const given = Array.isArray(stored) ? stored.filter((f) => typeof f === "string") : [];
   const added: string[] = [];
   for (const demo of demosToAdd(given)) {
     try {
@@ -719,11 +641,7 @@ async function addDemos(): Promise<void> {
     }
   }
   if (!added.length) return;
-  try {
-    localStorage.setItem(DEMOS_KEY, JSON.stringify([...given, ...added]));
-  } catch {
-    /* not remembered */
-  }
+  writeStored(DEMOS_KEY, [...given, ...added]);
   docsCache = await listDocuments();
 }
 
@@ -735,17 +653,11 @@ export function startDocuments(): void {
 
 async function openInitialDocument(): Promise<void> {
   await refreshDocList();
-  let last: string | null = null;
-  try {
-    last = localStorage.getItem(LAST_DOC_KEY);
-  } catch {
-    last = null;
-  }
-  const welcome = !docsCache.length && firstVisit();
+  const last = readStored(LAST_DOC_KEY);
+  // A first visit's library is the demos, and it opens on the first of them.
   await addDemos();
-  if (welcome) await createWelcomeDocument();
   const first = docsCache[0];
-  if (last && docsCache.some((d) => d.id === last)) await openDocument(last);
+  if (typeof last === "string" && docsCache.some((d) => d.id === last)) await openDocument(last);
   else if (!currentDoc.id && first) await openDocument(first.id);
   else if (!currentDoc.id) await createBlankDocument();
   // The view the tab was last showing, but only for the document it was showing it of.

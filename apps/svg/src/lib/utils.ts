@@ -2,8 +2,8 @@ import { ELEMENT_TYPES, type ElementType, type Point } from "./types.js";
 
 const ELEMENT_TYPE_SET: ReadonlySet<string> = new Set(ELEMENT_TYPES);
 
-/** `path,line,rect,…` — for querySelectorAll on an imported document. */
-export const ELEMENT_SELECTOR = ELEMENT_TYPES.join(",");
+/** `path,line,rect,…` — for querySelectorAll on an imported document; a circle is an ellipse. */
+export const ELEMENT_SELECTOR = [...ELEMENT_TYPES, "circle"].join(",");
 
 /** Matches a generated default name: "path 1", "rect_2", … */
 export const AUTO_NAME_RE = new RegExp(`^(${ELEMENT_TYPES.join("|")})[ _](\\d+)$`);
@@ -26,8 +26,14 @@ export function uid(prefix = "el"): string {
   return `${prefix}-${hex}`;
 }
 
-export function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+/** A colour as the app stores it, `#rrggbb`; anything else is black. */
+export function cleanColor(c: unknown): string {
+  return typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c) ? c : "#000000";
+}
+
+/** An opacity: a finite number held to 0..1, else `fallback`. */
+export function cleanUnit(n: unknown, fallback = 1): number {
+  return typeof n === "number" && Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
 }
 
 export function dist(a: Point, b: Point): number {

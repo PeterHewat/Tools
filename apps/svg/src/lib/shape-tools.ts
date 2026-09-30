@@ -2,7 +2,6 @@ import { setState, selectOnly } from "./state.js";
 import { createRect, createEllipse } from "./model.js";
 import { pushUndo } from "./undo.js";
 import { type PathElement, type Point } from "./types.js";
-import { setDrawing } from "./ops.js";
 
 /** The tools that are drawn by dragging a shape out on the canvas. */
 export type ShapeTool = "rect" | "ellipse";
@@ -61,9 +60,11 @@ export function updateShapePreview(
   shift: boolean
 ): void {
   const current = constrainShapeEnd(start, rawCurrent, shift);
-  setDrawing({
-    shapeStart: start,
-    preview: { type: "shape", tag: tool, nodeAttrs: shapeGeometry(tool, start, current) },
+  setState({
+    drawing: {
+      shapeStart: start,
+      preview: { type: "shape", tag: tool, nodeAttrs: shapeGeometry(tool, start, current) },
+    },
   });
 }
 

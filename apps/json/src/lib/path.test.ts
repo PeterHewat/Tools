@@ -23,11 +23,12 @@ describe("nodeAt", () => {
 
 test("nodeAt follows positions, so a repeated key finds the right copy", () => {
   const text = '{"a": 1, "a": [0, 2]}';
-  const at = nodeAt(root(text), text.indexOf("2"));
-  expect([at.path, at.indices]).toEqual([
-    ["a", 1],
-    [1, 1],
-  ]);
+  const r = root(text);
+  const at = nodeAt(r, text.indexOf("2"));
+  expect(at.path).toEqual(["a", 1]);
+  // By position, not by key: the second "a", not the first.
+  expect(at.chain[1]).toBe(r.kind === "object" ? r.members[1]!.value : r);
+  expect(at.chain.at(-1)).toBe(at.node);
 });
 
 describe("path formats", () => {

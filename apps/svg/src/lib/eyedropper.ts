@@ -52,19 +52,23 @@ export function toImagePixel(image: ReferenceImage, p: Point): Point {
 const hex2 = (n: number) => n.toString(16).padStart(2, "0");
 
 /** The colour of the topmost visible reference image at an artboard point, or null. */
-export async function sampleImages(
-  images: readonly ReferenceImage[],
-  at: Point
-): Promise<string | null> {
+async function sampleImages(images: readonly ReferenceImage[], at: Point): Promise<string | null> {
   for (const image of [...images].reverse()) {
-    if (image.visible === false) continue;
+    if (!image.visible) continue;
     const q = toImagePixel(image, at);
     const w = image.naturalWidth ?? 0;
     const h = image.naturalHeight ?? 0;
     if (q.x < 0 || q.y < 0 || q.x >= w || q.y >= h) continue;
     const ctx = await pixels(image).catch(() => null);
     if (!ctx) continue;
-    const [r, g, b, alpha] = ctx.getImageData(Math.floor(q.x), Math.floor(q.y), 1, 1).data;
+    let data: Uint8ClampedArray;
+    try {
+      data = ctx.getImageData(Math.floor(q.x), Math.floor(q.y), 1, 1).data;
+    } catch {
+      // A canvas tainted by an image from elsewhere cannot be read: no colour from it.
+      continue;
+    }
+    const [r, g, b, alpha] = data;
     // A transparent pixel is not this image's colour there: look at the one underneath.
     if (!alpha) continue;
     return `#${hex2(r!)}${hex2(g!)}${hex2(b!)}`;
@@ -74,7 +78,7 @@ export async function sampleImages(
 
 /** Whether there is anything to pick from. */
 export function canPickFromImages(): boolean {
-  return getState().images.some((img) => img.visible !== false && !!img.naturalWidth);
+  return getState().images.some((img) => img.visible && !!img.naturalWidth);
 }
 
 /**

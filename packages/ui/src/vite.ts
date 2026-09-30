@@ -25,17 +25,6 @@ import { withIcons } from "@tools/ui/icons";
 const DEV_SW = "self.registration.unregister();\n";
 
 /**
- * Each app folder's `sw.js`. Until the site shared one worker, every app registered its own,
- * scoped to its folder, and a browser that has one checks that URL for updates; this is what it
- * finds. It removes itself, so the site's worker at the root takes the folder over (and clears
- * its cache). Keep it while such browsers may still be about.
- */
-export const RETIRED_WORKER =
-  "// Replaced by the site's worker at the root, which now answers for this folder too.\n" +
-  'self.addEventListener("install", () => self.skipWaiting());\n' +
-  'self.addEventListener("activate", (e) => e.waitUntil(self.registration.unregister()));\n';
-
-/**
  * The site root as the pages see it, for `registerServiceWorker`: an app's own base is one
  * folder below it.
  */
@@ -44,7 +33,7 @@ const siteDefine = () => ({ "import.meta.env.TOOLS_SITE_BASE": JSON.stringify(si
 const ICON = "icon.svg";
 const MANIFEST = "manifest.webmanifest";
 /** Set in CI for production builds; omitted locally and in PR builds. */
-export const CF_BEACON_ENV = "TOOLS_CF_BEACON_TOKEN";
+const CF_BEACON_ENV = "TOOLS_CF_BEACON_TOKEN";
 const CF_BEACON_SRC = "https://static.cloudflareinsights.com/beacon.min.js";
 
 /** Vite config for the app at `apps/<slug>`. Fails the build if the catalog does not list it. */
@@ -53,11 +42,11 @@ export function toolsApp(slug: string): UserConfig {
   if (!app) throw new Error(`"${slug}" is not in packages/catalog — add it there first`);
   return {
     base: appBase(slug),
-    // Not "spa": its fallback served the app at any path under the base, where every relative
-    // URL - the icon, the manifest, the welcome drawing - then resolved into the wrong folder.
+    // Not "spa": its fallback serves the app at any path under the base, where every relative
+    // URL - the icon, the manifest, the demos - would resolve into the wrong folder.
     appType: "mpa",
     define: siteDefine(),
-    plugins: [pageHead(app), appHeader(app), pageIcons(), workers(app)],
+    plugins: [pageHead(() => app), appHeader(() => app), pageIcons()],
     build: { outDir: `../../dist/${slug}`, emptyOutDir: true, target: "es2022" },
   };
 }
@@ -68,7 +57,7 @@ export function toolsHome(): UserConfig {
     base: siteBase(),
     appType: "mpa",
     define: siteDefine(),
-    plugins: [pageHead(null), pageIcons(), siteManifest(), workers(null)],
+    plugins: [pageHead(() => null), pageIcons(), siteManifest()],
     // Not emptied: the site build writes the index first, then each app into its own folder.
     build: { outDir: "../../dist", emptyOutDir: false, target: "es2022" },
   };
@@ -94,24 +83,18 @@ export function toolsSite(): UserConfig {
     appType: "mpa",
     publicDir: false,
     define: siteDefine(),
-    plugins: [sitePages(), sitePageHead(), siteManifest(), workers(null)],
+    // The head goes in after Vite's own pass over the page: in dev, Vite puts the base in front
+    // of every root-absolute URL it finds there, and the head's already carry it
+    // (`/Tools/manifest.webmanifest` would become `/Tools/Tools/…`).
+    plugins: [
+      sitePages(),
+      appHeader(appOfFile),
+      pageIcons(),
+      pageHead(appOfFile, "post"),
+      siteManifest(),
+      devWorker(),
+    ],
     server: { port: 5170 },
-  };
-}
-
-/**
- * Each page's head tags under the site's dev server. Added after Vite's own pass over the page:
- * in dev, Vite puts the base in front of every root-absolute URL it finds there, and these
- * already carry it (`/Tools/manifest.webmanifest` would become `/Tools/Tools/…`).
- */
-function sitePageHead(): Plugin {
-  return {
-    name: "tools-site-page-head",
-    apply: "serve",
-    transformIndexHtml: {
-      order: "post",
-      handler: (_html, ctx) => headTags(appOfFile(ctx.filename)),
-    },
   };
 }
 
@@ -173,16 +156,9 @@ function sitePages(): Plugin {
     transformIndexHtml: {
       order: "pre",
       handler(html, ctx) {
-        const app = appOfFile(ctx.filename);
-        if (/<title>|name="description"|rel="manifest"|name="color-scheme"/.test(html)) {
-          throw new Error(
-            "index.html must not set its own title, description, colour scheme or manifest"
-          );
-        }
         // Script and style URLs from the page's own root ("/src/main.ts") are under its folder.
-        const folder = app ? app.slug : "home";
-        const own = html.replace(/(\s(?:src|href)=")\/src\//g, `$1/${folder}/src/`);
-        return withIcons(app ? withHeaderStart(own, app) : own);
+        const folder = appOfFile(ctx.filename)?.slug ?? "home";
+        return html.replace(/(\s(?:src|href)=")\/src\//g, `$1/${folder}/src/`);
       },
     },
     transform(code, id) {
@@ -298,25 +274,32 @@ function compactHeaderTag(app: ToolsApp): HtmlTagDescriptor {
   };
 }
 
-function pageHead(app: ToolsApp | null): Plugin {
+/** Which app a page belongs to, from its file; null for the index page. */
+type AppOf = (file: string) => ToolsApp | null;
+
+function pageHead(appOf: AppOf, order?: "post"): Plugin {
   return {
     name: "tools-page-head",
-    transformIndexHtml(html) {
-      // One source for the copy: a hand-written title would silently disagree with the catalog.
-      if (/<title>|name="description"|rel="manifest"|name="color-scheme"/.test(html)) {
-        throw new Error(
-          "index.html must not set its own title, description, colour scheme or manifest"
-        );
-      }
-      return headTags(app);
+    transformIndexHtml: {
+      order,
+      handler(html, ctx) {
+        // One source for the copy: a hand-written title would silently disagree with the catalog.
+        if (/<title>|name="description"|rel="manifest"|name="color-scheme"/.test(html)) {
+          throw new Error(
+            "index.html must not set its own title, description, colour scheme or manifest"
+          );
+        }
+        return headTags(appOf(ctx.filename));
+      },
     },
   };
 }
 
 /** The attribute that marks an app's header, where its start is written from the catalog. */
-export const HEADER_ATTR = "data-tools-header";
+const HEADER_ATTR = "data-tools-header";
 
-function escapeHtml(s: string): string {
+/** Text made safe to write into HTML, attribute values included. */
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -359,11 +342,17 @@ export function withHeaderStart(html: string, app: ToolsApp): string {
   return html.slice(0, at) + headerStartHtml(app) + html.slice(at);
 }
 
-function appHeader(app: ToolsApp): Plugin {
+function appHeader(appOf: AppOf): Plugin {
   return {
     name: "tools-app-header",
-    // Before Vite's own HTML handling, on the markup as written.
-    transformIndexHtml: { order: "pre", handler: (html) => withHeaderStart(html, app) },
+    // Before Vite's own HTML handling, on the markup as written. The index has no app header.
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        const app = appOf(ctx.filename);
+        return app ? withHeaderStart(html, app) : html;
+      },
+    },
   };
 }
 
@@ -394,11 +383,10 @@ function siteManifest(): Plugin {
 }
 
 /**
- * Under the dev server any `sw.js` removes itself, so hot reload never sees a cache. An app's
- * build puts the retired worker in its folder; the index's puts nothing, because the site build
- * writes the real worker there once every app is built.
+ * Under the dev server any `sw.js` removes itself, so hot reload never sees a cache. A build
+ * writes none: the site build writes the real worker at the root once every app is built.
  */
-function workers(app: ToolsApp | null): Plugin {
+function devWorker(): Plugin {
   return {
     name: "tools-service-worker",
     configureServer(server) {
@@ -407,9 +395,6 @@ function workers(app: ToolsApp | null): Plugin {
         res.setHeader("Content-Type", "application/javascript; charset=utf-8");
         res.end(DEV_SW);
       });
-    },
-    generateBundle() {
-      if (app) this.emitFile({ type: "asset", fileName: "sw.js", source: RETIRED_WORKER });
     },
   };
 }

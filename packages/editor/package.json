@@ -5,8 +5,7 @@
   "type": "module",
   "description": "The code editor the apps share: CodeMirror 6 behind a small API (ADR 003)",
   "exports": {
-    ".": "./src/index.ts",
-    "./editor.css": "./editor.css"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

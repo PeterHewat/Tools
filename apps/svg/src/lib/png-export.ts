@@ -6,16 +6,16 @@
  * shows exactly what the SVG does, transparent where the document is.
  */
 
-import { byId, downloadBlob } from "@tools/ui";
+import { MAX_ARTBOARD } from "./types.js";
 
-/** The pixel size of the artboard: whole pixels, never less than one. */
+/** The pixel size of the artboard: whole pixels, from one to `MAX_ARTBOARD`. */
 export function pngSize(artboard: { width: number; height: number }): {
   width: number;
   height: number;
 } {
   return {
-    width: Math.max(1, Math.round(artboard.width)),
-    height: Math.max(1, Math.round(artboard.height)),
+    width: Math.min(MAX_ARTBOARD, Math.max(1, Math.round(artboard.width))),
+    height: Math.min(MAX_ARTBOARD, Math.max(1, Math.round(artboard.height))),
   };
 }
 
@@ -45,29 +45,4 @@ export async function renderPng(svg: string, width: number, height: number): Pro
   } finally {
     URL.revokeObjectURL(url);
   }
-}
-
-export interface PngExportDeps {
-  /** The artboard, for the size. */
-  artboard: () => { width: number; height: number };
-  /** The SVG to draw. */
-  svg: () => string;
-  /** The file name without its extension. */
-  baseName: () => string;
-}
-
-/** Wires the Export PNG button: one press, one file. */
-export function initPngExport(deps: PngExportDeps): void {
-  const btn = byId<HTMLButtonElement>("btn-export-png");
-  btn.addEventListener("click", async () => {
-    const { width, height } = pngSize(deps.artboard());
-    btn.disabled = true;
-    try {
-      downloadBlob(`${deps.baseName()}.png`, await renderPng(deps.svg(), width, height));
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : String(err));
-    } finally {
-      btn.disabled = false;
-    }
-  });
 }

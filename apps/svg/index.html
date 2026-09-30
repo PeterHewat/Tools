@@ -822,7 +822,13 @@
     </svg>
 
     <div id="app">
-      <header class="ui-header top-bar" data-tools-header role="toolbar" aria-label="Main toolbar">
+      <header
+        id="top-bar"
+        class="ui-header top-bar"
+        data-tools-header
+        role="toolbar"
+        aria-label="Main toolbar"
+      >
         <!-- "‹ Tools" and the app's name are written in at build time, from the catalog: how every
              Tools page starts (see @tools/ui/header.css). On a phone both reduce to "‹". -->
         <div class="menu" id="menu-document-wrap">
@@ -922,8 +928,6 @@
                   </button>
                 </div>
                 <div class="doc-section-body">
-                  <input type="file" id="input-image" accept="image/*" multiple hidden />
-                  <input type="file" id="input-image-replace" accept="image/*" hidden />
                   <ul id="image-list" class="image-list"></ul>
                 </div>
               </section>
@@ -1870,9 +1874,6 @@
         </section>
       </main>
     </div>
-
-    <input type="file" id="input-import-svg" accept=".svg,image/svg+xml" hidden />
-    <input type="file" id="input-doc-file" accept=".json,application/json" multiple hidden />
 
     <script type="module" src="/src/lib/app.ts"></script>
   </body>

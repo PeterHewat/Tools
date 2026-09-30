@@ -18,7 +18,6 @@
 import { findElement, selectedElements } from "./state.js";
 import {
   canJoin,
-  canRotate,
   canSplitAt,
   canToggleClosed,
   hasHandle,
@@ -28,45 +27,36 @@ import {
   toWorldPoint,
 } from "./model.js";
 import { canGroup, canMergeGroups, canMoveSelectionZ, canUngroup } from "./groups.js";
-import { canCombine, type BooleanOp } from "./boolean.js";
+import { canCombine } from "./boolean.js";
 import { pickedPoints } from "./points.js";
-import type { AlignMode, Axis } from "./align.js";
 import { worldToScreen } from "./viewport.js";
 import { HIT_R_COARSE, HIT_R_FINE, isCoarsePointer } from "./pointer.js";
-import { isSelectMore } from "./modes.js";
+import { isSelectMore, setSelectMore } from "./session.js";
 import { HANDLE_EXTENT, outerHandlePoints, selectionHandlePoints } from "./render.js";
+import {
+  alignableCount,
+  alignSelection,
+  combineSelection,
+  deleteSelection,
+  distributeSelection,
+  duplicateSelection,
+  groupSelection,
+  joinSelected,
+  mergeSelection,
+  moveZOrder,
+  removeSelectedHandle,
+  selectAll,
+  setElementClosed,
+  setSelectedHandlesLinked,
+  setSelectionLocked,
+  splitAtSelectedPoint,
+  toggleSelectedPointCurve,
+  ungroupSelection,
+} from "./selection-commands.js";
+import { closeAndFinishPath, discardPath, finishPath, removeLastPenPoint } from "./pen-commands.js";
+import { pasteFromClipboard } from "./clipboard.js";
+import { beginTextEdit } from "./textedit.js";
 import type { EditorState, Point, SceneElement } from "./types.js";
-
-export interface ActionBarHandlers {
-  duplicate: () => void;
-  remove: () => void;
-  forward: () => void;
-  back: () => void;
-  toggleClosed: (id: string, closed: boolean) => void;
-  group: () => void;
-  merge: () => void;
-  ungroup: () => void;
-  splitPoint: () => void;
-  linkHandles: (linked: boolean) => void;
-  togglePointCurve: () => void;
-  removeHandle: () => void;
-  removePoint: () => void;
-  combine: (op: BooleanOp) => void;
-  lock: (locked: boolean) => void;
-  align: (mode: AlignMode) => void;
-  distribute: (axis: Axis) => void;
-  /** How many things align would move: picked points, or the selection's blocks. */
-  alignable: () => number;
-  join: () => void;
-  editText: (id: string) => void;
-  finishPath: () => void;
-  closeAndFinishPath: () => void;
-  undoPoint: () => void;
-  discardPath: () => void;
-  selectMore: (on: boolean) => void;
-  selectAll: () => void;
-  paste: () => void;
-}
 
 export interface Action {
   key: string;
@@ -89,18 +79,16 @@ const GAP = 12;
  * The most buttons in one row: seven fit across a 360px phone. A longer set is laid out in even
  * rows - eight as two of four, not seven and a straggler - so every button stays in view.
  */
-export const MAX_BUTTONS = 7;
+const MAX_BUTTONS = 7;
 
 let bar: HTMLElement;
-let handlers: ActionBarHandlers;
 let lastSignature = "";
 /** The pages opened from the bar, by key, innermost last; emptied when the selection changes. */
 let pagePath: string[] = [];
 let pageFor = "";
 
-export function initActionBar(element: HTMLElement, fns: ActionBarHandlers): void {
+export function initActionBar(element: HTMLElement): void {
   bar = element;
-  handlers = fns;
   // A press on the bar is a press on the bar, not on the canvas underneath it.
   bar.addEventListener("pointerdown", (e) => e.stopPropagation());
 }
@@ -121,28 +109,28 @@ function drawingActions(state: EditorState): Action[] {
       label: "Remove the last point",
       icon: "icon-undo",
       disabled: points < 1,
-      run: handlers.undoPoint,
+      run: removeLastPenPoint,
     },
     {
       key: "close",
       label: "Close the path and finish",
       icon: "icon-close-path",
       disabled: points < 2,
-      run: handlers.closeAndFinishPath,
+      run: closeAndFinishPath,
     },
     {
       key: "finish",
       label: "Finish the path",
       icon: "icon-check",
       disabled: points < 2,
-      run: handlers.finishPath,
+      run: finishPath,
     },
     {
       key: "discard",
       label: "Throw this path away",
       icon: "icon-trash",
       danger: true,
-      run: handlers.discardPath,
+      run: discardPath,
     },
   ];
 }
@@ -155,9 +143,9 @@ function idleActions(state: EditorState): Action[] {
       label: "Select everything",
       icon: "icon-select-all",
       disabled: !state.elements.some((e) => !e.hidden),
-      run: handlers.selectAll,
+      run: selectAll,
     },
-    { key: "paste", label: "Paste", icon: "icon-paste", run: handlers.paste },
+    { key: "paste", label: "Paste", icon: "icon-paste", run: () => void pasteFromClipboard() },
   ];
 }
 
@@ -181,7 +169,7 @@ function closeAction(el: SceneElement): Action | null {
     key: closed ? "open" : "close",
     label: closed ? "Open the path" : "Close the path",
     icon: closed ? "icon-open-path" : "icon-close-path",
-    run: () => handlers.toggleClosed(el.id, !closed),
+    run: () => setElementClosed(el.id, !closed),
   };
 }
 
@@ -204,13 +192,13 @@ function pointActions(el: SceneElement, index: number, handle?: "in" | "out"): A
             key: "corner",
             label: "Make it a corner: remove its handles",
             icon: "icon-corner",
-            run: handlers.togglePointCurve,
+            run: toggleSelectedPointCurve,
           }
         : {
             key: "curve",
             label: "Make it a curve: give it handles",
             icon: "icon-curve",
-            run: handlers.togglePointCurve,
+            run: toggleSelectedPointCurve,
           }
     );
   }
@@ -220,7 +208,7 @@ function pointActions(el: SceneElement, index: number, handle?: "in" | "out"): A
       key: `remove-${handle}`,
       label: "Remove this handle: straight on its side",
       icon: "icon-remove-handle",
-      run: handlers.removeHandle,
+      run: removeSelectedHandle,
     });
   }
   // Only a point with two handles has a pair to link or break. The key carries the state, as
@@ -232,13 +220,13 @@ function pointActions(el: SceneElement, index: number, handle?: "in" | "out"): A
             key: "unlink",
             label: "Break the handles: each moves on its own",
             icon: "icon-unlink",
-            run: () => handlers.linkHandles(false),
+            run: () => setSelectedHandlesLinked(false),
           }
         : {
             key: "link",
             label: "Link the handles: they mirror each other",
             icon: "icon-link",
-            run: () => handlers.linkHandles(true),
+            run: () => setSelectedHandlesLinked(true),
           }
     );
   }
@@ -248,7 +236,7 @@ function pointActions(el: SceneElement, index: number, handle?: "in" | "out"): A
       key: "split",
       label: "Split the path at this point",
       icon: "icon-split",
-      run: handlers.splitPoint,
+      run: splitAtSelectedPoint,
     });
   }
   const close = closeAction(el);
@@ -258,7 +246,7 @@ function pointActions(el: SceneElement, index: number, handle?: "in" | "out"): A
     label: "Delete this point",
     icon: "icon-trash",
     danger: true,
-    run: handlers.removePoint,
+    run: () => deleteSelection(false),
   });
   return out;
 }
@@ -279,37 +267,37 @@ function alignAction(count: number): Action {
         key: "align-left",
         label: `Align left edges to ${onto} left`,
         icon: "icon-align-left",
-        run: () => handlers.align("left"),
+        run: () => alignSelection("left"),
       },
       {
         key: "align-hcenter",
         label: `Centre horizontally on ${onto} middle`,
         icon: "icon-align-hcenter",
-        run: () => handlers.align("hcenter"),
+        run: () => alignSelection("hcenter"),
       },
       {
         key: "align-right",
         label: `Align right edges to ${onto} right`,
         icon: "icon-align-right",
-        run: () => handlers.align("right"),
+        run: () => alignSelection("right"),
       },
       {
         key: "align-top",
         label: `Align top edges to ${onto} top`,
         icon: "icon-align-top",
-        run: () => handlers.align("top"),
+        run: () => alignSelection("top"),
       },
       {
         key: "align-vcenter",
         label: `Centre vertically on ${onto} middle`,
         icon: "icon-align-vcenter",
-        run: () => handlers.align("vcenter"),
+        run: () => alignSelection("vcenter"),
       },
       {
         key: "align-bottom",
         label: `Align bottom edges to ${onto} bottom`,
         icon: "icon-align-bottom",
-        run: () => handlers.align("bottom"),
+        run: () => alignSelection("bottom"),
       },
       ...(count >= 3
         ? [
@@ -317,13 +305,13 @@ function alignAction(count: number): Action {
               key: "distribute-x",
               label: "Space evenly across",
               icon: "icon-distribute-x",
-              run: () => handlers.distribute("x"),
+              run: () => distributeSelection("x"),
             },
             {
               key: "distribute-y",
               label: "Space evenly down",
               icon: "icon-distribute-y",
-              run: () => handlers.distribute("y"),
+              run: () => distributeSelection("y"),
             },
           ]
         : []),
@@ -351,13 +339,13 @@ function pointsActions(state: EditorState): Action[] {
             key: "corners",
             label: "Make them corners: remove their handles",
             icon: "icon-corner",
-            run: handlers.togglePointCurve,
+            run: toggleSelectedPointCurve,
           }
         : {
             key: "curves",
             label: "Make them curves: give them handles",
             icon: "icon-curve",
-            run: handlers.togglePointCurve,
+            run: toggleSelectedPointCurve,
           }
     );
   }
@@ -367,7 +355,7 @@ function pointsActions(state: EditorState): Action[] {
     label: `Delete these ${picked.length} points`,
     icon: "icon-trash",
     danger: true,
-    run: handlers.removePoint,
+    run: () => deleteSelection(false),
   });
   return out;
 }
@@ -387,32 +375,32 @@ function selectionActions(state: EditorState): Action[] {
       key: "edit",
       label: "Edit text",
       icon: "icon-text",
-      run: () => handlers.editText(single.id),
+      run: () => beginTextEdit(single.id),
     });
   }
   const close = single ? closeAction(single) : null;
   if (close) out.push(close);
   if (sel.length === 2 && sel.every(canJoin)) {
-    out.push({ key: "join", label: "Join the two paths", icon: "icon-join", run: handlers.join });
+    out.push({ key: "join", label: "Join the two paths", icon: "icon-join", run: joinSelected });
   }
 
   const selected = new Set(state.selection.elementIds);
   if (canGroup(state.elements, selected)) {
-    out.push({ key: "group", label: "Group", icon: "icon-group", run: handlers.group });
+    out.push({ key: "group", label: "Group", icon: "icon-group", run: groupSelection });
   }
   if (canMergeGroups(state.elements, selected)) {
     out.push({
       key: "merge",
       label: "Merge into one group",
       icon: "icon-merge",
-      run: handlers.merge,
+      run: mergeSelection,
     });
   }
   if (canUngroup(state.elements, selected)) {
-    out.push({ key: "ungroup", label: "Ungroup", icon: "icon-ungroup", run: handlers.ungroup });
+    out.push({ key: "ungroup", label: "Ungroup", icon: "icon-ungroup", run: ungroupSelection });
   }
 
-  out.push(alignAction(handlers.alignable()));
+  out.push(alignAction(alignableCount()));
   // Union, subtract, intersect and exclude: one button, opening a page of four.
   if (sel.length >= 2 && sel.every(canCombine)) {
     out.push({
@@ -424,25 +412,25 @@ function selectionActions(state: EditorState): Action[] {
           key: "union",
           label: "Union: everything the shapes cover",
           icon: "icon-union",
-          run: () => handlers.combine("union"),
+          run: () => combineSelection("union"),
         },
         {
           key: "subtract",
           label: "Subtract: the backmost shape, less the others",
           icon: "icon-subtract",
-          run: () => handlers.combine("subtract"),
+          run: () => combineSelection("subtract"),
         },
         {
           key: "intersect",
           label: "Intersect: only where they all overlap",
           icon: "icon-intersect",
-          run: () => handlers.combine("intersect"),
+          run: () => combineSelection("intersect"),
         },
         {
           key: "exclude",
           label: "Exclude: everything but where they overlap",
           icon: "icon-exclude",
-          run: () => handlers.combine("exclude"),
+          run: () => combineSelection("exclude"),
         },
       ],
     });
@@ -456,7 +444,7 @@ function selectionActions(state: EditorState): Action[] {
     label: more ? "Stop adding to the selection" : "Add to the selection: tap more shapes",
     icon: "icon-select-more",
     pressed: more,
-    run: () => handlers.selectMore(!more),
+    run: () => setSelectMore(!more),
   });
   // Locked shapes are reached from their rows; unlocking them is here once they are selected.
   const anyLocked = sel.some((e) => e.locked);
@@ -464,25 +452,25 @@ function selectionActions(state: EditorState): Action[] {
     key: anyLocked ? "unlock" : "lock",
     label: anyLocked ? "Unlock: clickable on the canvas again" : "Lock: out of reach on the canvas",
     icon: anyLocked ? "icon-unlock" : "icon-lock",
-    run: () => handlers.lock(!anyLocked),
+    run: () => setSelectionLocked(!anyLocked),
   });
   // Duplicate and z-order, then select everything, then delete: last, where it is always found.
   out.push(
-    { key: "duplicate", label: "Duplicate", icon: "icon-copy", run: handlers.duplicate },
+    { key: "duplicate", label: "Duplicate", icon: "icon-copy", run: duplicateSelection },
     {
       key: "back",
       label: "Send backward (Shift: to the back)",
       glyph: "▼",
       pairedWithNext: true,
       disabled: !canMoveSelectionZ(state.elements, ids, -1),
-      run: handlers.back,
+      run: () => moveZOrder("back"),
     },
     {
       key: "forward",
       label: "Bring forward (Shift: to the front)",
       glyph: "▲",
       disabled: !canMoveSelectionZ(state.elements, ids, 1),
-      run: handlers.forward,
+      run: () => moveZOrder("forward"),
     }
   );
   // Always there, so the bar keeps its shape; greyed out once there is nothing more to select.
@@ -491,14 +479,14 @@ function selectionActions(state: EditorState): Action[] {
     label: "Select everything",
     icon: "icon-select-all",
     disabled: !state.elements.some((e) => !e.hidden && !e.locked && !ids.has(e.id)),
-    run: handlers.selectAll,
+    run: selectAll,
   });
   out.push({
     key: "delete",
     label: "Delete",
     icon: "icon-trash",
     danger: true,
-    run: handlers.remove,
+    run: () => deleteSelection(),
   });
   return out;
 }
@@ -672,7 +660,7 @@ function anchorRect(state: EditorState): AnchorRect | null {
     }
     // Handles standing outside the outline count as part of the selection, on whichever side
     // the rotation put them, so the bar never lands on top of one.
-    const rotatable = !drawing && shapes.length === 1 && canRotate(el);
+    const rotatable = !drawing && shapes.length === 1;
     for (const world of outerHandlePoints(el, zoom, rotatable)) {
       const p = worldToScreen(world.x, world.y);
       left = Math.min(left, p.x - HANDLE_EXTENT);
@@ -694,8 +682,8 @@ function anchorRect(state: EditorState): AnchorRect | null {
 }
 
 /**
- * The strip of window the toolbars leave free. The bar has to stay inside it: pushed to the top
- * of the canvas it used to slide under the toolbar, where half of it was unreachable.
+ * The strip of window the toolbars leave free. The bar stays inside it: pushed to the top of the
+ * canvas it would slide under the toolbar, where half of it is unreachable.
  */
 function freeBand(): { top: number; bottom: number } {
   const visible = (el: HTMLElement | null) => (el?.getClientRects().length ? el : null);

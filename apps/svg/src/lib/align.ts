@@ -11,7 +11,6 @@ import { groupsOf, selectionContext } from "./groups.js";
 import { hasPoint, translatePoint } from "./model.js";
 import { translateAll, unionBox } from "./selection-transform.js";
 import { byShape } from "./points.js";
-import { deepClone } from "./utils.js";
 import type { BBox, PointRef, SceneElement } from "./types.js";
 
 export type AlignMode = "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom";
@@ -170,7 +169,7 @@ function moveEach<S extends { ref: PointRef; p: { x: number; y: number } }>(
   const refs = spots.map((s) => s.ref);
   for (const id of byShape(refs).keys()) {
     const el = byId.get(id);
-    if (el) copies.set(id, deepClone(el));
+    if (el) copies.set(id, structuredClone(el));
   }
   for (const s of spots) {
     const el = copies.get(s.ref.pathId);

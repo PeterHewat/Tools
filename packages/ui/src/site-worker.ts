@@ -16,15 +16,12 @@ const SW_SOURCE = readFileSync(
   "utf8"
 );
 
-/**
- * Where it lives. An app folder's own `sw.js` is the retired worker (`RETIRED_WORKER`), for
- * browsers that installed one before the site shared this one.
- */
+/** Where it lives, at the site root. */
 export const SITE_WORKER = "sw.js";
 
-/** Never precached: the worker itself, each folder's retired one, and Pages' not-found page. */
+/** Never precached: the worker itself and Pages' not-found page. */
 export function isPrecached(path: string): boolean {
-  return path !== "404.html" && !(path === SITE_WORKER || path.endsWith(`/${SITE_WORKER}`));
+  return path !== "404.html" && path !== SITE_WORKER;
 }
 
 /**

@@ -3,7 +3,6 @@ import {
   createPath,
   createLine,
   createRect,
-  createCircle,
   createEllipse,
   createPolyline,
   createPolygon,
@@ -16,7 +15,15 @@ import {
   hasTwoHandles,
   parseDash,
 } from "./model.js";
-import { ELEMENT_SELECTOR, escapeAttr, escapeXml, uid } from "./utils.js";
+import {
+  ELEMENT_SELECTOR,
+  cleanColor,
+  cleanUnit,
+  escapeAttr,
+  escapeXml,
+  isElementType,
+  uid,
+} from "./utils.js";
 import { groupsOf, normalizeGroups, pruneGroups } from "./groups.js";
 import { arcToCubics } from "./arc.js";
 import {
@@ -27,8 +34,7 @@ import {
   transformElement,
   type Matrix,
 } from "./transform.js";
-import { replaceState, createInitialState, selectOnly } from "./state.js";
-import { PROJECT_VERSION } from "./types.js";
+import { MAX_ARTBOARD, PROJECT_VERSION } from "./types.js";
 import type {
   Anchor,
   BackgroundPaint,
@@ -134,10 +140,7 @@ function buildDefsLines(elements: readonly SceneElement[]): Line[] {
       for (const end of ["start", "end"] as const) {
         const shape = MARKER_SHAPE_DEFS[end === "start" ? el.markerStart : el.markerEnd];
         if (!shape) continue;
-        const opacity =
-          el.strokeOpacity != null && el.strokeOpacity !== 1
-            ? ` fill-opacity="${el.strokeOpacity}"`
-            : "";
+        const opacity = el.strokeOpacity !== 1 ? ` fill-opacity="${el.strokeOpacity}"` : "";
         lines.push({
           indent: 0,
           text: `<marker id="mk-${escapeAttr(el.id)}-${end}" viewBox="0 0 10 10" refX="${typeof shape.refX === "number" ? shape.refX : shape.refX(el.linecap)}" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">`,
@@ -195,7 +198,7 @@ export type ExportDoc = Pick<EditorState, "artboard" | "elements"> & {
 };
 
 /** A group's id in the file: its own id, then "_" and its name when it has one. */
-export function groupExportId(gid: string, names: Readonly<Record<string, string>> = {}): string {
+function groupExportId(gid: string, names: Readonly<Record<string, string>> = {}): string {
   const name = sanitizeName(names[gid]);
   return name ? `${gid}_${name}` : gid;
 }
@@ -285,33 +288,28 @@ export function serializeProject(state: EditorState): ProjectFile {
     grid: state.grid,
     images: state.images,
     elements: state.elements,
-    ...namesInUse(state.elements, state.groupNames),
-    ...huesInUse(state.elements, state.groupHues),
+    ...optional("groupNames", ofGroupsInUse(state.elements, state.groupNames)),
+    ...optional("groupHues", ofGroupsInUse(state.elements, state.groupHues)),
     ...(state.guides.x.length || state.guides.y.length ? { guides: state.guides } : {}),
-    viewport: state.viewport,
     tool: state.tool,
     finalOnly: state.finalOnly,
   };
 }
 
-/** The colours of groups that still exist, as the project file's optional `groupHues`. */
-function huesInUse(
+/** The entries, by group id, of groups that still exist and have a value (a name, a hue). */
+function ofGroupsInUse<T extends string | number>(
   elements: readonly SceneElement[],
-  hues: Readonly<Record<string, number>>
-): { groupHues?: Record<string, number> } {
+  byGroup: Readonly<Record<string, T>>
+): Record<string, T> {
   const used = new Set(elements.flatMap((e) => groupsOf(e)));
-  const kept = Object.entries(hues).filter(([gid]) => used.has(gid));
-  return kept.length ? { groupHues: Object.fromEntries(kept) } : {};
+  return Object.fromEntries(
+    Object.entries(byGroup).filter(([gid, v]) => used.has(gid) && v !== "")
+  );
 }
 
-/** The names of groups that still exist, as the project file's optional `groupNames`. */
-function namesInUse(
-  elements: readonly SceneElement[],
-  names: Readonly<Record<string, string>>
-): { groupNames?: Record<string, string> } {
-  const used = new Set(elements.flatMap((e) => groupsOf(e)));
-  const kept = Object.entries(names).filter(([gid, name]) => used.has(gid) && name);
-  return kept.length ? { groupNames: Object.fromEntries(kept) } : {};
+/** `{ [key]: record }` when the record has anything in it, else nothing: an optional field. */
+function optional<K extends string, T>(key: K, record: Record<string, T>) {
+  return Object.keys(record).length ? ({ [key]: record } as Record<K, Record<string, T>>) : {};
 }
 
 /** Keys whose strings are the person's own words, escaped wherever they are shown. */
@@ -335,16 +333,54 @@ export function isInert(value: unknown, key = ""): boolean {
   return Object.entries(value).every(([k, v]) => !MARKUP.test(k) && isInert(v, inner(k)));
 }
 
+/** What a reference image may point at: pixels carried in the document, never the network. */
+const IMAGE_URL = /^data:image\/[\w.+-]+[;,]/;
+/** Element, group and image ids as the app writes them. */
+const PLAIN_ID = /^[A-Za-z][\w-]*$/;
+
 /**
- * A stored document brought up to the current format. Every released format stays readable: when
- * `PROJECT_VERSION` goes up, the step from the previous one is added here, and older documents
- * pass through each step in turn. Throws on something that is not a document, or on one written
- * by a newer version of the app than this one.
+ * An element from outside, made safe to draw: its colours are `#rrggbb` and its opacities run
+ * 0..1, so neither can carry CSS or a URL into a style or a paint. Null when its id or type is
+ * not one the app writes.
  */
-export function readProject(raw: unknown): ProjectFile {
+export function cleanElement(el: SceneElement): SceneElement | null {
+  if (!el || !PLAIN_ID.test(el.id) || !isElementType(el.type)) return null;
+  const out = { ...el };
+  out.stroke = cleanColor(el.stroke);
+  out.fill = cleanColor(el.fill);
+  out.strokeOpacity = cleanUnit(el.strokeOpacity);
+  out.fillOpacity = cleanUnit(el.fillOpacity);
+  if (Array.isArray(el.gradStops)) {
+    out.gradStops = el.gradStops.map((s) => ({
+      ...s,
+      color: cleanColor(s?.color),
+      opacity: cleanUnit(s?.opacity),
+    }));
+  }
+  if (el.groups) out.groups = el.groups.filter((g) => PLAIN_ID.test(g));
+  return out;
+}
+
+/**
+ * A stored document, checked and made safe to draw (see `cleanElement`); reference images must
+ * be `data:` images. The fields a file may leave out come back filled in. Throws on something that is not a document, on one written by a newer
+ * version of the app than this one, and on one with markup hidden in it or nothing usable left.
+ */
+export function readProject(raw: unknown): Required<ProjectFile> {
   const json = raw as Partial<ProjectFile> | null;
   const version = json?.version;
-  if (typeof version !== "number" || version < 1 || !json?.artboard || !json.grid) {
+  const positive = (n: unknown) => typeof n === "number" && n > 0 && Number.isFinite(n);
+  if (
+    !json ||
+    typeof version !== "number" ||
+    version < 1 ||
+    !positive(json.artboard?.width) ||
+    !positive(json.artboard?.height) ||
+    !json.grid ||
+    !json.background ||
+    !Array.isArray(json.elements) ||
+    !Array.isArray(json.images)
+  ) {
     throw new Error("This is not an SVG app document.");
   }
   if (version > PROJECT_VERSION) {
@@ -352,32 +388,32 @@ export function readProject(raw: unknown): ProjectFile {
       "This document was saved by a newer version of this app. Reload the page to update, then open it again."
     );
   }
-  if (!isInert(json)) throw new Error("This document is damaged and cannot be opened.");
-  return json as ProjectFile;
-}
-
-export function loadProject(raw: ProjectFile): void {
-  const json = readProject(raw);
-  const base = createInitialState();
-  replaceState({
-    ...base,
-    artboard: json.artboard,
-    background: json.background ?? base.background,
-    grid: json.grid,
-    images: (json.images || []).map((img) => ({ ...img, visible: img.visible !== false })),
-    elements: json.elements || [],
-    groupNames: json.groupNames ?? {},
-    groupHues: json.groupHues ?? {},
-    guides: {
-      x: (json.guides?.x ?? []).filter(Number.isFinite),
-      y: (json.guides?.y ?? []).filter(Number.isFinite),
+  const damaged = () => new Error("This document is damaged and cannot be opened.");
+  if (!isInert(json)) throw damaged();
+  const doc = json as ProjectFile;
+  const elements = doc.elements.map(cleanElement).filter((e): e is SceneElement => !!e);
+  const images = doc.images
+    .filter((img) => PLAIN_ID.test(img?.id) && IMAGE_URL.test(img?.dataUrl))
+    .map((img) => ({ ...img, opacity: cleanUnit(img.opacity) }));
+  if ((doc.elements.length || doc.images.length) && !elements.length && !images.length) {
+    throw damaged();
+  }
+  return {
+    ...doc,
+    artboard: {
+      width: Math.min(doc.artboard.width, MAX_ARTBOARD),
+      height: Math.min(doc.artboard.height, MAX_ARTBOARD),
     },
-    viewport: json.viewport || base.viewport,
-    tool: json.tool || "select",
-    finalOnly: json.finalOnly || false,
-    selection: selectOnly(),
-    drawing: null,
-  });
+    background: {
+      color: cleanColor(doc.background.color),
+      opacity: cleanUnit(doc.background.opacity, 0),
+    },
+    elements,
+    images,
+    groupNames: doc.groupNames ?? {},
+    groupHues: doc.groupHues ?? {},
+    guides: doc.guides ?? { x: [], y: [] },
+  };
 }
 
 /* ---------- Import ---------- */
@@ -390,7 +426,7 @@ export function loadProject(raw: ProjectFile): void {
  * previous control point. Commands also repeat implicitly - `L 1 1 2 2` is two line segments,
  * and a repeated `M` continues as `L` - which is how most tools write their output.
  */
-export function parsePathD(d: string): { points: Anchor[]; closed: boolean }[] {
+function parsePathD(d: string): { points: Anchor[]; closed: boolean }[] {
   const tokens = d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? [];
   const points: Anchor[] = [];
   // Each subpath - each M - is an outline of its own: where it starts, and whether a Z closed it.
@@ -810,7 +846,7 @@ function elementFromNode(
       return el;
     }
     case "circle":
-      return createCircle(num("cx"), num("cy"), num("r"), style);
+      return createEllipse(num("cx"), num("cy"), num("r"), num("r"), style);
     case "ellipse":
       return createEllipse(num("cx"), num("cy"), num("rx"), num("ry"), style);
     case "polyline":
@@ -866,12 +902,25 @@ export function importSvgFile(text: string, { keepIds = false } = {}): ImportRes
   const svg = doc.querySelector("svg");
   if (!svg) throw new Error("No SVG root found");
 
-  let artboard: ImportResult["artboard"] = null;
-  const parts = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(Number);
-  if (parts.length === 4) artboard = { width: parts[2]!, height: parts[3]! };
-  const w = parseFloat(svg.getAttribute("width") ?? "");
-  const h = parseFloat(svg.getAttribute("height") ?? "");
-  if (!artboard && w && h) artboard = { width: w, height: h };
+  // The artboard is the viewBox's window, moved to the origin with everything in it; failing a
+  // usable viewBox, a plain width and height ("100%" is not a size).
+  const size = (w: number, h: number) =>
+    w > 0 && h > 0 && Number.isFinite(w) && Number.isFinite(h)
+      ? { width: Math.min(w, MAX_ARTBOARD), height: Math.min(h, MAX_ARTBOARD) }
+      : null;
+  const box = (svg.getAttribute("viewBox") ?? "")
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
+  let artboard = box.length === 4 ? size(box[2]!, box[3]!) : null;
+  const origin: Matrix = artboard ? [1, 0, 0, 1, -box[0]! || 0, -box[1]! || 0] : IDENTITY;
+  if (!artboard) {
+    const plain = (a: string) => {
+      const v = (svg.getAttribute(a) ?? "").trim();
+      return /^[\d.]+(px)?$/.test(v) ? parseFloat(v) : NaN;
+    };
+    artboard = size(plain("width"), plain("height"));
+  }
 
   // The background is a rect like any other; only its id says it is the document's, and it is
   // read here rather than swept up as a shape.
@@ -900,7 +949,7 @@ export function importSvgFile(text: string, { keepIds = false } = {}): ImportRes
     if (chain.length) style.groups = chain;
     const made = elementFromNode(node, node.tagName.toLowerCase(), style);
     if (!made) return;
-    const own = multiply(matrix, parseTransform(node.getAttribute("transform")));
+    const own = multiply(origin, multiply(matrix, parseTransform(node.getAttribute("transform"))));
     (Array.isArray(made) ? made : [made]).forEach((el, k) => {
       // The id the markup names goes to the first element it became.
       if (keepIds && k === 0) {
@@ -917,15 +966,8 @@ export function importSvgFile(text: string, { keepIds = false } = {}): ImportRes
   });
 
   const elements = normalizeGroups(pruneGroups(imported));
-  return { artboard, background, elements, ...withNames(elements, groupNames) };
-}
-
-/** Group names for the groups that survived pruning (a group of one is no group). */
-function withNames(
-  elements: readonly SceneElement[],
-  names: Record<string, string>
-): { groupNames: Record<string, string> } {
-  return { groupNames: namesInUse(elements, names).groupNames ?? {} };
+  // Names only for the groups that survived pruning (a group of one is no group).
+  return { artboard, background, elements, groupNames: ofGroupsInUse(elements, groupNames) };
 }
 
 /**

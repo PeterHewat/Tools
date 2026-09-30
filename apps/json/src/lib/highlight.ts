@@ -7,15 +7,17 @@
  * editor works that out from {@link BLOCK_COMMENT} and colours those lines as comment.
  */
 
+import type { Token as EditorToken } from "@tools/editor";
+
 /** Block comments' markers, so the editor can carry one from line to line. */
 export const BLOCK_COMMENT = ["/*", "*/"] as const;
 
 export type TokenKind =
   "key" | "string" | "number" | "literal" | "type" | "comment" | "punct" | "plain";
 
-export interface Token {
+/** The editor's token, with the kinds every view of the JSON app colours. */
+export interface Token extends EditorToken {
   kind: TokenKind;
-  text: string;
 }
 
 const TOKEN = new RegExp(

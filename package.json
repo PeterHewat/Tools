@@ -23,7 +23,6 @@
   "scripts": {
     "dev": "bun scripts/dev.ts",
     "build": "bun scripts/build-site.ts",
-    "preview": "bun run --filter @tools/home preview",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",

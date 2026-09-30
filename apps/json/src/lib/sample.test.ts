@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test";
-import { parseJson } from "@tools/codec";
+import { parse } from "./ast.js";
 import { SAMPLE } from "./sample.js";
 
 const ART = await Bun.file(new URL("../../public/art.svg", import.meta.url)).text();
 
 test("the sample is valid JSON", () => {
-  expect(parseJson(SAMPLE).ok).toBe(true);
+  const parsed = parse(SAMPLE);
+  expect(parsed.ok && parsed.edits).toEqual([]);
 });
 
 test("the index card shows the sample, line for line", () => {

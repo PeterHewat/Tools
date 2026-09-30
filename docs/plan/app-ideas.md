@@ -7,13 +7,14 @@ Tools fit: client-only, offline, static output. No "save online", no fetching ar
 
 ## Shared groundwork (done)
 
-- `@tools/codec` — base64 / base64url, hex, UTF-8, and JSON parsing with a line and column
-  for the first error. Pure and tested; JSON, JWT, Codec and Digests all build on it.
 - `@tools/ui` — `base.css` (tokens, header with a link back to the index, buttons, inputs,
   code areas), DOM helpers (`copyText`, `downloadText`, `pickFiles`, `onFileDrop`), and
   `toolsApp(slug)` for the Vite config.
 - `@tools/editor` — the code editor (CodeMirror 6): folding, errors in place, find marks, the
   site's colours. JSON's views and the SVG source use it; JWT, Diff and Icon Check would too.
+
+Encoding helpers (base64 / base64url, hex, UTF-8) are written with the first app that needs
+them — JWT, Codec or Digests — and move to a shared package when a second one does.
 
 ## Build order
 

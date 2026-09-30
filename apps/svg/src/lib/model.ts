@@ -1,8 +1,7 @@
-import { deepClone, isDefaultName, isElementType, uid } from "./utils.js";
+import { isDefaultName, uid } from "./utils.js";
 import type {
   Anchor,
   BBox,
-  CircleElement,
   ElementType,
   EllipseElement,
   GradientStop,
@@ -54,7 +53,7 @@ const STYLE_KEYS: readonly string[] = [
 export function styleOf(el: SceneElement): StyleCarrier {
   const src = el as unknown as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const k of STYLE_KEYS) if (src[k] !== undefined) out[k] = deepClone(src[k]);
+  for (const k of STYLE_KEYS) if (src[k] !== undefined) out[k] = structuredClone(src[k]);
   return out as StyleCarrier;
 }
 
@@ -86,11 +85,11 @@ function base<T extends ElementType>(
 
 /**
  * The shapes whose rotation is stored rather than baked in: their SVG element cannot express
- * one in its own coordinates, so rotating a rect used to turn it into a polygon and an ellipse
+ * one in its own coordinates, and baking it in would turn a rect into a polygon and an ellipse
  * into a path. Keeping the angle keeps the shape editable as what it is.
  */
 export function keepsRotation(el: SceneElement): boolean {
-  return el.type === "rect" || el.type === "ellipse" || el.type === "circle" || el.type === "text";
+  return el.type === "rect" || el.type === "ellipse" || el.type === "text";
 }
 
 /**
@@ -99,14 +98,14 @@ export function keepsRotation(el: SceneElement): boolean {
  */
 export function rotationCentre(el: SceneElement): Point {
   if (el.type === "rect") return { x: el.x + el.width / 2, y: el.y + el.height / 2 };
-  if (el.type === "ellipse" || el.type === "circle") return { x: el.cx, y: el.cy };
+  if (el.type === "ellipse") return { x: el.cx, y: el.cy };
   if (el.type === "text") return { x: el.x, y: el.y };
   const box = localBBox(el);
   return box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : { x: 0, y: 0 };
 }
 
 /** Turns `p` about (cx, cy) by `deg` degrees. */
-export function rotatePoint(p: Point, cx: number, cy: number, deg: number): Point {
+function rotatePoint(p: Point, cx: number, cy: number, deg: number): Point {
   if (!deg) return { x: p.x, y: p.y };
   const a = (deg * Math.PI) / 180;
   const cos = Math.cos(a);
@@ -131,7 +130,7 @@ export function toWorldPoint(el: SceneElement, p: Point): Point {
 /** Corner radius clamped so it can never exceed half the rect's shorter side. */
 export function cornerRadius(el: RectElement): number {
   const limit = el.ry === undefined ? Math.min(el.width, el.height) / 2 : el.width / 2;
-  return Math.max(0, Math.min(el.rx || 0, limit));
+  return Math.max(0, Math.min(el.rx, limit));
 }
 
 /** Vertical corner radius; follows the horizontal one until it is set separately. */
@@ -140,17 +139,12 @@ export function cornerRadiusY(el: RectElement): number {
   return Math.max(0, Math.min(el.ry, el.height / 2));
 }
 
-/** A circle's radius read as a pair, so circles and ellipses share one code path. */
-function radii(el: CircleElement | EllipseElement): { rx: number; ry: number } {
-  return el.type === "circle" ? { rx: el.r, ry: el.r } : { rx: el.rx, ry: el.ry };
-}
-
 /** An element's stops, in offset order, always at least two so a gradient is well formed. */
 export function gradientStops(el: SceneElement): GradientStop[] {
-  const stops = (el.gradStops ?? []).filter((s) => s && Number.isFinite(s.offset));
+  const stops = el.gradStops.filter((s) => Number.isFinite(s.offset));
   if (stops.length < 2) {
     return [
-      { offset: 0, color: el.fill || "#000000", opacity: el.fillOpacity ?? 1 },
+      { offset: 0, color: el.fill, opacity: el.fillOpacity },
       { offset: 1, color: "#ffffff", opacity: 1 },
     ];
   }
@@ -186,12 +180,6 @@ export function createPoint(x: number, y: number, smooth = false): Anchor {
   };
 }
 
-function syncHandlesForCorner(p: Anchor): void {
-  p.hIn = null;
-  p.hOut = null;
-  p.smooth = false;
-}
-
 export function mirrorHandle(anchor: Point, dragged: Point): Point {
   return { x: anchor.x + (anchor.x - dragged.x), y: anchor.y + (anchor.y - dragged.y) };
 }
@@ -209,16 +197,19 @@ export function magnetTurn(delta: number, startDeg = 0): number {
   return Math.abs(deg - near) <= REACH ? ((near - startDeg) * Math.PI) / 180 : delta;
 }
 
+/** Whether a curve handle stands off its anchor, rather than on it (where it bends nothing). */
+function standsOff(h: Point | null, p: Point): boolean {
+  return !!h && (h.x !== p.x || h.y !== p.y);
+}
+
 /** Whether an anchor has two handles standing off it: the only case where linking them means anything. */
 export function hasTwoHandles(p: Anchor): boolean {
-  const off = (h: Point | null) => !!h && (h.x !== p.x || h.y !== p.y);
-  return off(p.hIn) && off(p.hOut);
+  return standsOff(p.hIn, p) && standsOff(p.hOut, p);
 }
 
 /** Whether an anchor has the given curve handle, standing off the anchor rather than on it. */
 export function hasHandle(p: Anchor, kind: "in" | "out"): boolean {
-  const h = kind === "in" ? p.hIn : p.hOut;
-  return !!h && (h.x !== p.x || h.y !== p.y);
+  return standsOff(kind === "in" ? p.hIn : p.hOut, p);
 }
 
 /**
@@ -278,15 +269,6 @@ export function createText(
   };
 }
 
-export function createCircle(
-  cx: number,
-  cy: number,
-  r: number,
-  style: StyleCarrier = {}
-): CircleElement {
-  return { ...base("circle", style), cx, cy, r };
-}
-
 export function createEllipse(
   cx: number,
   cy: number,
@@ -331,8 +313,7 @@ interface SegmentInfo {
 
 /** The segment from `a` to `b`: whether it curves, and the two cubic control points. */
 function segmentInfo(a: Anchor, b: Anchor): SegmentInfo {
-  const off = (h: Point | null, p: Point) => !!h && (h.x !== p.x || h.y !== p.y);
-  return { curved: off(a.hOut, a) || off(b.hIn, b), c1: a.hOut ?? a, c2: b.hIn ?? b };
+  return { curved: standsOff(a.hOut, a) || standsOff(b.hIn, b), c1: a.hOut ?? a, c2: b.hIn ?? b };
 }
 
 /**
@@ -357,7 +338,7 @@ export function contours(path: PathElement): Contour[] {
 }
 
 /** Whether a path is made of more than one outline. */
-export function isCompound(el: SceneElement): boolean {
+function isCompound(el: SceneElement): boolean {
   return el.type === "path" && !!el.subpaths?.length;
 }
 
@@ -392,11 +373,6 @@ function indexedSegments(path: PathElement): { from: number; a: Anchor; b: Ancho
   return segs;
 }
 
-/** Anchor pairs for every drawn segment. */
-function pathSegments(path: PathElement): [Anchor, Anchor][] {
-  return indexedSegments(path).map(({ a, b }) => [a, b]);
-}
-
 export type Formatter = (n: number) => number;
 
 /** `fmt` formats each coordinate (identity for live rendering, Math.round for export). */
@@ -428,7 +404,7 @@ function pathToD(path: PathElement, fmt: Formatter = (n) => n): string {
 
 /** True if every segment of `path` is a straight line (no Bezier curvature). */
 function pathIsStraight(path: PathElement): boolean {
-  return pathSegments(path).every(([a, b]) => !segmentInfo(a, b).curved);
+  return indexedSegments(path).every(({ a, b }) => !segmentInfo(a, b).curved);
 }
 
 /**
@@ -466,13 +442,10 @@ function geometryPoints(el: SceneElement, skipIndex = -1): Point[] {
       ];
       return el.rotation ? corners.map((p) => toWorldPoint(el, p)) : corners;
     }
-    case "circle":
     case "ellipse":
       return [{ x: el.cx, y: el.cy }];
     case "text":
       return [{ x: el.x, y: el.y }];
-    default:
-      return [];
   }
 }
 
@@ -499,10 +472,10 @@ function textWidth(el: TextElement): number {
   if (!measureCtx && typeof document !== "undefined") {
     measureCtx = document.createElement("canvas").getContext("2d");
   }
-  const fontSize = el.fontSize || 48;
-  if (!measureCtx) return (el.text || "").length * fontSize * 0.6;
-  measureCtx.font = `${fontSize}px ${el.fontFamily || "sans-serif"}`;
-  return measureCtx.measureText(el.text || "").width;
+  const fontSize = el.fontSize;
+  if (!measureCtx) return el.text.length * fontSize * 0.6;
+  measureCtx.font = `${fontSize}px ${el.fontFamily}`;
+  return measureCtx.measureText(el.text).width;
 }
 
 /** A shape's box before any rotation: where its handles and its geometry actually live. */
@@ -510,16 +483,13 @@ export function localBBox(el: SceneElement): BBox | null {
   switch (el.type) {
     case "rect":
       return { x: el.x, y: el.y, width: el.width, height: el.height };
-    case "circle":
-    case "ellipse": {
-      const { rx, ry } = radii(el);
-      return { x: el.cx - rx, y: el.cy - ry, width: rx * 2, height: ry * 2 };
-    }
+    case "ellipse":
+      return { x: el.cx - el.rx, y: el.cy - el.ry, width: el.rx * 2, height: el.ry * 2 };
     case "text": {
       const w = textWidth(el);
-      const h = (el.fontSize || 48) * 1.1;
+      const h = el.fontSize * 1.1;
       const x = el.anchor === "middle" ? el.x - w / 2 : el.anchor === "end" ? el.x - w : el.x;
-      return { x, y: el.y - (el.fontSize || 48) * 0.85, width: w, height: h };
+      return { x, y: el.y - el.fontSize * 0.85, width: w, height: h };
     }
     default:
       return boundsOf(geometryPoints(el));
@@ -543,8 +513,8 @@ export function elementBBox(el: SceneElement): BBox | null {
   const box = localBBox(el);
   if (!box || !el.rotation) return box;
   // An ellipse's rotated extent is not its rotated corner box, so it gets the exact formula.
-  if (el.type === "ellipse" || el.type === "circle") {
-    const { rx, ry } = radii(el);
+  if (el.type === "ellipse") {
+    const { rx, ry } = el;
     const a = (el.rotation * Math.PI) / 180;
     const hw = Math.hypot(rx * Math.cos(a), ry * Math.sin(a));
     const hh = Math.hypot(rx * Math.sin(a), ry * Math.cos(a));
@@ -553,11 +523,6 @@ export function elementBBox(el: SceneElement): BBox | null {
   return boundsOf(cornersOf(el));
 }
 
-/**
- * Tag and geometry attributes for an element, shared by the canvas renderer and the SVG
- * exporter so the two can never drift. `fmt` formats coordinates (identity on canvas,
- * Math.round for export); `text` is present only for `<text>`. Null attributes are dropped.
- */
 /** `rotate(a cx cy)` for a shape that carries an angle, or null when it does not. */
 function rotateAttr(el: SceneElement, fmt: Formatter): string | null {
   const angle = el.rotation ?? 0;
@@ -566,6 +531,11 @@ function rotateAttr(el: SceneElement, fmt: Formatter): string | null {
   return `rotate(${Math.round(angle * 10) / 10} ${fmt(c.x)} ${fmt(c.y)})`;
 }
 
+/**
+ * Tag and geometry attributes for an element, shared by the canvas renderer and the SVG
+ * exporter so the two can never drift. `fmt` formats coordinates (identity on canvas,
+ * Math.round for export); `text` is present only for `<text>`. Null attributes are dropped.
+ */
 export function geometryOf(el: SceneElement, fmt: Formatter = (n) => n): Geometry | null {
   switch (el.type) {
     case "path":
@@ -593,11 +563,6 @@ export function geometryOf(el: SceneElement, fmt: Formatter = (n) => n): Geometr
         },
       };
     }
-    case "circle":
-      return {
-        tag: "circle",
-        attrs: { cx: fmt(el.cx), cy: fmt(el.cy), r: fmt(el.r), transform: rotateAttr(el, fmt) },
-      };
     case "ellipse": {
       const rx = fmt(el.rx);
       const ry = fmt(el.ry);
@@ -621,23 +586,18 @@ export function geometryOf(el: SceneElement, fmt: Formatter = (n) => n): Geometr
         attrs: {
           x: fmt(el.x),
           y: fmt(el.y),
-          "font-family": el.fontFamily || "sans-serif",
-          "font-size": fmt(el.fontSize || 48),
-          "text-anchor": el.anchor && el.anchor !== "start" ? el.anchor : null,
+          "font-family": el.fontFamily,
+          "font-size": fmt(el.fontSize),
+          "text-anchor": el.anchor !== "start" ? el.anchor : null,
           transform: rotateAttr(el, fmt),
         },
-        text: el.text || "",
+        text: el.text,
       };
     default:
       return null;
   }
 }
 
-/**
- * Presentation attributes, shared by the canvas renderer and the SVG exporter. Opacity is
- * emitted only when not fully opaque, and a zero-width stroke exports as `stroke="none"`,
- * so the markup stays minimal and the canvas matches the file.
- */
 /**
  * Whether line ends are drawn. A marker is sized in stroke widths, and with no stroke the SVG
  * falls back to a width of 1 - so without this, a line of width 0 would still show its arrows.
@@ -646,6 +606,11 @@ export function hasMarkers(el: SceneElement): boolean {
   return MARKER_TYPES.includes(el.type) && el.strokeWidth > 0;
 }
 
+/**
+ * Presentation attributes, shared by the canvas renderer and the SVG exporter. Opacity is
+ * emitted only when not fully opaque, and a zero-width stroke exports as `stroke="none"`,
+ * so the markup stays minimal and the canvas matches the file.
+ */
 export function styleAttrs(el: SceneElement): AttrMap {
   const attrs: AttrMap = {};
   // The canvas renders from these same attributes, so this hides it there and in the file alike.
@@ -657,21 +622,21 @@ export function styleAttrs(el: SceneElement): AttrMap {
     attrs["stroke-width"] = el.strokeWidth;
     attrs["stroke-linecap"] = el.linecap;
     attrs["stroke-linejoin"] = el.linejoin;
-    if (el.strokeOpacity != null && el.strokeOpacity !== 1) {
+    if (el.strokeOpacity !== 1) {
       attrs["stroke-opacity"] = el.strokeOpacity;
     }
     if (el.dash?.length) attrs["stroke-dasharray"] = el.dash.join(" ");
   }
   attrs.fill = effectiveFill(el);
   if (el.fillRule === "evenodd") attrs["fill-rule"] = "evenodd";
-  if (el.fillEnabled && !isGradient(el) && el.fillOpacity != null && el.fillOpacity !== 1) {
+  if (el.fillEnabled && !isGradient(el) && el.fillOpacity !== 1) {
     attrs["fill-opacity"] = el.fillOpacity;
   }
   if (hasMarkers(el)) {
-    if (el.markerStart && el.markerStart !== "none") {
+    if (el.markerStart !== "none") {
       attrs["marker-start"] = `url(#mk-${el.id}-start)`;
     }
-    if (el.markerEnd && el.markerEnd !== "none") {
+    if (el.markerEnd !== "none") {
       attrs["marker-end"] = `url(#mk-${el.id}-end)`;
     }
   }
@@ -716,7 +681,6 @@ export function translateElement(el: SceneElement, dx: number, dy: number): void
       el.x += dx;
       el.y += dy;
       break;
-    case "circle":
     case "ellipse":
       el.cx += dx;
       el.cy += dy;
@@ -946,7 +910,7 @@ export function toPathElement(el: SceneElement): SceneElement {
   // A path has no angle to carry, so a stored rotation is baked into the points here.
   if (el.rotation) {
     const centre = rotationCentre(el);
-    const upright = deepClone(el);
+    const upright = structuredClone(el);
     delete upright.rotation;
     const angle = (el.rotation * Math.PI) / 180;
     return rotateElementCopy(toPathElement(upright), angle, centre.x, centre.y);
@@ -970,27 +934,11 @@ export function toPathElement(el: SceneElement): SceneElement {
       if (!rx || !ry) return createPath(geometryPoints(el).map(corner), true, style);
       return roundedRectPath(el.x, el.y, el.width, el.height, rx, ry, style);
     }
-    case "circle":
-    case "ellipse": {
-      const { rx, ry } = radii(el);
-      return ellipseToPath(el.cx, el.cy, rx, ry, style);
-    }
+    case "ellipse":
+      return ellipseToPath(el.cx, el.cy, el.rx, el.ry, style);
     default:
       return el;
   }
-}
-
-/** Everything but a circle, which looks the same at any angle. */
-export function canRotate(el: SceneElement): boolean {
-  return el.type !== "circle" && isElementType(el.type);
-}
-
-/**
- * The element a rotation drag works from. Shapes that can carry an angle keep their type; a
- * path or polyline has no angle to carry, and rotating its points loses nothing.
- */
-export function rotationBase(el: SceneElement): SceneElement {
-  return el;
 }
 
 /** Returns a rotated deep copy of `src` (a path/line/polyline/polygon/text) about (cx, cy). */
@@ -1000,7 +948,7 @@ export function rotateElementCopy(
   cx: number,
   cy: number
 ): SceneElement {
-  const c = deepClone(src);
+  const c = structuredClone(src);
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   const rot = (p: Point) => {
@@ -1167,9 +1115,10 @@ export function togglePointSmooth(path: SceneElement, i: number): void {
   if (path.type !== "path") return;
   const p = path.points[i];
   if (!p) return;
-  const off = (h: Point | null) => h && (h.x !== p.x || h.y !== p.y);
-  if (off(p.hIn) || off(p.hOut)) {
-    syncHandlesForCorner(p);
+  if (standsOff(p.hIn, p) || standsOff(p.hOut, p)) {
+    p.hIn = null;
+    p.hOut = null;
+    p.smooth = false;
     return;
   }
   const { prev, next, count } = neighbours(path, i);
@@ -1424,7 +1373,7 @@ export function joinPaths(
 }
 
 export function duplicateElement(el: SceneElement): SceneElement {
-  const copy = deepClone(el);
+  const copy = structuredClone(el);
   copy.id = uid(el.type);
   return copy;
 }

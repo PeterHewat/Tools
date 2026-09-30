@@ -4,7 +4,6 @@ export const ELEMENT_TYPES = [
   "path",
   "line",
   "rect",
-  "circle",
   "ellipse",
   "polyline",
   "polygon",
@@ -145,13 +144,7 @@ export interface RectElement extends ElementBase {
   ry?: number;
 }
 
-export interface CircleElement extends ElementBase {
-  type: "circle";
-  cx: number;
-  cy: number;
-  r: number;
-}
-
+/** Also every circle: one whose radii are equal, exported as `<circle>`. */
 export interface EllipseElement extends ElementBase {
   type: "ellipse";
   cx: number;
@@ -184,7 +177,6 @@ export type SceneElement =
   | PathElement
   | LineElement
   | RectElement
-  | CircleElement
   | EllipseElement
   | PolylineElement
   | PolygonElement
@@ -211,7 +203,6 @@ export interface ReferenceImage {
 
 export interface PathEdit {
   pathId: string;
-  kind: "anchor";
   index: number;
   /** The curve handle of that point grabbed last, if any: the bar offers to remove it. */
   handle?: "in" | "out";
@@ -344,9 +335,14 @@ export type StyleCarrier = Partial<StyleProps> & {
 };
 
 /**
- * The format of a stored document. The app is released: a change to `ProjectFile` bumps this and
- * teaches `readProject` (io.ts) to bring the previous version up to date, so nobody's work stops
- * opening.
+ * The largest artboard, either way, in units (one unit is one pixel of the PNG export). Past this
+ * the grid and the PNG canvas cost more than any browser should be asked for.
+ */
+export const MAX_ARTBOARD = 8192;
+
+/**
+ * The format of a stored document. A change to `ProjectFile` bumps this and teaches
+ * `readProject` (io.ts) to bring the previous version up to date.
  */
 export const PROJECT_VERSION = 1;
 
@@ -354,8 +350,7 @@ export const PROJECT_VERSION = 1;
 export interface ProjectFile {
   version: typeof PROJECT_VERSION;
   artboard: EditorState["artboard"];
-  /** Absent in documents saved before backgrounds existed, which means transparent. */
-  background?: BackgroundPaint;
+  background: BackgroundPaint;
   grid: EditorState["grid"];
   images: ReferenceImage[];
   elements: SceneElement[];
@@ -365,7 +360,6 @@ export interface ProjectFile {
   groupHues?: Record<string, number>;
   /** Absent when there are none. */
   guides?: Guides;
-  viewport: Viewport;
   tool: ToolName;
   finalOnly: boolean;
 }

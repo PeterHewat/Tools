@@ -120,7 +120,7 @@ function overlaps(p: BBox, q: BBox, pad: number): boolean {
 
 /** Whether a shape encloses an area that can be combined: every closed-able outline does. */
 export function canCombine(el: SceneElement): boolean {
-  return ["path", "polygon", "polyline", "rect", "circle", "ellipse"].includes(el.type);
+  return ["path", "polygon", "polyline", "rect", "ellipse"].includes(el.type);
 }
 
 /** A shape's outlines as loops of cubics. An open outline is filled as if closed, as SVG does. */

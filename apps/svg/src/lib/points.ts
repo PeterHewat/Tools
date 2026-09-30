@@ -4,7 +4,6 @@
  */
 
 import { hasPoint, translatePoint } from "./model.js";
-import { deepClone } from "./utils.js";
 import type { Marquee, PointRef, SceneElement, Selection } from "./types.js";
 
 const same = (a: PointRef, b: PointRef) => a.pathId === b.pathId && a.index === b.index;
@@ -32,7 +31,7 @@ export function pickPoints(sel: Selection, refs: readonly PointRef[]): Selection
   const ids = [...new Set([...sel.elementIds, ...refs.map((r) => r.pathId)])];
   const next: Selection = {
     elementIds: ids,
-    pathEdit: { pathId: first.pathId, kind: "anchor", index: first.index },
+    pathEdit: { pathId: first.pathId, index: first.index },
   };
   if (rest.length) next.points = rest;
   return next;
@@ -103,7 +102,7 @@ export function movePoints(
   for (const [id, indices] of byShape(refs)) {
     const base = bases.get(id);
     if (!base) continue;
-    const next = deepClone(base);
+    const next = structuredClone(base);
     for (const i of indices) if (hasPoint(next, i)) translatePoint(next, i, dx, dy);
     out.push(next);
   }

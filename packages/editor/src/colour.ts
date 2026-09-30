@@ -43,7 +43,7 @@ const LEX_AHEAD = 1_000;
 const LOOK_BACK = 200_000;
 
 /** A token's place in its line: [start, end, kind], skipping plain text. */
-export function tokenSpans(tokens: readonly Token[]): Span[] {
+function tokenSpans(tokens: readonly Token[]): Span[] {
   const out: Span[] = [];
   let at = 0;
   for (const t of tokens) {

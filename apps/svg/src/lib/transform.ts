@@ -41,12 +41,12 @@ export function applyMatrix(m: Matrix, p: Point): Point {
 const deg = (a: number) => (a * Math.PI) / 180;
 
 /** The rotation the matrix applies, in degrees. */
-export function rotationOf(m: Matrix): number {
+function rotationOf(m: Matrix): number {
   return (Math.atan2(m[1], m[0]) * 180) / Math.PI;
 }
 
 /** How much the matrix scales lengths, averaged over the two axes. */
-export function scaleOf(m: Matrix): number {
+function scaleOf(m: Matrix): number {
   return (Math.hypot(m[0], m[1]) + Math.hypot(m[2], m[3])) / 2;
 }
 
@@ -163,7 +163,7 @@ export function transformElement(el: SceneElement, m: Matrix): SceneElement {
     const at = applyMatrix(m, { x: el.x, y: el.y });
     return { ...el, x: at.x, y: at.y, fontSize: el.fontSize * scaleOf(m) };
   }
-  if (!isAxisAligned(m) && (el.type === "rect" || el.type === "ellipse" || el.type === "circle")) {
+  if (!isAxisAligned(m) && (el.type === "rect" || el.type === "ellipse")) {
     return transformElement(toPathElement(el), m);
   }
 
@@ -180,14 +180,6 @@ export function transformElement(el: SceneElement, m: Matrix): SceneElement {
       if (next.ry != null) next.ry *= Math.abs(m[3]);
       else if (Math.abs(m[0]) !== Math.abs(m[3])) next.ry = next.rx * Math.abs(m[3] / m[0] || 1);
       return next;
-    }
-    case "circle": {
-      const c = applyMatrix(m, { x: next.cx, y: next.cy });
-      const rx = next.r * Math.abs(m[0]);
-      const ry = next.r * Math.abs(m[3]);
-      if (Math.abs(rx - ry) < 1e-9) return { ...next, cx: c.x, cy: c.y, r: rx };
-      const { r: _r, ...rest } = next;
-      return { ...rest, type: "ellipse", cx: c.x, cy: c.y, rx, ry };
     }
     case "ellipse": {
       const c = applyMatrix(m, { x: next.cx, y: next.cy });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { addTurn, forgetTurns, turnedBy } from "./turn-tally.js";
+import { addTurn, forgetTurns, turnedBy } from "./session.js";
 
 describe("turn tally", () => {
   beforeEach(forgetTurns);

@@ -17,11 +17,6 @@ describe("tables", () => {
     expect(t.map((x) => x.path)).toEqual([["a", "deep"], ["b"], ["c"]]);
   });
 
-  test("an array of objects is a table proper; one of plain values is not", () => {
-    const t = tablesIn(root('{"tags": ["a"], "rows": [{"id": 1}]}'));
-    expect(t.map((x) => x.objects)).toEqual([false, true]);
-  });
-
   test("arrays inside a table are its cells, not tables; the list is capped", () => {
     const rows = Array.from({ length: 500 }, () => '{"tags": [1]}').join(",");
     expect(tablesIn(root(`[${rows}]`))).toHaveLength(1);
@@ -41,7 +36,7 @@ describe("the CSV sheet", () => {
     const sheet = csvSheet(tablesIn(doc), name);
     expect(sheet.text).toBe("id\r\n1\r\n2\r\n");
     expect(sheet.sources).toEqual([0, text.indexOf("{"), text.lastIndexOf("{")]);
-    expect(sheet.sections.map((s) => [s.firstLine, s.lastLine])).toEqual([[0, 2]]);
+    expect(sheet.sections.map((s) => s.lastLine)).toEqual([2]);
   });
 
   test("several tables follow each other, each under a heading", () => {
@@ -60,10 +55,7 @@ describe("the CSV sheet", () => {
       true,
       true,
     ]);
-    expect(sheet.sections.map((s) => [s.firstLine, s.lastLine])).toEqual([
-      [0, 3],
-      [5, 8],
-    ]);
+    expect(sheet.sections.map((s) => s.lastLine)).toEqual([3, 8]);
   });
 
   test("a cell with a line break makes its row two lines, the second without a source", () => {

@@ -12,7 +12,7 @@
  */
 
 // By package name, not "./icons.js": the Vite config loads this file too (see vite.ts).
-import { ICONS } from "@tools/ui/icons";
+import { iconSvg } from "@tools/ui/icons";
 
 export type Theme = "light" | "dark";
 
@@ -38,7 +38,7 @@ function darkQuery(): MediaQueryList | null {
 let unsaved: Theme | null = null;
 
 /** The theme someone chose, or null while the page still follows the browser. */
-export function storedTheme(): Theme | null {
+function storedTheme(): Theme | null {
   try {
     const t = localStorage.getItem(THEME_KEY);
     if (t === "light" || t === "dark") return t;
@@ -49,7 +49,7 @@ export function storedTheme(): Theme | null {
 }
 
 /** The theme in effect: the stored choice, else the browser's. Dark when neither says. */
-export function currentTheme(): Theme {
+function currentTheme(): Theme {
   const stored = storedTheme();
   if (stored) return stored;
   const q = darkQuery();
@@ -71,7 +71,7 @@ function apply(): void {
 }
 
 /** Stores a choice and applies it. Where storage is refused it still applies for this page. */
-export function setTheme(theme: Theme): void {
+function setTheme(theme: Theme): void {
   unsaved = theme;
   try {
     localStorage.setItem(THEME_KEY, theme);
@@ -104,14 +104,7 @@ export function bindThemeToggle(button: HTMLElement, iconClass = "ui-theme-icon"
   const render = () => {
     const next: Theme = currentTheme() === "dark" ? "light" : "dark";
     const label = `Switch to ${next} theme`;
-    // Built as elements: the class is the caller's, and must never be read as markup. Only the
-    // two icons, which are constants here, go through innerHTML.
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("class", iconClass);
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("aria-hidden", "true");
-    svg.innerHTML = ICONS[next === "light" ? "sun" : "moon"];
-    button.replaceChildren(svg);
+    button.replaceChildren(iconSvg(next === "light" ? "sun" : "moon", iconClass));
     button.title = label;
     button.setAttribute("aria-label", label);
   };

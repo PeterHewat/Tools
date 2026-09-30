@@ -11,17 +11,17 @@ import {
   serializeProject,
 } from "./io.js";
 import {
-  createCircle,
   createEllipse,
   createLine,
   createPath,
   createPolygon,
   createPolyline,
+  createImage,
   createRect,
   createText,
 } from "./model.js";
 import { createInitialState } from "./state.js";
-import type { Anchor, SceneElement } from "./types.js";
+import { MAX_ARTBOARD, type Anchor, type SceneElement } from "./types.js";
 
 const anchor = (x: number, y: number, hIn: Anchor["hIn"] = null, hOut: Anchor["hOut"] = null) =>
   ({ x, y, smooth: !!(hIn || hOut), hIn, hOut }) as Anchor;
@@ -32,7 +32,6 @@ function sampleElements(): SceneElement[] {
     createRect(10.4, 20.6, 100, 50),
     Object.assign(createRect(0, 0, 80, 40), { rx: 8 }),
     Object.assign(createRect(0, 0, 80, 40), { rx: 8, ry: 4 }),
-    createCircle(5, 5, 3),
     createEllipse(5, 5, 3, 2),
     createLine(0, 0, 10, 10),
     createPolyline([
@@ -266,6 +265,26 @@ describe("round trip", () => {
     expect(formatExportSvg(doc(back.elements), true)).toBe(first);
   });
 
+  test("a viewBox that does not start at 0,0 moves its drawing to the artboard's origin", () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 50 200 80">' +
+      '<rect x="110" y="60" width="20" height="10"/></svg>';
+    const { artboard, elements } = importSvgFile(svg);
+    expect(artboard).toEqual({ width: 200, height: 80 });
+    expect(elements[0]).toMatchObject({ type: "rect", x: 10, y: 10, width: 20, height: 10 });
+  });
+
+  test("the size comes from plain numbers only, and is held to the largest artboard", () => {
+    const open = (attrs: string) =>
+      importSvgFile(
+        `<svg xmlns="http://www.w3.org/2000/svg" ${attrs}><rect width="1" height="1"/></svg>`
+      ).artboard;
+    expect(open('width="100%" height="100%"')).toBeNull();
+    expect(open('width="64px" height="32"')).toEqual({ width: 64, height: 32 });
+    expect(open('viewBox="0 0 0 10" width="5" height="5"')).toEqual({ width: 5, height: 5 });
+    expect(open('viewBox="0 0 100000 10"')).toEqual({ width: MAX_ARTBOARD, height: 10 });
+  });
+
   test("a closing curve does not come back as an extra anchor on top of the first", () => {
     const svg =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
@@ -359,7 +378,7 @@ describe("import", () => {
       '<svg xmlns="http://www.w3.org/2000/svg"><defs><rect width="5" height="5"/></defs><circle cx="1" cy="1" r="1"/></svg>'
     );
     expect(r.elements).toHaveLength(1);
-    expect(r.elements[0]!.type).toBe("circle");
+    expect(r.elements[0]).toMatchObject({ type: "ellipse", rx: 1, ry: 1 });
   });
 
   test("unsupported tags are dropped", () => {
@@ -486,7 +505,6 @@ describe("project file", () => {
       "images",
       "tool",
       "version",
-      "viewport",
     ]);
   });
 
@@ -498,9 +516,14 @@ describe("project file", () => {
     expect(serializeProject(createInitialState()).version).toBe(1);
   });
 
-  test("a document of the current version reads back as it is", () => {
+  test("a document of the current version reads back as it is, what it left out filled in", () => {
     const saved = serializeProject(createInitialState());
-    expect(readProject(saved)).toEqual(saved);
+    expect(readProject(saved)).toEqual({
+      ...saved,
+      groupNames: {},
+      groupHues: {},
+      guides: { x: [], y: [] },
+    });
   });
 
   test("a document from a newer version of SVG is refused, not half-read", () => {
@@ -532,6 +555,47 @@ describe("project file", () => {
     expect(readProject(saved).elements[0]!.name).toBe('the "big" <box> & co');
     expect(isInert({ groupNames: { "group-1": 'say "hi"' } })).toBe(true);
     expect(isInert({ groupNames: { 'group-"1': "x" } })).toBe(false);
+  });
+
+  test("colours and opacities are made safe to draw: no CSS or URL rides along", () => {
+    const saved = serializeProject({
+      ...createInitialState(),
+      background: { color: "#fff;background:url(https://example.invalid/x)", opacity: 7 },
+      elements: [
+        Object.assign(createRect(0, 0, 4, 4), {
+          stroke: "#000;position:fixed",
+          fill: "url(https://example.invalid/p)",
+          strokeOpacity: "1;inset:0" as unknown as number,
+          gradStops: [{ offset: 0, color: "red;x:y", opacity: Number.NaN }],
+        }),
+      ],
+    });
+    const doc = readProject(saved);
+    const el = doc.elements[0]!;
+    expect([el.stroke, el.fill, el.strokeOpacity]).toEqual(["#000000", "#000000", 1]);
+    expect(el.gradStops[0]).toMatchObject({ color: "#000000", opacity: 1 });
+    expect(doc.background).toEqual({ color: "#000000", opacity: 1 });
+  });
+
+  test("a reference image must carry its pixels: a URL elsewhere is dropped", () => {
+    const image = (id: string, dataUrl: string) => ({ ...createImage(dataUrl, "x.png"), id });
+    const saved = serializeProject({
+      ...createInitialState(),
+      elements: [createRect(0, 0, 4, 4)],
+      images: [
+        image("img-a", "data:image/png;base64,AAAA"),
+        image("img-b", "https://example.invalid/x.png"),
+      ],
+    });
+    expect(readProject(saved).images.map((i) => i.id)).toEqual(["img-a"]);
+  });
+
+  test("a document with nothing usable left is refused", () => {
+    const saved = serializeProject({
+      ...createInitialState(),
+      elements: [Object.assign(createRect(0, 0, 4, 4), { type: "script" as "rect" })],
+    });
+    expect(() => readProject(saved)).toThrow(/damaged/);
   });
 
   test("something that is not a document is refused", () => {
@@ -606,13 +670,13 @@ describe("groups and transforms on import", () => {
 });
 
 describe("uniform shapes", () => {
-  test("an ellipse with equal radii exports as a circle and comes back as one", () => {
+  test("an ellipse with equal radii exports as a circle, and a circle comes in as one", () => {
     const e = createEllipse(50, 50, 20, 20);
     const svg = formatExportSvg(doc([e]), true);
     expect(svg).toContain("<circle id=");
     expect(svg).toContain('r="20"');
     const back = importSvgFile(svg);
-    expect(back.elements[0]!.type).toBe("circle");
+    expect(back.elements[0]).toMatchObject({ type: "ellipse", rx: 20, ry: 20 });
   });
 
   test("export stays byte-for-byte stable across that round trip", () => {

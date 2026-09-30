@@ -1,7 +1,7 @@
-import { getState, setState, findElement, selectOnly } from "./state.js";
-import { importSvgFile, isInert } from "./io.js";
+import { getState, setState, selectOnly, selectedElements } from "./state.js";
+import { cleanElement, importSvgFile, isInert } from "./io.js";
 import { type SceneElement } from "./types.js";
-import { commit } from "./ops.js";
+import { pushUndo } from "./undo.js";
 import { deleteSelection, copyElements } from "./selection-commands.js";
 
 const CLIP_TAG = "svg/elements";
@@ -10,9 +10,7 @@ let pasteCount = 0;
 
 /** Serializes the selection for the clipboard - what is selected, a member picked alone included - or null. */
 export function copySelectionText(): string | null {
-  const els = getState()
-    .selection.elementIds.map((id) => findElement(id))
-    .filter((e): e is SceneElement => !!e);
+  const els = selectedElements();
   if (!els.length) return null;
   pasteCount = 0;
   const gids = new Set(els.flatMap((e) => e.groups ?? []));
@@ -53,7 +51,9 @@ export function pasteFromText(text: string): boolean {
       // The system clipboard can hold anything another page put there.
       isInert(data)
     ) {
-      elements = (data as { elements: SceneElement[] }).elements;
+      elements = (data as { elements: SceneElement[] }).elements
+        .map(cleanElement)
+        .filter((e): e is SceneElement => !!e);
       names = (data as { groupNames?: Record<string, string> }).groupNames ?? {};
     }
   } catch {
@@ -69,18 +69,17 @@ export function pasteFromText(text: string): boolean {
   if (!elements?.length) return false;
   const source = elements;
   pasteCount += 1;
-  commit(() => {
-    setState((s) => {
-      // SVG markup lands where it says it does; our own copies step away from the original.
-      const off = fromSvg ? 0 : Math.max(s.grid.step, 10) * pasteCount;
-      const { copies, groupNames } = copyElements(source, off, names);
-      return {
-        ...s,
-        elements: [...s.elements, ...copies],
-        groupNames: { ...s.groupNames, ...groupNames },
-        selection: selectOnly(copies.map((c) => c.id)),
-      };
-    });
+  pushUndo();
+  setState((s) => {
+    // SVG markup lands where it says it does; our own copies step away from the original.
+    const off = fromSvg ? 0 : Math.max(s.grid.step, 10) * pasteCount;
+    const { copies, groupNames } = copyElements(source, off, names);
+    return {
+      ...s,
+      elements: [...s.elements, ...copies],
+      groupNames: { ...s.groupNames, ...groupNames },
+      selection: selectOnly(copies.map((c) => c.id)),
+    };
   });
   return true;
 }

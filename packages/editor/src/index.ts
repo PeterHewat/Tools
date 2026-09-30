@@ -74,7 +74,6 @@ import { minimalChange } from "./text-diff.js";
 import { siteTheme, syntaxColours } from "./theme.js";
 
 export type { BlockComment, LineLexer, Token } from "./colour.js";
-export { minimalChange } from "./text-diff.js";
 
 /** Structure: folding, bracket matching and indentation follow the language's syntax. */
 export type Language = "json" | "xml" | null;
@@ -168,10 +167,8 @@ export interface Editor {
   setMarks(marks: readonly Mark[]): void;
   setHighlights(highlights: readonly Highlight[]): void;
   setError(error: EditorError | null): void;
-  setLanguage(language: Language): void;
   setColours(colours: Colours): void;
   setIndent(indent: number | "\t"): void;
-  setReadOnly(readOnly: boolean): void;
   /** Numbers the gutter from elsewhere, one entry per line (null leaves it blank); null numbers lines. */
   setLineLabels(labels: readonly (number | string | null)[] | null): void;
   /** Folds every object, array or element, except the one holding the whole document. */
@@ -186,7 +183,6 @@ export interface Editor {
    * the page and any panel holding the editor stay where they are.
    */
   scrollTo(offset: number, where?: ScrollTo): void;
-  destroy(): void;
 }
 
 export type ScrollTo = "center" | "top" | "nearest";
@@ -480,12 +476,11 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
   const language = new Compartment();
   const colours = new Compartment();
   const indent = new Compartment();
-  const readOnly = new Compartment();
   const gutter = new Compartment();
   const undo = new Compartment();
   /** An `onFolds` call is waiting for the next frame. */
   let foldsPending = false;
-  let languageChoice: Language = options.language ?? null;
+  const languageChoice: Language = options.language ?? null;
   const text = options.text ?? "";
 
   const extensions: Extension[] = [
@@ -514,7 +509,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     language.of(languageExtension(languageChoice, text.length)),
     colours.of(colourExtension(options.colours ?? null)),
     indent.of(indentUnit.of(indentString(options.indent ?? 2))),
-    readOnly.of(EditorState.readOnly.of(options.readOnly ?? false)),
+    EditorState.readOnly.of(options.readOnly ?? false),
     // Files dropped on the editor are the app's to open, not text to insert.
     EditorView.domEventHandlers({
       drop: (e) => e.dataTransfer?.types.includes("Files") ?? false,
@@ -671,24 +666,12 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
       view.dispatch({ effects: setErrorEffect.of({ from, to, message: error.message }) });
     },
 
-    setLanguage(next) {
-      if (next === languageChoice) return;
-      languageChoice = next;
-      view.dispatch({
-        effects: language.reconfigure(languageExtension(next, view.state.doc.length)),
-      });
-    },
-
     setColours(next) {
       view.dispatch({ effects: colours.reconfigure(colourExtension(next)) });
     },
 
     setIndent(next) {
       view.dispatch({ effects: indent.reconfigure(indentUnit.of(indentString(next))) });
-    },
-
-    setReadOnly(next) {
-      view.dispatch({ effects: readOnly.reconfigure(EditorState.readOnly.of(next)) });
     },
 
     setLineLabels(labels) {
@@ -747,7 +730,5 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
         },
       });
     },
-
-    destroy: () => view.destroy(),
   };
 }

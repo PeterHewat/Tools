@@ -8,7 +8,6 @@ import {
   isGradient,
   cornerRadius,
   cornerRadiusY,
-  canRotate,
   geometryOf,
   styleAttrs,
   DEFAULT_STROKE,
@@ -127,7 +126,7 @@ function renderGrid(state: EditorState): void {
 const drawnImages = new Map<string, { g: SVGGElement; image: SVGImageElement; dataUrl: string }>();
 
 function renderImages(state: EditorState): void {
-  const wanted = state.finalOnly ? [] : state.images.filter((img) => img.visible !== false);
+  const wanted = state.finalOnly ? [] : state.images.filter((img) => img.visible);
   const nodes: Node[] = [];
   const live = new Set<string>();
   for (const img of wanted) {
@@ -485,9 +484,6 @@ function renderPrimitiveHandles(parent: Element, el: SceneElement, state: Editor
       put(square.x, square.y, "uniform");
       break;
     }
-    case "circle":
-      put(el.cx + el.r, el.cy, "radius");
-      break;
     case "ellipse": {
       put(el.cx + el.rx, el.cy, "rx");
       put(el.cx, el.cy + el.ry, "ry");
@@ -685,15 +681,6 @@ function renderSelectionBox(
   outline(parent, "polygon", { points }, cls, color);
 }
 
-function unionOf(elements: readonly SceneElement[]): BBox | null {
-  let box: BBox | null = null;
-  for (const el of elements) {
-    const b = elementBBox(el);
-    if (b) box = box ? union(box, b) : b;
-  }
-  return box;
-}
-
 /**
  * One box around each selected group, in that group's colour, standing a little off its
  * members. A group that holds other groups stands further off than they do, so nested boxes
@@ -701,7 +688,7 @@ function unionOf(elements: readonly SceneElement[]): BBox | null {
  */
 function renderGroupBoxes(state: EditorState, groups: Map<string, SceneElement[]>): void {
   for (const [gid, members] of groups) {
-    const box = unionOf(members);
+    const box = unionBox(members);
     if (!box) continue;
     const depth = groupsOf(members[0]).indexOf(gid);
     const inner = Math.max(...members.map((e) => groupsOf(e).length - 1 - depth));
@@ -720,10 +707,9 @@ function renderGroupBoxes(state: EditorState, groups: Map<string, SceneElement[]
 /**
  * What a click would pick, outlined before you click it.
  *
- * Hover used to redraw the shape in blue, which borrowed the one channel the shape owns - its
- * stroke - so it said nothing on a shape with no stroke, and nothing at all on a blue one. The
- * selection outline is honest about the target instead: for a grouped shape it outlines the group
- * the click will select, or, once you are inside that group, the member it will.
+ * An outline rather than a tint of the shape's stroke, which would say nothing on a shape with
+ * no stroke or one already in the tint's colour. For a grouped shape it outlines the group the
+ * click will select, or, once you are inside that group, the member it will.
  */
 function renderHover(state: EditorState): void {
   const hoverId = state.hoverId;
@@ -737,7 +723,7 @@ function renderHover(state: EditorState): void {
   }
   // A grouped shape: the click will select the group, so the hover shows the group's box.
   const hue = state.groupHues[gid];
-  const box = unionOf(state.elements.filter((e) => ids.includes(e.id)));
+  const box = unionBox(state.elements.filter((e) => ids.includes(e.id)));
   if (!box) return;
   outline(
     els.pointer,
@@ -746,17 +732,6 @@ function renderHover(state: EditorState): void {
     "selection-box group-box hover-box",
     hue == null ? null : groupColor(hue)
   );
-}
-
-function union(a: BBox, b: BBox): BBox {
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  return {
-    x,
-    y,
-    width: Math.max(a.x + a.width, b.x + b.width) - x,
-    height: Math.max(a.y + a.height, b.y + b.height) - y,
-  };
 }
 
 /**
@@ -781,8 +756,6 @@ function handleCount(el: SceneElement): number {
       return 3;
     case "line":
       return 2;
-    case "circle":
-      return 1;
     default:
       return 0;
   }
@@ -866,7 +839,7 @@ function renderOverlay(state: EditorState): void {
   }
   if (sel.length === 1 && free && sel[0]!.id !== activePathId) {
     renderGradientHandles(els.overlay, sel[0]!);
-    if (canRotate(sel[0]!)) renderRotateHandle(els.overlay, sel[0]!, state);
+    renderRotateHandle(els.overlay, sel[0]!, state);
     if (hasBoxHandles(sel[0]!)) renderBoxHandles(els.overlay, sel[0]!);
   }
 

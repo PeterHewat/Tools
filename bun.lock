@@ -34,7 +34,6 @@
       "version": "0.0.0",
       "devDependencies": {
         "@tools/catalog": "workspace:*",
-        "@tools/codec": "workspace:*",
         "@tools/editor": "workspace:*",
         "@tools/ui": "workspace:*",
         "typescript": "~6.0.3",
@@ -54,13 +53,6 @@
     },
     "packages/catalog": {
       "name": "@tools/catalog",
-      "version": "0.0.0",
-      "devDependencies": {
-        "typescript": "~6.0.3",
-      },
-    },
-    "packages/codec": {
-      "name": "@tools/codec",
       "version": "0.0.0",
       "devDependencies": {
         "typescript": "~6.0.3",
@@ -205,8 +197,6 @@
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
     "@tools/catalog": ["@tools/catalog@workspace:packages/catalog"],
-
-    "@tools/codec": ["@tools/codec@workspace:packages/codec"],
 
     "@tools/editor": ["@tools/editor@workspace:packages/editor"],
 

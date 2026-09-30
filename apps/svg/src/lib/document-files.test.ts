@@ -6,7 +6,7 @@ import {
   libraryFileName,
   readDocumentFile,
 } from "./document-files.js";
-import { serializeProject } from "./io.js";
+import { readProject, serializeProject } from "./io.js";
 import { createInitialState } from "./state.js";
 
 const data = serializeProject(createInitialState());
@@ -14,7 +14,7 @@ const data = serializeProject(createInitialState());
 describe("document files", () => {
   test("a single document reads back as one", () => {
     const text = JSON.stringify(documentFile({ name: "Logo", data }));
-    expect(readDocumentFile(text)).toEqual([{ name: "Logo", data }]);
+    expect(readDocumentFile(text)).toEqual([{ name: "Logo", data: readProject(data) }]);
   });
 
   test("a library reads back as all of its documents, in order", () => {

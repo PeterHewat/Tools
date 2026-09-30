@@ -83,19 +83,12 @@ export function columnNames(header: readonly string[], width: number): string[] 
   return names;
 }
 
-export interface CsvJson {
-  /** The JSON text: an array of one object per row, laid out with `indent`. */
-  text: string;
-  rows: number;
-  columns: number;
-  separator: Separator;
-}
-
 /**
- * The CSV as a JSON array of objects, or null when it is not a table: one line only, or a
- * single column (then it is just lines of text, and the separator was a guess).
+ * The CSV as the text of a JSON array of objects, one per row, laid out with `indent`; null when
+ * it is not a table: one line only, or a single column (then it is just lines of text, and the
+ * separator was a guess).
  */
-export function csvToJson(text: string, indent: number | "\t" = 2): CsvJson | null {
+export function csvToJson(text: string, indent: number | "\t" = 2): string | null {
   const separator = detectSeparator(text);
   const rows = parseCsv(text, separator).filter((r) => r.length > 1 || r[0] !== "");
   if (rows.length < 2) return null;
@@ -107,12 +100,7 @@ export function csvToJson(text: string, indent: number | "\t" = 2): CsvJson | nu
     const members = names.map((name, c) => `${JSON.stringify(name)}: ${cellJson(r[c] ?? "")}`);
     return `${pad}{ ${members.join(", ")} }`;
   });
-  return {
-    text: `[\n${objects.join(",\n")}\n]`,
-    rows: rows.length - 1,
-    columns: width,
-    separator,
-  };
+  return `[\n${objects.join(",\n")}\n]`;
 }
 
 /** Text that looks like a CSV table rather than broken JSON, for offering the conversion. */

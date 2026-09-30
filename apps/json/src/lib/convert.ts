@@ -67,14 +67,19 @@ export function toYaml(root: JsonNode): string {
 
 export type Converted = { ok: true; text: string } | { ok: false; message: string };
 
+/**
+ * One cell. A string a spreadsheet would run as a formula (it starts with `= + - @`, a tab or a
+ * carriage return) is prefixed with `'`, which keeps it text there.
+ */
 function csvCell(node: JsonNode | undefined): string {
   if (!node || node.kind === "null") return "";
-  const text =
+  let text =
     node.kind === "string"
       ? decode(node.raw)
       : node.kind === "object" || node.kind === "array"
         ? printJson(node, { indent: 0 })
         : node.raw;
+  if (node.kind === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return /[",\r\n]|^\s|\s$/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -237,11 +242,8 @@ function singular(hint: string): string {
 }
 
 /** Interfaces for every object shape, named after the keys they sit under. */
-export function toTypeScript(
-  root: JsonNode,
-  options: ShapeOptions = {},
-  rootName = "Root"
-): string {
+export function toTypeScript(root: JsonNode, options: ShapeOptions = {}): string {
+  const rootName = "Root";
   const names = new Set<string>();
   const queue: { name: string; object: NonNullable<Shape["object"]> }[] = [];
   const unique = (base: string) => {
@@ -308,7 +310,8 @@ function schemaOf(shape: Shape, options: ShapeOptions): Schema {
   }
   if (types.length) alternatives.push({ type: types.length === 1 ? types[0] : types });
   if (shape.object) {
-    const properties: Record<string, Schema> = {};
+    // No prototype: a key named "__proto__" is a property like any other.
+    const properties = Object.create(null) as Record<string, Schema>;
     const required: string[] = [];
     for (const [key, field] of shape.object.fields) {
       properties[key] = schemaOf(field.shape, options);
