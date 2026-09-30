@@ -20,7 +20,7 @@ import {
 import { pushUndo, canUndo, canRedo, undo, redo, undoStepper } from "./undo.js";
 import { formatExportSvg, importSvgFile } from "./io.js";
 import { pngSize, renderPng } from "./png-export.js";
-import { fileBase } from "./document-files.js";
+import { fileBase, isSvgFile } from "./document-files.js";
 import { canJoin } from "./model.js";
 import {
   THEME_EVENT,
@@ -29,6 +29,7 @@ import {
   copyText,
   downloadBlob,
   downloadText,
+  onFileDrop,
   pickFiles,
 } from "@tools/ui";
 import { bindTouch } from "./touch.js";
@@ -54,10 +55,16 @@ import { canGroup, canMergeGroups, canUngroup } from "./groups.js";
 import { MAX_ARTBOARD, type EditorState } from "./types.js";
 import { restoreLayout } from "./layout.js";
 import { zoomBtn, zoomMenu, fitToView, fitSelection, zoomToActualSize } from "./zoom.js";
-import { imageList } from "./images-panel.js";
+import { addImageFiles, imageList } from "./images-panel.js";
 import { primitiveList } from "./primitives-panel.js";
 import { syncSvgEditor } from "./svg-source.js";
-import { currentDoc, saveNow, startDocuments, svgFileName } from "./documents.js";
+import {
+  currentDoc,
+  importDocumentFiles,
+  saveNow,
+  startDocuments,
+  svgFileName,
+} from "./documents.js";
 
 const svg = byId<SVGSVGElement>("viewport-svg");
 const camera = byId<SVGGElement>("camera");
@@ -346,6 +353,23 @@ byId("btn-import-svg").addEventListener("click", async () => {
     background: background ?? s.background,
   }));
 });
+
+/* ---------- Files dropped on the page ---------- */
+
+/**
+ * Anywhere on the page: an SVG or a document file (`.svg.json`) opens as a new document, as
+ * the Documents list's import does, and a picture becomes a reference image of the document
+ * open, as the Reference images +. Adding an SVG's shapes to the drawing is Import SVG's job.
+ */
+onFileDrop(document.body, (files) => void dropFiles(files));
+
+async function dropFiles(files: readonly File[]): Promise<void> {
+  const isPicture = (f: File) => f.type.startsWith("image/") && !isSvgFile(f);
+  // The pictures first, so they land in the document that was open when they were dropped.
+  await addImageFiles(files.filter(isPicture));
+  const documents = files.filter((f) => !isPicture(f));
+  if (documents.length) await importDocumentFiles(documents);
+}
 
 /* ---------- Keyboard ---------- */
 

@@ -309,6 +309,25 @@ body {
   cursor: grabbing;
 }
 
+/* While files are dragged over the page (onFileDrop marks the body): what a drop will do. Over
+   the whole page, panels included, as a drop anywhere on it does the same. */
+body.dragging::after {
+  content: "Drop an SVG or a .svg.json to open it as a new document, or a picture to add it as a reference image";
+  position: fixed;
+  inset: 12px;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--canvas) 85%, transparent);
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
 .viewport-svg {
   display: block;
   width: 100%;

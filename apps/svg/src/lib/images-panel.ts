@@ -135,8 +135,13 @@ imageListEl.addEventListener("change", (e) => {
 const IMAGE_TYPES = "image/*";
 
 byId("btn-add-image").addEventListener("click", async () => {
-  for (const file of await pickFiles(IMAGE_TYPES, true)) await addImageFile(file);
+  await addImageFiles(await pickFiles(IMAGE_TYPES, true));
 });
+
+/** Adds each of `files` to the document as a reference image, in order. */
+export async function addImageFiles(files: readonly File[]): Promise<void> {
+  for (const file of files) await addImageFile(file);
+}
 
 /** Puts the pixels of `file` in place of a reference image's, keeping where it sits. */
 async function replaceImageFile(targetId: string, file: File): Promise<void> {
@@ -194,14 +199,3 @@ export async function hydrateImageDimensions(images: ReferenceImage[]): Promise<
     mutate(() => Object.assign(img, dims));
   }
 }
-
-const wrap = byId("canvas-wrap");
-
-wrap.addEventListener("dragover", (e) => e.preventDefault());
-wrap.addEventListener("drop", async (e) => {
-  e.preventDefault();
-  const files = [...((e as DragEvent).dataTransfer?.files ?? [])].filter((f) =>
-    f.type.startsWith("image/")
-  );
-  for (const file of files) await addImageFile(file);
-});

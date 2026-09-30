@@ -15,9 +15,11 @@ import {
   documentFile,
   documentFileName,
   fileBase,
+  isSvgFile,
   libraryFile,
   libraryFileName,
   readDocumentFile,
+  svgDocument,
   type ImportedDocument,
 } from "./document-files.js";
 import { escapeAttr, uid } from "./utils.js";
@@ -551,20 +553,28 @@ byId("btn-doc-export-all").addEventListener("click", () => void exportAll());
  * the ones already here, each with a fresh id and a free name, then opens the first of them.
  */
 byId("btn-doc-import").addEventListener("click", async () => {
-  const files = await pickFiles(".json,application/json", true);
-  if (!files.length) return;
+  await importDocumentFiles(await pickFiles(".json,.svg,application/json,image/svg+xml", true));
+});
+
+/**
+ * Adds the documents in `files`, then opens the first of them: document files (`.svg.json`, one
+ * document or a whole library) and SVG files, each of those a document named after it. What
+ * cannot be read is listed afterwards; the rest still comes in.
+ */
+export async function importDocumentFiles(files: readonly File[]): Promise<void> {
   const incoming: ImportedDocument[] = [];
   const problems: string[] = [];
   for (const file of files) {
     try {
-      incoming.push(...readDocumentFile(await file.text()));
+      const text = await file.text();
+      incoming.push(...(isSvgFile(file) ? [svgDocument(file.name, text)] : readDocumentFile(text)));
     } catch (err) {
       problems.push(`${file.name}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
   if (incoming.length) await addDocuments(incoming);
   if (problems.length) window.alert(`Could not import:\n${problems.join("\n")}`);
-});
+}
 
 async function addDocuments(incoming: readonly ImportedDocument[]): Promise<void> {
   await flushSave();

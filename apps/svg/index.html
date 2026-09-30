@@ -870,7 +870,7 @@
                       type="button"
                       id="btn-doc-import"
                       class="icon-btn"
-                      title="Import documents — single files or a whole library; nothing already here is replaced"
+                      title="Import documents — document files, whole libraries or SVG files; nothing already here is replaced"
                       aria-label="Import documents"
                     >
                       <svg class="glyph" aria-hidden="true"><use href="#icon-import" /></svg>
@@ -1596,8 +1596,9 @@
               shape in it. A locked shape is still snapped to, and is exported like any other.
             </li>
             <li>
-              <b>Reference images</b> — add reference images to trace; each row is the file it came
-              from, and <span data-help="mouse">clicking</span
+              <b>Reference images</b> — add reference images to trace, with <b>+</b
+              ><span data-help="mouse"> or by dropping pictures anywhere on the page</span>; each
+              row is the file it came from, and <span data-help="mouse">clicking</span
               ><span data-help="touch">tapping</span>
               that file name swaps in a different one. Open the row for position, scale, rotation
               and opacity; the eye shows the overlay or hides it.
@@ -1660,8 +1661,10 @@
               that document (reference images included) as <code>Name.svg.json</code>, and the ⬆ in
               the <b>Documents</b> header saves every document in one library file — a backup, or
               everything at once for another browser. The ⬇ beside it opens files of either kind,
-              several at a time: each document in them is added beside what you already have, under
-              a free name, and never overwrites anything.<span data-help="mouse">
+              and SVG files, several at a time: each document in them (each SVG file is one) is
+              added beside what you already have, under a free name, and never overwrites anything.
+              <span data-help="mouse">Dropping those files anywhere on the page does the same.</span
+              ><span data-help="mouse">
                 To empty a document, <kbd>Ctrl</kbd>+<kbd>A</kbd> then <kbd>Delete</kbd>.</span
               >
             </li>

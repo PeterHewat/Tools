@@ -76,7 +76,7 @@ chrome.
 
 ## 4. Reference images
 
-- Any number, from the file picker. Each has a position, a scale (x and y), a rotation, an opacity
+- Any number, from the file picker or dropped on the page (§12.3). Each has a position, a scale (x and y), a rotation, an opacity
   and a visibility eye, edited in its row of the Reference images section, and a place in the
   images' own z-order, always below the document.
 - An image has no name of its own: its row shows the file it came from, and clicking that replaces
@@ -406,8 +406,13 @@ Documents move between browsers as files (`document-files.ts`):
 - Import takes any number of files of either kind. Every document in them is read by `readProject`
   and added at the top of the list, in the order the file gives, with a fresh id, a free name and
   its tags, cleaned as if typed:
-  an import never replaces or merges with an existing document. Files that cannot be read are
-  listed; the rest still import.
+  an import never replaces or merges with an existing document. An SVG file imports the same way,
+  as a document of its own named after the file (`svgDocument`), its shapes read as §12.4's
+  import reads them. Files that cannot be read are listed; the rest still import.
+- **Drop:** files dropped anywhere on the page go where their kind goes (`dropFiles` in
+  `app.ts`): an SVG or a document file opens as a new document, as the import above; a picture
+  becomes a reference image of the open document (§4). Adding an SVG's shapes to the open drawing
+  is Import SVG's (§12.4). While files are dragged over the page, it says what a drop does.
 
 ### 12.4 SVG export and import
 
