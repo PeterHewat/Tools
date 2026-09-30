@@ -10,7 +10,8 @@ import {
   updateMeta,
   type DocumentMeta,
 } from "./storage.js";
-import { serializeProject, readProject, formatExportSvg, type ExportDoc } from "./io.js";
+import { serializeProject, readProject } from "./project-file.js";
+import { formatExportSvg, type ExportDoc } from "./svg-export.js";
 import {
   documentFile,
   documentFileName,

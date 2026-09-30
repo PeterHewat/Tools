@@ -8,7 +8,7 @@ import {
   readDocumentFile,
   svgDocument,
 } from "./document-files.js";
-import { readProject, serializeProject } from "./io.js";
+import { readProject, serializeProject } from "./project-file.js";
 import { createInitialState } from "./state.js";
 
 const data = serializeProject(createInitialState());

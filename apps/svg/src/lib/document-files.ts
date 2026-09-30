@@ -6,7 +6,8 @@
  * so an import never replaces or merges with anything.
  */
 
-import { importSvgFile, readProject, serializeProject, type ImportResult } from "./io.js";
+import { importSvgFile, type ImportResult } from "./svg-import.js";
+import { readProject, serializeProject } from "./project-file.js";
 import { cleanTags } from "./doc-list.js";
 import { createInitialState } from "./state.js";
 import type { ProjectFile } from "./types.js";

@@ -141,7 +141,6 @@ export interface Editor {
   /** The editor's outermost element, for classes, file drops and layout. */
   readonly dom: HTMLElement;
   readonly text: string;
-  readonly length: number;
   readonly lineCount: number;
   /** The main selection, `from` ≤ `to`; `head` is where the caret is. */
   readonly selection: { from: number; to: number; head: number };
@@ -568,9 +567,6 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     get text() {
       return view.state.doc.toString();
     },
-    get length() {
-      return view.state.doc.length;
-    },
     get lineCount() {
       return view.state.doc.lines;
     },
@@ -618,7 +614,6 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
       foldedRanges(view.state).between(a, b, (f, t) => {
         // Touching a fold at its edge does not hide the selection; overlapping it does.
         if (f < b && t > a) hidden.push(unfoldEffect.of({ from: f, to: t }));
-        else if (a === b && f < a && t > a) hidden.push(unfoldEffect.of({ from: f, to: t }));
       });
       view.dispatch({
         selection: EditorSelection.range(from, to),

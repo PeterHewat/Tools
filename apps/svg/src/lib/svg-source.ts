@@ -1,14 +1,8 @@
 import { getState, setState, findElement, selectOnly } from "./state.js";
 import { undoStepper } from "./undo.js";
-import {
-  elementToSvgMarkup,
-  buildDefsMarkup,
-  sanitizeName,
-  elementIdFromSvgId,
-  groupIdFromSvgId,
-  formatExportSvg,
-  importSvgFile,
-} from "./io.js";
+import { elementToSvgMarkup, buildDefsMarkup, formatExportSvg } from "./svg-export.js";
+import { sanitizeName, elementIdFromSvgId, groupIdFromSvgId } from "./svg-names.js";
+import { importSvgFile } from "./svg-import.js";
 import { groupsOf, selectedGroups } from "./groups.js";
 import { type EditorState, type SceneElement } from "./types.js";
 import { byId } from "@tools/ui";

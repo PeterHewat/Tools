@@ -1,3 +1,4 @@
+import { cubicAt, splitCubic } from "./cubic.js";
 import { isDefaultName, uid } from "./utils.js";
 import type {
   Anchor,
@@ -85,8 +86,7 @@ function base<T extends ElementType>(
     id: id ?? uid(type),
     type,
     name: "",
-    ...DEFAULT_STROKE,
-    ...rest,
+    ...structuredClone({ ...DEFAULT_STROKE, ...rest }),
   } as { id: string; type: T; name: string; groups?: string[] } & StyleProps;
 }
 
@@ -174,7 +174,7 @@ export const PAINT_KEYS = {
 export const PAINT_KINDS: readonly PaintKind[] = ["fill", "stroke"];
 
 /** Whether the paint is drawn at all: a fill switched on, a stroke with a width. */
-export function paintShown(el: SceneElement, kind: PaintKind): boolean {
+function paintShown(el: SceneElement, kind: PaintKind): boolean {
   return kind === "fill" ? !!el.fillEnabled : el.strokeWidth > 0;
 }
 
@@ -1029,14 +1029,6 @@ export function rotateElementCopy(
 
 /* ---------- Point editing ---------- */
 
-function bezierAt(p0: Point, c1: Point, c2: Point, p3: Point, t: number): Point {
-  const u = 1 - t;
-  return {
-    x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p3.x,
-    y: u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p3.y,
-  };
-}
-
 export interface NearestHit {
   index: number;
   t: number;
@@ -1079,7 +1071,7 @@ export function nearestOnElement(el: SceneElement, p: Point): NearestHit | null 
     } else {
       const N = 48;
       const distAt = (t: number) => {
-        const q = bezierAt(s.a, info.c1, info.c2, s.b, t);
+        const q = cubicAt({ a: s.a, c1: info.c1, c2: info.c2, b: s.b }, t);
         return Math.hypot(p.x - q.x, p.y - q.y);
       };
       let bt = 0;
@@ -1138,20 +1130,16 @@ export function insertPointAt(el: SceneElement, index: number, t: number): Scene
       pts.splice(index + 1, 0, createPoint(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, false));
       return el;
     }
-    // de Casteljau: split the cubic at t so both halves trace the original curve.
-    const lerp = (p: Point, q: Point): Point => ({
-      x: p.x + (q.x - p.x) * t,
-      y: p.y + (q.y - p.y) * t,
+    const [left, right] = splitCubic({ a, c1: info.c1, c2: info.c2, b }, t);
+    a.hOut = left.c1;
+    b.hIn = right.c2;
+    pts.splice(index + 1, 0, {
+      x: left.b.x,
+      y: left.b.y,
+      smooth: true,
+      hIn: left.c2,
+      hOut: right.c1,
     });
-    const p01 = lerp(a, info.c1);
-    const p12 = lerp(info.c1, info.c2);
-    const p23 = lerp(info.c2, b);
-    const p012 = lerp(p01, p12);
-    const p123 = lerp(p12, p23);
-    const m = lerp(p012, p123);
-    a.hOut = p01;
-    b.hIn = p23;
-    pts.splice(index + 1, 0, { x: m.x, y: m.y, smooth: true, hIn: p012, hOut: p123 });
   }
   return el;
 }

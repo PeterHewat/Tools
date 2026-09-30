@@ -12,33 +12,20 @@ import {
   writeStored,
 } from "@tools/ui";
 import { createEditor, type LineLexer } from "@tools/editor";
-import {
-  applyEdits,
-  parse,
-  REPAIRS,
-  type Edit,
-  type JsonNode,
-  type ParseResult,
-  type RepairKind,
-} from "./lib/ast.js";
+import { applyEdits, REPAIRS, type Edit, type JsonNode, type RepairKind } from "./lib/ast.js";
 import { BLOCK_COMMENT, highlightLine } from "./lib/highlight.js";
 import { lexCsvSheet, lexTypeScript, lexYaml } from "./lib/lexers.js";
-import {
-  exactCandidates,
-  toCsv,
-  toJsonSchema,
-  toTypeScript,
-  toYaml,
-  type Converted,
-} from "./lib/convert.js";
+import { toCsv, type Converted, type ExactCandidate } from "./lib/convert.js";
+import { createAnalysis, type Analysis } from "./lib/analysis.js";
+import type { ExportKind } from "./lib/exports.js";
 import { excerptAt, formatBytes } from "./lib/inspect.js";
 import { unwrapString, wrapAsString } from "./lib/nested.js";
-import { lineOf, lineStarts, positionAt, type TextPosition } from "./lib/lines.js";
+import { positionAt } from "./lib/lines.js";
 import { jsonPointer, jsPath, nodeAt, type PathSegment } from "./lib/path.js";
 import { printJson, printedSize } from "./lib/print.js";
 import { SAMPLE } from "./lib/sample.js";
 import { csvToJson, looksLikeCsv } from "./lib/csv-read.js";
-import { csvSheet, tablesIn, type CsvSheet } from "./lib/tables.js";
+import { type CsvSheet } from "./lib/tables.js";
 import { findInText, MAX_MATCHES } from "./lib/search.js";
 
 const formatBtn = byId<HTMLButtonElement>("format");
@@ -128,14 +115,15 @@ const exportView = createEditor(exportEl, {
 
 /** JSON edits the document; the others show it converted, read-only. */
 type ViewMode = "json" | ExportKind;
-type ExportKind = "yaml" | "csv" | "ts" | "schema";
 type PathStyle = "js" | "pointer";
 type Indent = "2" | "4" | "tab";
 
 let fileName = "data.json";
-type Doc = Extract<ParseResult, { ok: true }>;
+const analysis = createAnalysis();
+let conversions: Analysis["exports"] = null;
+let candidates: ExactCandidate[] = [];
 /** The parsed document while the text is strict JSON; null otherwise. */
-let doc: Doc | null = null;
+let doc: Analysis["doc"] = null;
 /** Typed since the last parse: `doc`'s positions may be off until it is parsed again. */
 let stale = false;
 /** The editor's text, read once per change: a long document is costly to join into a string. */
@@ -148,7 +136,7 @@ let pathStyle: PathStyle = "js";
 /** Syntax colours in every view: a setting, on until someone turns it off. */
 let colours = true;
 /** Why the text is not JSON, and the edits that would make it JSON when there are some. */
-let fault: { message: string; position: TextPosition; edits: Edit[] | null } | null = null;
+let fault: Analysis["fault"] = null;
 
 // ---------- Storage ----------
 
@@ -273,7 +261,6 @@ interface ExportSpec {
   label: string;
   lexer: LineLexer;
   extension: string;
-  make: (root: JsonNode) => Converted;
 }
 
 // ---------- CSV: every array as a table ----------
@@ -284,22 +271,6 @@ let sheet: CsvSheet | null = null;
 let sheetLabels: (number | null)[] | null = null;
 
 const rows = (n: number) => plural(n, "row");
-
-function makeCsv(root: JsonNode): Converted {
-  const tables = tablesIn(root);
-  sheet = tables.length
-    ? csvSheet(tables, (t) => `${formatPath(t.path)} · ${rows(t.node.items.length)}`)
-    : null;
-  sheetLabels = null;
-  if (!sheet) return { ok: false, message: "No arrays here: CSV makes a table of a list." };
-  // One line of JSON would number every row 1: then the rows keep their own numbers.
-  const text = documentText();
-  if (text.includes("\n")) {
-    const starts = lineStarts(text);
-    sheetLabels = sheet.sources.map((s) => (s < 0 ? null : lineOf(starts, s)));
-  }
-  return { ok: true, text: sheet.text };
-}
 
 /** With several tables, the one the CSV view's cursor is in: Copy and Export take it. */
 function csvSection(): CsvSheet["sections"][number] | undefined {
@@ -337,7 +308,6 @@ let exactShown = "";
 
 /** One toggle per place with a few strings, for Types and Schema. */
 function showExactBar(): void {
-  const candidates = (mode === "ts" || mode === "schema") && doc ? exactCandidates(doc.root) : [];
   exactBar.classList.toggle("hidden", !candidates.length);
   const key = JSON.stringify(candidates);
   if (key !== exactShown) {
@@ -375,26 +345,22 @@ const EXPORTS: Record<ExportKind, ExportSpec> = {
     label: "YAML",
     lexer: lexYaml,
     extension: ".yaml",
-    make: (root) => ({ ok: true, text: toYaml(root) }),
   },
   // Every array, one table after another (see lib/tables.ts).
   csv: {
     label: "CSV",
     lexer: lexCsvSheet,
     extension: ".csv",
-    make: makeCsv,
   },
   ts: {
     label: "TypeScript types",
     lexer: lexTypeScript,
     extension: ".d.ts",
-    make: (root) => ({ ok: true, text: toTypeScript(root, { exact: exactPlaces }) }),
   },
   schema: {
     label: "JSON Schema",
     lexer: highlightLine,
     extension: ".schema.json",
-    make: (root) => ({ ok: true, text: toJsonSchema(root, { exact: exactPlaces }) }),
   },
 };
 
@@ -406,6 +372,7 @@ let exported: string | null = null;
 let exportShown = "";
 
 function showExport(): void {
+  candidates = [];
   if (!isExport(mode)) {
     exportEl.classList.add("hidden");
     exportMessage.classList.add("hidden");
@@ -422,15 +389,11 @@ function showExport(): void {
         : "Nothing to convert yet.",
     };
   } else {
-    try {
-      result = EXPORTS[mode].make(doc.root);
-    } catch (err) {
-      // Converters recurse; a document nested thousands deep can exhaust the stack.
-      result = {
-        ok: false,
-        message: err instanceof RangeError ? "Too deeply nested to convert." : String(err),
-      };
-    }
+    const converted = conversions!.convert(mode, { exact: exactPlaces, pathStyle });
+    result = converted.result;
+    candidates = converted.candidates;
+    sheet = converted.sheet;
+    sheetLabels = converted.lineLabels;
   }
   exported = result.ok ? result.text : null;
   exportEl.classList.toggle("hidden", !result.ok);
@@ -592,19 +555,11 @@ function closeFind(): void {
 // ---------- Validation: after every pause in typing, and every change made from code ----------
 
 function validate(): void {
+  clearTimeout(pending);
   const text = documentText();
   const empty = !text.trim();
-  const parsed = empty ? null : parse(text);
-  doc = parsed?.ok && !parsed.edits.length ? parsed : null;
+  ({ doc, fault, exports: conversions } = analysis.read(text));
   stale = false;
-  fault = null;
-  if (parsed && !doc) {
-    // Almost JSON: the first thing a Fix would change is the first thing strict JSON refuses.
-    const [message, offset, edits] = parsed.ok
-      ? [REPAIRS[parsed.edits[0]!.kind].message, parsed.edits[0]!.start, parsed.edits]
-      : [parsed.message, parsed.offset, null];
-    fault = { message, position: positionAt(text, offset), edits };
-  }
   minified = !!doc && !text.includes("\n");
   showLayout(text);
   clearBtn.disabled = empty;
@@ -695,7 +650,10 @@ const LONG_TEXT = 1_000_000;
  * undo, and changes only what differs, so the caret and folds stay where the text did not.
  */
 function replaceText(text: string): void {
-  if (text === documentText()) return;
+  if (text === documentText()) {
+    validate();
+    return;
+  }
   editor.setText(text);
   if (mode === "json") editor.focus();
   validate();
@@ -898,7 +856,7 @@ for (const b of indentButtons) {
     indentChoice = b.dataset.indent as Indent;
     editor.setIndent(indent());
     if (doc && !minified) rewrite(false);
-    validate();
+    else validate();
   });
 }
 sortKeys.addEventListener("click", () => {
@@ -919,6 +877,7 @@ for (const b of pathStyleButtons) {
     pathStyle = b.dataset.pathStyle as PathStyle;
     showOptions();
     showPath(shownPath);
+    if (mode === "csv") showExport();
     save();
   });
 }

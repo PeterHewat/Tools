@@ -36,12 +36,40 @@ import {
   toWorldPoint,
   localBBox,
   rotationCentre,
+  DEFAULT_STROKE,
 } from "./model.js";
-import { elementToSvgMarkup } from "./io.js";
+import { elementToSvgMarkup } from "./svg-export.js";
 import type { Anchor, PathElement } from "./types.js";
 
 const anchor = (x: number, y: number, hIn: Anchor["hIn"] = null, hOut: Anchor["hOut"] = null) =>
   ({ x, y, smooth: !!(hIn || hOut), hIn, hOut }) as Anchor;
+
+describe("owned shape styles", () => {
+  test("editing a new shape's gradient leaves other shapes and the defaults intact", () => {
+    const before = structuredClone(DEFAULT_STROKE);
+    const first = createRect(0, 0, 40, 40);
+    const second = createRect(0, 0, 40, 40);
+    first.fillStops[0]!.color = "#ff0000";
+    first.strokeStops[0]!.opacity = 0.25;
+    first.fillFrom.x = 0.4;
+    first.strokeTo.y = 0.8;
+    expect(second.fillStops).toEqual(before.fillStops);
+    expect(second.strokeStops).toEqual(before.strokeStops);
+    expect(second.fillFrom).toEqual(before.fillFrom);
+    expect(second.strokeTo).toEqual(before.strokeTo);
+    expect(DEFAULT_STROKE).toEqual(before);
+  });
+
+  test("caller-supplied gradient data belongs to each created shape", () => {
+    const style = structuredClone(DEFAULT_STROKE);
+    const first = createRect(0, 0, 40, 40, style);
+    const second = createRect(0, 0, 40, 40, style);
+    first.fillStops[0]!.color = "#ff0000";
+    first.strokeFrom.x = 0.4;
+    expect(second.fillStops).toEqual(style.fillStops);
+    expect(second.strokeFrom).toEqual(style.strokeFrom);
+  });
+});
 
 describe("bounding boxes", () => {
   test("rect", () => {

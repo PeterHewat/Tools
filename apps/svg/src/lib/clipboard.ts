@@ -1,5 +1,6 @@
 import { getState, setState, selectOnly, selectedElements } from "./state.js";
-import { cleanElement, importSvgFile, isInert } from "./io.js";
+import { cleanElement, isInert } from "./project-file.js";
+import { importSvgFile } from "./svg-import.js";
 import { type SceneElement } from "./types.js";
 import { pushUndo } from "./undo.js";
 import { deleteSelection, copyElements } from "./selection-commands.js";

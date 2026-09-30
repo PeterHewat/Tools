@@ -72,6 +72,19 @@ export function rowDotHtml(
     </button>`;
 }
 
+/** Refresh a selection checkbox without replacing its button or the field beside it. */
+export function setRowChecked(row: HTMLElement, on: boolean, title: string): void {
+  const button = row.querySelector<HTMLButtonElement>(
+    ':scope > .acc-header-row [data-action="toggle-dot"]'
+  );
+  if (!button || button.getAttribute("aria-checked") === String(on)) return;
+  button.setAttribute("aria-checked", String(on));
+  button.setAttribute("aria-label", title);
+  button.title = title;
+  button.classList.toggle("is-off", !on);
+  button.querySelector("use")!.setAttribute("href", on ? "#icon-check-on" : "#icon-check-off");
+}
+
 /**
  * The eye: whether a thing is drawn. Separate from the checkbox, which says whether it is
  * selected - one control, one meaning, in every list.

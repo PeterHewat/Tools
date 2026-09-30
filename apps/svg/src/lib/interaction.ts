@@ -45,7 +45,7 @@ import {
 import { applyResize, pointIndexForRole } from "./resize.js";
 import { boxCorners, rotateAll, scaleAllByCorner, unionBox } from "./selection-transform.js";
 import { SELECTION_HANDLE_ID } from "./render.js";
-import { snapFeatures } from "./boolean.js";
+import { snapFeatures } from "./snap.js";
 import { boxToGuides, movedGuide, nearestGuide, withGuide, type GuideAxis } from "./guides.js";
 import {
   byShape,

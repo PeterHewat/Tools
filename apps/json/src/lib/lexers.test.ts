@@ -1,3 +1,4 @@
+import { inferShape } from "./convert.js";
 import { describe, expect, test } from "bun:test";
 import { parse, type JsonNode } from "./ast.js";
 import { toCsv, toTypeScript, toYaml } from "./convert.js";
@@ -103,6 +104,6 @@ describe("lexTypeScript", () => {
   });
 
   test("keeps every character of the converter's output", () => {
-    lossless(lexTypeScript, toTypeScript(root(SAMPLE)));
+    lossless(lexTypeScript, toTypeScript(inferShape(root(SAMPLE))));
   });
 });

@@ -1,16 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import {
-  elementIdFromSvgId,
-  cleanElement,
-  elementToSvgMarkup,
-  formatExportSvg,
-  groupIdFromSvgId,
-  importSvgFile,
-  sanitizeName,
-  isInert,
-  readProject,
-  serializeProject,
-} from "./io.js";
+import { elementIdFromSvgId, groupIdFromSvgId, sanitizeName } from "./svg-names.js";
+import { cleanElement, isInert, readProject, serializeProject } from "./project-file.js";
+import { elementToSvgMarkup, formatExportSvg } from "./svg-export.js";
+import { importSvgFile } from "./svg-import.js";
 import {
   createEllipse,
   createLine,

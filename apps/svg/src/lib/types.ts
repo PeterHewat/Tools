@@ -351,7 +351,7 @@ export const MAX_ARTBOARD = 8192;
 
 /**
  * The format of a stored document. A change to `ProjectFile` bumps this and teaches
- * `readProject` (io.ts) to bring the previous version up to date.
+ * `readProject` (project-file.ts) to bring the previous version up to date.
  */
 export const PROJECT_VERSION = 1;
 

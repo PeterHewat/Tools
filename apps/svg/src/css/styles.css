@@ -1,3 +1,4 @@
+@import "@tools/ui/tokens.css";
 /* "‹ Tools" and the app's name, which start the top bar as they start every Tools app. */
 @import "@tools/ui/header.css";
 /* The docked panels (Document, Help) and the zoom menu, as in every Tools app. */
@@ -10,26 +11,15 @@
 }
 
 :root {
-  --bg: #1a1b1e;
-  --panel: #25262b;
-  --panel-2: #2e3038;
   --hover: #3a3d45;
   --field: #1a1b1e;
   --canvas: #121316;
-  --border: #3a3d45;
-  --text: #e8e9ed;
-  --muted: #9aa0ab;
-  --accent: #5b8def;
-  --accent-dim: #3d5a9e;
-  --danger: #e85d5d;
   --current-row: #364159;
   --search-hit: #ffd21f;
   --sel-text: #6cb2ff;
   --attr-bg: rgba(255, 214, 102, 0.28);
   --attr-text: #ffd666;
   --swatch-ring: rgba(255, 255, 255, 0.3);
-  --scroll: #4a4e59;
-  --shadow: rgba(0, 0, 0, 0.4);
   /* Heavier than the shared frost: under a menu lie a drawing's shapes and the grid, not text
      worth reading through, and a light frost lets them fight the menu's own words. */
   --ui-frost-bg: color-mix(in srgb, var(--panel) 72%, transparent);
@@ -45,7 +35,6 @@
     sans-serif;
   font-size: 14px;
   color: var(--text);
-  color-scheme: dark;
 }
 
 /* Light: when the browser prefers it and nobody has chosen, or when light was chosen (see
@@ -53,54 +42,30 @@
    The artboard and its handles keep their colours: they are the drawing, not the chrome. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #f3f4f7;
-    --panel: #ffffff;
-    --panel-2: #f1f2f5;
     --hover: #e3e6eb;
     --field: #ffffff;
     --canvas: #dfe2e8;
-    --border: #d3d7de;
-    --text: #1d1f24;
-    --muted: #5d6471;
-    --accent: #2f6fe0;
-    --accent-dim: #d3e1fb;
-    --danger: #cf3b3b;
     --current-row: #dfe8fb;
     --search-hit: #ffd21f;
     --sel-text: #1f5fcf;
     --attr-bg: rgba(240, 180, 0, 0.22);
     --attr-text: #8a5d00;
     --swatch-ring: rgba(0, 0, 0, 0.18);
-    --scroll: #b7bcc6;
-    --shadow: rgba(20, 24, 33, 0.16);
     --ruler-tick: #a3a9b4;
-    color-scheme: light;
   }
 }
 
 :root[data-theme="light"] {
-  --bg: #f3f4f7;
-  --panel: #ffffff;
-  --panel-2: #f1f2f5;
   --hover: #e3e6eb;
   --field: #ffffff;
   --canvas: #dfe2e8;
-  --border: #d3d7de;
-  --text: #1d1f24;
-  --muted: #5d6471;
-  --accent: #2f6fe0;
-  --accent-dim: #d3e1fb;
-  --danger: #cf3b3b;
   --current-row: #dfe8fb;
   --search-hit: #ffd21f;
   --sel-text: #1f5fcf;
   --attr-bg: rgba(240, 180, 0, 0.22);
   --attr-text: #8a5d00;
   --swatch-ring: rgba(0, 0, 0, 0.18);
-  --scroll: #b7bcc6;
-  --shadow: rgba(20, 24, 33, 0.16);
   --ruler-tick: #a3a9b4;
-  color-scheme: light;
 }
 
 html,

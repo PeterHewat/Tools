@@ -18,7 +18,8 @@ import {
   selectAll,
 } from "./selection-commands.js";
 import { pushUndo, canUndo, canRedo, undo, redo, undoStepper } from "./undo.js";
-import { formatExportSvg, importSvgFile } from "./io.js";
+import { formatExportSvg } from "./svg-export.js";
+import { importSvgFile } from "./svg-import.js";
 import { pngSize, renderPng } from "./png-export.js";
 import { fileBase, isSvgFile, listed } from "./document-files.js";
 import { canJoin } from "./model.js";

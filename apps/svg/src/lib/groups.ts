@@ -290,10 +290,15 @@ function redundantGroupIds(elements: readonly SceneElement[]): Set<string> {
 /** Drops the groups that hold only one thing, returning a new list. */
 export function pruneGroups(elements: readonly SceneElement[]): SceneElement[] {
   const gone = redundantGroupIds(elements);
-  const touched = (el: SceneElement) => groupsOf(el).some((gid) => gone.has(gid));
-  const out = elements.map((el) => (touched(el) ? { ...el } : el));
-  pruneGroupsInPlace(out);
-  return out;
+  return elements.map((el) => {
+    const chain = groupsOf(el);
+    if (!chain.some((gid) => gone.has(gid))) return el;
+    const next = { ...el };
+    const kept = chain.filter((gid) => !gone.has(gid));
+    if (kept.length) next.groups = kept;
+    else delete next.groups;
+    return next;
+  });
 }
 
 /**
@@ -680,4 +685,15 @@ export function selectedGroups(
     if (!list.every((e) => selected.has(e.id))) members.delete(gid);
   }
   return members;
+}
+
+/** The entries, by group id, of groups that still exist and have a value (a name, a hue). */
+export function ofGroupsInUse<T extends string | number>(
+  elements: readonly SceneElement[],
+  byGroup: Readonly<Record<string, T>>
+): Record<string, T> {
+  const used = new Set(elements.flatMap((e) => groupsOf(e)));
+  return Object.fromEntries(
+    Object.entries(byGroup).filter(([gid, v]) => used.has(gid) && v !== "")
+  );
 }

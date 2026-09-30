@@ -39,7 +39,6 @@ export const ICONS = {
   more: dot(5, 12, 1.7) + dot(12, 12, 1.7) + dot(19, 12, 1.7),
   "chevron-up": line('<path d="M6 15l6-6 6 6"/>'),
   "chevron-down": line('<path d="M6 9l6 6 6-6"/>'),
-  "chevron-left": line('<path d="M15 6l-6 6 6 6"/>'),
   "chevron-right": line('<path d="M9 6l6 6-6 6"/>'),
   "expand-all": line('<path d="M17 16l-5 5-5-5M7 8l5-5 5 5"/>'),
   "collapse-all": line('<path d="M7 20l5-5 5 5M17 4l-5 5-5-5"/>'),

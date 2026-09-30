@@ -1,3 +1,9 @@
+import {
+  HANDLE_RADIUS,
+  rotateOffset,
+  rotateHandlePlacement,
+  squareHandleLocal,
+} from "./handles.js";
 import { selectedElements, findElement } from "./state.js";
 import {
   elementBBox,
@@ -16,39 +22,16 @@ import {
   type AttrMap,
 } from "./model.js";
 import { applyCameraTransform } from "./viewport.js";
-import {
-  cornerHandleInset,
-  HIT_R_COARSE,
-  HIT_R_FINE,
-  isCoarsePointer,
-  ROTATE_REACH_COARSE,
-  ROTATE_REACH_FINE,
-} from "./pointer.js";
-import { buildDefsMarkup } from "./io.js";
+import { cornerHandleInset, HIT_R_COARSE, HIT_R_FINE, isCoarsePointer } from "./pointer.js";
+import { buildDefsMarkup } from "./svg-export.js";
 import { gradientRole, hasBoxHandles } from "./resize.js";
 import { pickedPoints } from "./points.js";
 import { BOX_ROLES, boxCorners, unionBox } from "./selection-transform.js";
 import { clickTarget, groupColor, groupsOf, selectedGroups } from "./groups.js";
-import type {
-  BBox,
-  EditorState,
-  PathElement,
-  Point,
-  RectElement,
-  Preview,
-  SceneElement,
-} from "./types.js";
+import type { BBox, EditorState, PathElement, Point, Preview, SceneElement } from "./types.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const HIT_MIN_PX = 10;
-/** Visible handle radius, in screen pixels: handles keep one size at every zoom level. */
-const HANDLE_R = 5;
-
-/** How far the rotate handle sits above the shape, in screen pixels. */
-function rotateOffset(): number {
-  return isCoarsePointer() ? ROTATE_REACH_COARSE : ROTATE_REACH_FINE;
-}
-
 /** Set once per render so the helpers below can size handles in screen pixels. */
 let zoom = 1;
 
@@ -156,7 +139,6 @@ function renderImages(state: EditorState): void {
     });
     if (drawn.dataUrl !== img.dataUrl) {
       drawn.image.setAttribute("href", img.dataUrl);
-      drawn.image.setAttributeNS("http://www.w3.org/1999/xlink", "href", img.dataUrl);
       drawn.dataUrl = img.dataUrl;
     }
     nodes.push(drawn.g);
@@ -311,7 +293,7 @@ function addHandle(
     class: `handle ${cls}`,
     cx: x,
     cy: y,
-    r: HANDLE_R / zoom,
+    r: HANDLE_RADIUS / zoom,
     ...data,
   });
 }
@@ -334,7 +316,7 @@ function hitRForPoint(points: readonly Point[], i: number): number {
     if (q) nearest = Math.min(nearest, Math.hypot(q.x - p.x, q.y - p.y) * zoom);
   }
   if (!Number.isFinite(nearest)) return defaultHitR();
-  return Math.max(HANDLE_R + 1, Math.min(defaultHitR(), nearest / 2));
+  return Math.max(HANDLE_RADIUS + 1, Math.min(defaultHitR(), nearest / 2));
 }
 
 function addHandleLine(
@@ -353,57 +335,6 @@ function addHandleLine(
     y2,
   });
 }
-
-/** Where the rotate handle sits, and the top-centre of the shape it hangs from, in world units. */
-function rotateHandlePlacement(
-  el: SceneElement,
-  zoomLevel: number
-): { top: Point; out: Point } | null {
-  const box = localBBox(el);
-  if (!box) return null;
-  const reach = rotateOffset() / zoomLevel;
-  const cx = box.x + box.width / 2;
-  return {
-    top: toWorldPoint(el, { x: cx, y: box.y }),
-    out: toWorldPoint(el, { x: cx, y: box.y - reach }),
-  };
-}
-
-/** Where a rect's square handle sits, in the rect's own frame: outside its bottom-right corner. */
-function squareHandleLocal(el: RectElement, zoomLevel: number): Point {
-  const off = cornerHandleInset() / zoomLevel;
-  return { x: el.x + el.width + off, y: el.y + el.height + off };
-}
-
-/**
- * The handles that stand outside a shape's own outline (the rotate handle, a rect's square
- * handle), in world units and wherever the rotation has put them. Whatever floats beside the
- * selection has to keep clear of these, on whichever side they end up.
- */
-export function outerHandlePoints(
-  el: SceneElement,
-  zoomLevel: number,
-  rotatable: boolean
-): Point[] {
-  const points: Point[] = [];
-  if (rotatable) {
-    const place = rotateHandlePlacement(el, zoomLevel);
-    if (place) points.push(place.out);
-  }
-  if (el.type === "rect") points.push(toWorldPoint(el, squareHandleLocal(el, zoomLevel)));
-  const box = hasBoxHandles(el) ? elementBBox(el) : null;
-  if (box) {
-    const off = cornerHandleInset() / zoomLevel;
-    points.push(
-      { x: box.x - off, y: box.y - off },
-      { x: box.x + box.width + off, y: box.y + box.height + off }
-    );
-  }
-  return points;
-}
-
-/** How far a handle's dot reaches from its centre, in screen pixels. */
-export const HANDLE_EXTENT = HANDLE_R;
 
 function renderRotateHandle(parent: Element, el: SceneElement, state: EditorState): void {
   const place = rotateHandlePlacement(el, zoom);
@@ -527,7 +458,7 @@ function renderPathHandles(parent: Element, path: PathElement, state: EditorStat
         h.y,
         `handle-${kind}${picked ? " selected" : ""}`,
         { "data-path-id": path.id, "data-point-index": i, "data-handle-kind": kind },
-        Math.max(HANDLE_R + 1, Math.min(defaultHitR(), reach / 2))
+        Math.max(HANDLE_RADIUS + 1, Math.min(defaultHitR(), reach / 2))
       );
     }
   });
@@ -596,17 +527,6 @@ function renderSelectionHandles(
   const hy = turning ? turning.y : top.y - rotateOffset() / zoom;
   addHandleLine(parent, turning ? turning.cx : top.x, turning ? turning.cy : top.y, hx, hy);
   addHandle(parent, hx, hy, "rotate-handle", data("rotate"));
-}
-
-/** Where a selection's own handles reach beyond its shapes, for the bar to keep clear of. */
-export function selectionHandlePoints(sel: readonly SceneElement[], zoomLevel: number): Point[] {
-  const box = sel.length > 1 ? unionBox(sel) : null;
-  if (!box) return [];
-  const off = cornerHandleInset() / zoomLevel;
-  return [
-    { x: box.x - off, y: box.y - rotateOffset() / zoomLevel },
-    { x: box.x + box.width + off, y: box.y + box.height + off },
-  ];
 }
 
 /**

@@ -129,7 +129,7 @@ export function csvRows(node: JsonNode & { kind: "array" }): string[] {
 type Primitive = "string" | "integer" | "number" | "boolean" | "null";
 
 /** Every value seen at one place in the document, merged: array items all land in one shape. */
-interface Shape {
+export interface Shape {
   /** Where in the document, as `apps[].id`: every item of an array is one place. */
   place: string;
   primitives: Set<Primitive>;
@@ -191,7 +191,7 @@ function addTo(shape: Shape, node: JsonNode): void {
   }
 }
 
-function shapeOf(root: JsonNode): Shape {
+export function inferShape(root: JsonNode): Shape {
   const shape = emptyShape("");
   addTo(shape, root);
   return shape;
@@ -204,14 +204,14 @@ export interface ExactCandidate {
 }
 
 /** The places with a handful of distinct strings, in document order. */
-export function exactCandidates(root: JsonNode): ExactCandidate[] {
+export function exactCandidates(shape: Shape): ExactCandidate[] {
   const found: ExactCandidate[] = [];
   const walk = (shape: Shape): void => {
     if (shape.strings?.size) found.push({ place: shape.place, values: [...shape.strings] });
     for (const field of shape.object?.fields.values() ?? []) walk(field.shape);
     if (shape.items) walk(shape.items);
   };
-  walk(shapeOf(root));
+  walk(shape);
   return found;
 }
 
@@ -242,7 +242,7 @@ function singular(hint: string): string {
 }
 
 /** Interfaces for every object shape, named after the keys they sit under. */
-export function toTypeScript(root: JsonNode, options: ShapeOptions = {}): string {
+export function toTypeScript(shape: Shape, options: ShapeOptions = {}): string {
   const rootName = "Root";
   const names = new Set<string>();
   const queue: { name: string; object: NonNullable<Shape["object"]> }[] = [];
@@ -274,7 +274,6 @@ export function toTypeScript(root: JsonNode, options: ShapeOptions = {}): string
     return parts.length ? parts.join(" | ") : "unknown";
   };
 
-  const shape = shapeOf(root);
   const rootType = typeOf(shape, rootName);
   const out: string[] = [];
   if (rootType !== rootName) out.push(`export type ${rootName} = ${rootType};\n`);
@@ -330,10 +329,10 @@ function schemaOf(shape: Shape, options: ShapeOptions): Schema {
 }
 
 /** A JSON Schema (draft 2020-12) that the document, and documents shaped like it, satisfy. */
-export function toJsonSchema(root: JsonNode, options: ShapeOptions = {}): string {
+export function toJsonSchema(shape: Shape, options: ShapeOptions = {}): string {
   const schema = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    ...schemaOf(shapeOf(root), options),
+    ...schemaOf(shape, options),
   };
   return `${JSON.stringify(schema, null, 2)}\n`;
 }

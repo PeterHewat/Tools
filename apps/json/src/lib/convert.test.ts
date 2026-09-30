@@ -1,3 +1,4 @@
+import { inferShape } from "./convert.js";
 import { describe, expect, test } from "bun:test";
 import { parse, type JsonNode } from "./ast.js";
 import {
@@ -86,7 +87,7 @@ describe("toTypeScript", () => {
   test("names interfaces after keys, marks keys some items lack as optional", () => {
     const text =
       '{"name": "x", "shapes": [{"id": "a", "w": 1}, {"id": "b", "tags": ["t"]}], "meta": null}';
-    expect(toTypeScript(root(text))).toBe(
+    expect(toTypeScript(inferShape(root(text)))).toBe(
       [
         "export interface Root {",
         "  name: string;",
@@ -105,7 +106,7 @@ describe("toTypeScript", () => {
   });
 
   test("unions mixed values, quotes odd keys, and aliases a root that is not an object", () => {
-    expect(toTypeScript(root('[{"a b": 1}, {"a b": "x"}, {"a b": null}, []]'))).toBe(
+    expect(toTypeScript(inferShape(root('[{"a b": 1}, {"a b": "x"}, {"a b": null}, []]')))).toBe(
       [
         "export type Root = (RootItem | unknown[])[];",
         "",
@@ -121,7 +122,7 @@ describe("toTypeScript", () => {
 describe("toJsonSchema", () => {
   test("describes types, required keys and array items", () => {
     const schema = JSON.parse(
-      toJsonSchema(root('{"id": 1, "items": [{"x": 1.5}, {"x": 2, "y": "z"}]}'))
+      toJsonSchema(inferShape(root('{"id": 1, "items": [{"x": 1.5}, {"x": 2, "y": "z"}]}')))
     );
     expect(schema).toEqual({
       $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -142,32 +143,34 @@ describe("toJsonSchema", () => {
   });
 
   test("a key named __proto__ is a property like any other", () => {
-    const schema = JSON.parse(toJsonSchema(root('{"__proto__": 1}')));
+    const schema = JSON.parse(toJsonSchema(inferShape(root('{"__proto__": 1}'))));
     expect(Object.keys(schema.properties)).toEqual(["__proto__"]);
     expect(schema.required).toEqual(["__proto__"]);
   });
 
   test("uses a type list for mixed scalars and anyOf when structure varies", () => {
-    expect(JSON.parse(toJsonSchema(root('["a", null]'))).items).toEqual({
+    expect(JSON.parse(toJsonSchema(inferShape(root('["a", null]')))).items).toEqual({
       type: ["string", "null"],
     });
-    expect(JSON.parse(toJsonSchema(root('[1, {"a": 1}]'))).items.anyOf).toHaveLength(2);
+    expect(JSON.parse(toJsonSchema(inferShape(root('[1, {"a": 1}]')))).items.anyOf).toHaveLength(2);
   });
 });
 
 describe("exact values", () => {
   test("places with a handful of strings are offered, in document order", () => {
-    expect(exactCandidates(root(SAMPLE))).toEqual([
+    expect(exactCandidates(inferShape(root(SAMPLE)))).toEqual([
       { place: "name", values: ["Tools"] },
       { place: "tags[]", values: ["json", "svg"] },
       { place: "apps[].id", values: ["svg", "json"] },
     ]);
     const many = Array.from({ length: MAX_EXACT + 1 }, (_, k) => `"s${k}"`).join(",");
-    expect(exactCandidates(root(`[${many}]`))).toEqual([]);
+    expect(exactCandidates(inferShape(root(`[${many}]`)))).toEqual([]);
   });
 
   test("Types lists a chosen place's strings instead of string", () => {
-    const text = toTypeScript(root(SAMPLE), { exact: new Set(["tags[]", "apps[].id"]) });
+    const text = toTypeScript(inferShape(root(SAMPLE)), {
+      exact: new Set(["tags[]", "apps[].id"]),
+    });
     expect(text).toContain('  tags: ("json" | "svg")[];');
     expect(text).toContain('  id: "svg" | "json";');
     expect(text).toContain("  name: string;");
@@ -175,9 +178,9 @@ describe("exact values", () => {
 
   test("Schema makes a chosen place an enum, with null in it when null was seen", () => {
     const exact = { exact: new Set(["[].a"]) };
-    const schema = JSON.parse(toJsonSchema(root('[{"a": "x"}, {"a": null}]'), exact));
+    const schema = JSON.parse(toJsonSchema(inferShape(root('[{"a": "x"}, {"a": null}]')), exact));
     expect(schema.items.properties.a).toEqual({ enum: ["x", null] });
-    const mixed = JSON.parse(toJsonSchema(root('[{"a": "x"}, {"a": 1}]'), exact));
+    const mixed = JSON.parse(toJsonSchema(inferShape(root('[{"a": "x"}, {"a": 1}]')), exact));
     expect(mixed.items.properties.a).toEqual({ anyOf: [{ enum: ["x"] }, { type: "integer" }] });
   });
 });

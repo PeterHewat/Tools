@@ -30,6 +30,7 @@ import {
   setField,
   reorder,
   towardFront,
+  setRowChecked,
 } from "./accordion.js";
 import { byId } from "@tools/ui";
 
@@ -49,7 +50,7 @@ function primitiveListKeyOf(state: EditorState): string {
     )
     .join(",");
   const collapsed = [...collapsedGroups].join(",");
-  return `${els}|${state.selection.elementIds.join(",")}|${state.ui.expandedElementId}|${collapsed}`;
+  return `${els}|${state.ui.expandedElementId}|${collapsed}`;
 }
 
 /** Each group's colour, from the hue it was given when it appeared (see `groupHues`). */
@@ -573,6 +574,7 @@ function primitiveRow(state: EditorState, index: number): HTMLElement {
 }
 
 function updatePrimitiveListValues(state: EditorState): void {
+  const selected = new Set(state.selection.elementIds);
   for (const [gid, body] of groupBodies) {
     const members = membersOf(state.elements, gid);
     const box = unionBox(members);
@@ -587,6 +589,12 @@ function updatePrimitiveListValues(state: EditorState): void {
     }
   }
   for (const [gid, input] of groupNameInputs) {
+    const on = membersOf(state.elements, gid).every((el) => selected.has(el.id));
+    setRowChecked(
+      input.closest<HTMLElement>(".group-head")!,
+      on,
+      on ? "Deselect the group" : "Select the group"
+    );
     const value = state.groupNames[gid] ?? "";
     if (input !== document.activeElement && input.value !== value) input.value = value;
   }
@@ -594,6 +602,8 @@ function updatePrimitiveListValues(state: EditorState): void {
     const row = rowRefs.get(el.id);
     if (!row) continue;
     const { li, name } = row;
+    const on = selected.has(el.id);
+    setRowChecked(li, on, on ? "Deselect" : "Select");
     const label = el.name;
     if (name && name !== document.activeElement && name.value !== label) name.value = label;
     // Only what changed is written: an unchanged write still restyles the row.
