@@ -1,4 +1,4 @@
-import { setState, mutate, selectOnly } from "./state.js";
+import { setState, mutateDocument, selectOnly } from "./state.js";
 import { pushUndo } from "./undo.js";
 import { createImage } from "./model.js";
 import { escapeAttr, escapeXml } from "./utils.js";
@@ -196,6 +196,6 @@ function readFileAsDataURL(file: File): Promise<string> {
 export async function hydrateImageDimensions(images: ReferenceImage[]): Promise<void> {
   for (const img of images) {
     const dims = await loadImageDimensions(img.dataUrl);
-    mutate(() => Object.assign(img, dims));
+    mutateDocument(() => Object.assign(img, dims));
   }
 }

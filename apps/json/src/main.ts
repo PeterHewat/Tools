@@ -26,7 +26,7 @@ import { printJson, printedSize } from "./lib/print.js";
 import { SAMPLE } from "./lib/sample.js";
 import { csvToJson, looksLikeCsv } from "./lib/csv-read.js";
 import { type CsvSheet } from "./lib/tables.js";
-import { findInText, MAX_MATCHES } from "./lib/search.js";
+import { bindFind } from "./lib/find.js";
 
 const formatBtn = byId<HTMLButtonElement>("format");
 const minifyBtn = byId<HTMLButtonElement>("minify");
@@ -34,7 +34,6 @@ const sortKeys = byId<HTMLButtonElement>("sort-keys");
 const copyBtn = byId<HTMLButtonElement>("copy");
 const downloadBtn = byId<HTMLButtonElement>("download");
 const clearBtn = byId<HTMLButtonElement>("clear");
-const findOpenBtn = byId<HTMLButtonElement>("find-open");
 const status = byId("status");
 const statusToggle = byId<HTMLButtonElement>("status-toggle");
 const cursor = byId("cursor");
@@ -56,12 +55,6 @@ const pathBtn = byId<HTMLButtonElement>("path");
 const whereEl = pathBtn.parentElement!;
 const foldAllBtn = byId<HTMLButtonElement>("fold-all");
 const unfoldAllBtn = byId<HTMLButtonElement>("unfold-all");
-const findBar = byId("findbar");
-const findInput = byId<HTMLInputElement>("find-input");
-const findCount = byId("find-count");
-const findCase = byId<HTMLButtonElement>("find-case");
-const findPrev = byId<HTMLButtonElement>("find-prev");
-const findNext = byId<HTMLButtonElement>("find-next");
 const options = byId("options");
 const optionsBtn = byId<HTMLButtonElement>("options-btn");
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
@@ -90,7 +83,7 @@ const editor = createEditor(codeEl, {
   ],
   onChange: (user) => {
     textCache = null;
-    findVersion++;
+    find.changed();
     droppedDraft = false;
     if (!user) return;
     stale = true;
@@ -137,6 +130,12 @@ let pathStyle: PathStyle = "js";
 let colours = true;
 /** Why the text is not JSON, and the edits that would make it JSON when there are some. */
 let fault: Analysis["fault"] = null;
+
+const find = bindFind([editor, exportView], () => ({
+  editor: mode === "json" ? editor : exportView,
+  text: mode === "json" ? documentText() : (exported ?? ""),
+  mode,
+}));
 
 // ---------- Storage ----------
 
@@ -201,7 +200,6 @@ function save(): void {
 }
 
 /** Toggle buttons keep their state in aria-pressed, which is also what they are styled by. */
-const isPressed = (button: HTMLElement) => button.getAttribute("aria-pressed") === "true";
 const setPressed = (button: HTMLElement, on: boolean) =>
   button.setAttribute("aria-pressed", String(on));
 /** Switches (settings that are on or off) keep theirs in aria-checked, as role="switch" has it. */
@@ -234,7 +232,7 @@ function documentText(): string {
 /** Puts a new document in the editor: a file, or the draft on reload. Not a step of undo. */
 function showDocument(text: string): void {
   editor.setText(text, "new");
-  showMarks();
+  find.marks();
 }
 
 /** Selects a stretch of the document, unfolding what hides it, and scrolls it to the middle. */
@@ -407,8 +405,8 @@ function showExport(): void {
     if (exportShown !== result.text) {
       exportShown = result.text;
       exportView.setText(result.text, "sync");
-      findVersion++;
-      if (findOpen()) refreshFind();
+      find.changed();
+      find.refresh();
     }
   } else {
     exportMessage.textContent = result.message;
@@ -449,107 +447,6 @@ function runNested(action: string): void {
   const text = documentText();
   const next = action === "unwrap" ? unwrapString(text, node, indent()) : wrapAsString(text, node);
   if (next !== null) replaceText(next);
-}
-
-// ---------- Find ----------
-
-/** Bumped whenever the text changes, so find results know when they are out of date. */
-let findVersion = 0;
-let findKey = "";
-let textMatches: number[] = [];
-let findIndex = -1;
-
-const findOpen = () => !findBar.classList.contains("hidden");
-
-/** Searches again when the query, the options, the view or the text changed. */
-function refreshFind(): void {
-  const query = findInput.value;
-  const key = [query, isPressed(findCase), mode, findVersion].join("\u0000");
-  if (key === findKey) return;
-  findKey = key;
-  const matchCase = { matchCase: isPressed(findCase) };
-  textMatches = findInText(searchedText(), query, matchCase);
-  findIndex = Math.min(findIndex, textMatches.length - 1);
-  showFindCount();
-  showMarks();
-}
-
-/** What find searches: the document, or the conversion on screen. */
-const searchedText = () => (isExport(mode) ? (exported ?? "") : documentText());
-
-function showFindCount(): void {
-  const n = textMatches.length;
-  const capped = n >= MAX_MATCHES ? "+" : "";
-  findCount.textContent = !findInput.value
-    ? ""
-    : !n
-      ? "No matches"
-      : findIndex < 0
-        ? `${n.toLocaleString()}${capped} matches`
-        : `${(findIndex + 1).toLocaleString()} of ${n.toLocaleString()}${capped}`;
-  findBar.classList.toggle("no-match", !!findInput.value && !n);
-  // Nothing to step to: the arrows say so rather than doing nothing.
-  findPrev.disabled = findNext.disabled = !n;
-}
-
-/** Marks the matches in the view shown; the current one stands out. */
-function showMarks(): void {
-  const size = findInput.value.length;
-  const marks = findOpen()
-    ? textMatches.map((m, k) => ({ start: m, end: m + size, current: k === findIndex }))
-    : [];
-  editor.setMarks(mode === "json" ? marks : []);
-  exportView.setMarks(isExport(mode) ? marks : []);
-}
-
-/** Moves to the next (1) or previous (-1) match; 0 picks the first at or after the caret. */
-function findStep(delta: number): void {
-  refreshFind();
-  const n = textMatches.length;
-  if (!n) {
-    findIndex = -1;
-    showFindCount();
-    return;
-  }
-  if (findIndex < 0 || delta === 0) {
-    const caret = isExport(mode) ? exportView.selection.from : editor.selection.from;
-    const after = textMatches.findIndex((m) => m >= caret);
-    findIndex = after < 0 ? 0 : after;
-    if (delta < 0) findIndex = (findIndex - 1 + n) % n;
-  } else {
-    findIndex = (findIndex + delta + n) % n;
-  }
-  const start = textMatches[findIndex];
-  if (mode === "json") selectInDocument(start, start + findInput.value.length, false);
-  else exportView.select(start, start + findInput.value.length);
-  showFindCount();
-  showMarks();
-}
-
-/** The search button: opens find, or closes it when it is already open. */
-function toggleFind(): void {
-  if (findOpen()) closeFind();
-  else openFind();
-}
-
-function openFind(): void {
-  findBar.classList.remove("hidden");
-  findOpenBtn.setAttribute("aria-expanded", "true");
-  const { from, to } = isExport(mode) ? exportView.selection : editor.selection;
-  const selected = to - from < 200 ? searchedText().slice(from, to) : "";
-  if (selected && !selected.includes("\n")) findInput.value = selected;
-  findInput.focus();
-  findInput.select();
-  findKey = "";
-  refreshFind();
-}
-
-function closeFind(): void {
-  findBar.classList.add("hidden");
-  findOpenBtn.setAttribute("aria-expanded", "false");
-  editor.setMarks([]);
-  exportView.setMarks([]);
-  if (mode === "json") editor.focus();
 }
 
 // ---------- Validation: after every pause in typing, and every change made from code ----------
@@ -625,8 +522,8 @@ function validate(): void {
         : "";
   }
   editor.setError(fault && { from: fault.position.offset, message: fault.message });
-  findVersion++;
-  if (findOpen()) refreshFind();
+  find.changed();
+  find.refresh();
   showExport();
   showOptions();
   showViewControls();
@@ -746,10 +643,7 @@ function setMode(next: ViewMode): void {
   // Hidden but still holding its place, so the path does not move when the view changes.
   cursor.classList.toggle("invisible", mode !== "json");
   showExport();
-  if (findOpen()) {
-    findIndex = -1;
-    refreshFind();
-  }
+  find.viewChanged();
   if (mode === "json") {
     editor.focus();
     showCursor();
@@ -925,41 +819,6 @@ const moreMenu = bindMenu(moreBtn, more, {
 // keeps it open.
 bindDock(byId("help"), byId("help-btn"), { key: "tools.json.help" }).restore();
 
-let findTimer = 0;
-findInput.addEventListener("input", () => {
-  clearTimeout(findTimer);
-  findTimer = window.setTimeout(() => findStep(0), 120);
-});
-findInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    clearTimeout(findTimer);
-    findStep(e.shiftKey ? -1 : 1);
-  } else if (e.key === "Escape") {
-    e.preventDefault();
-    closeFind();
-  }
-});
-findCase.addEventListener("click", () => {
-  setPressed(findCase, !isPressed(findCase));
-  findStep(0);
-});
-findPrev.addEventListener("click", () => findStep(-1));
-findNext.addEventListener("click", () => findStep(1));
-byId("find-close").addEventListener("click", closeFind);
-findOpenBtn.addEventListener("click", toggleFind);
-// Ctrl+F opens this find rather than the browser's, which cannot see the lines of a long
-// document that are not drawn; F3 steps through matches like most editors.
-document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-    e.preventDefault();
-    openFind();
-  } else if (e.key === "F3") {
-    e.preventDefault();
-    if (!findOpen()) openFind();
-    else findStep(e.shiftKey ? -1 : 1);
-  }
-});
 pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
 // A phone's status bar: folded away until this opens it over the editor (see styles.css).
 statusToggle.addEventListener("click", () => {

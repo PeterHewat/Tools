@@ -71,7 +71,12 @@ const ICON_ATTR = "data-ui-icon";
  * icon, giving it the icon's viewBox where it has none. An unknown name fails the build rather
  * than shipping a blank button.
  */
-export function withIcons(html: string): string {
+export function withIcons(html: string, sprite?: string): string {
+  const marker = "<!-- tools:icons -->";
+  if (html.includes(marker)) {
+    if (!sprite) throw new Error("This page needs its app icon sprite at src/icons.svg");
+    html = html.replace(marker, sprite);
+  }
   // A scan in steps, each a pattern with a single unbounded part, rather than one pattern for the
   // whole element: that one could backtrack for a long time over a tag repeating the attribute.
   let out = "";

@@ -10,6 +10,7 @@
     "test": "bun test"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^20.14.5",
     "@tools/catalog": "workspace:*",
     "@tools/editor": "workspace:*",
     "@tools/ui": "workspace:*",

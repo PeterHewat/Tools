@@ -1,7 +1,7 @@
 import { setState, selectOnly } from "./state.js";
 import { createRect, createEllipse } from "./model.js";
 import { pushUndo } from "./undo.js";
-import { type PathElement, type Point } from "./types.js";
+import { type Point } from "./types.js";
 
 /** The tools that are drawn by dragging a shape out on the canvas. */
 export type ShapeTool = "rect" | "ellipse";
@@ -22,26 +22,6 @@ function shapeGeometry(tool: ShapeTool, start: Point, end: Point): Record<string
     rx: Math.abs(end.x - start.x),
     ry: Math.abs(end.y - start.y),
   };
-}
-
-export function updatePenPreview(path: PathElement, world: Point): void {
-  const last = path.points[path.points.length - 1];
-  if (!last) return;
-  setState((s) => ({
-    ...s,
-    drawing: {
-      ...s.drawing,
-      preview: {
-        type: "rubber",
-        x1: last.x,
-        y1: last.y,
-        x2: world.x,
-        y2: world.y,
-        stroke: path.stroke,
-        strokeWidth: path.strokeWidth,
-      },
-    },
-  }));
 }
 
 /** Hold Shift to constrain: rect becomes a square, ellipse becomes a circle. */

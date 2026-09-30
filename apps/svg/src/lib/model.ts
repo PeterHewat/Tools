@@ -1,5 +1,5 @@
 import { cubicAt, splitCubic } from "./cubic.js";
-import { isDefaultName, uid } from "./utils.js";
+import { cleanColor, cleanUnit, isDefaultName, uid } from "./utils.js";
 import type {
   Anchor,
   BBox,
@@ -47,6 +47,53 @@ export const DEFAULT_STROKE: StyleProps = {
   markerEnd: "none",
 };
 
+/** Complete, owned style data at construction and file boundaries; readers need no defaults. */
+export function completeStyle(style: Partial<StyleProps>): StyleProps {
+  const input = style as Record<string, unknown>;
+  const out = structuredClone(
+    Object.fromEntries(
+      Object.entries(DEFAULT_STROKE).map(([key, fallback]) => [key, input[key] ?? fallback])
+    )
+  ) as unknown as StyleProps;
+  for (const kind of PAINT_KINDS) {
+    const k = PAINT_KEYS[kind];
+    out[k.color] = cleanColor(out[k.color]);
+    out[k.opacity] = cleanUnit(out[k.opacity]);
+    if (!["solid", "linear", "radial"].includes(out[k.type])) out[k.type] = "solid";
+    const stops = Array.isArray(out[k.stops])
+      ? out[k.stops]
+          .filter((s) => s && Number.isFinite(s.offset))
+          .map((s) => ({
+            offset: cleanUnit(s.offset, 0),
+            color: cleanColor(s.color),
+            opacity: cleanUnit(s.opacity),
+          }))
+      : [];
+    out[k.stops] =
+      stops.length >= 2
+        ? stops.sort((a, b) => a.offset - b.offset)
+        : [
+            { offset: 0, color: out[k.color], opacity: out[k.opacity] },
+            { offset: 1, color: "#ffffff", opacity: 1 },
+          ];
+    for (const key of [k.from, k.to]) {
+      const p = out[key];
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y))
+        out[key] = { ...DEFAULT_STROKE[key] };
+    }
+  }
+  for (const key of ["markerStart", "markerEnd"] as const) {
+    if (!MARKER_SHAPES.includes(out[key])) out[key] = "none";
+  }
+  if (!["round", "butt", "square"].includes(out.linecap)) out.linecap = DEFAULT_STROKE.linecap;
+  if (!["round", "miter", "bevel"].includes(out.linejoin)) out.linejoin = DEFAULT_STROKE.linejoin;
+  out.strokeWidth = Number.isFinite(out.strokeWidth)
+    ? Math.max(0, out.strokeWidth)
+    : DEFAULT_STROKE.strokeWidth;
+  out.fillEnabled = out.fillEnabled === true;
+  return out;
+}
+
 /** Keys copied when an element is converted from one type to another: identity plus every style. */
 const STYLE_KEYS: readonly string[] = [
   "name",
@@ -86,7 +133,8 @@ function base<T extends ElementType>(
     id: id ?? uid(type),
     type,
     name: "",
-    ...structuredClone({ ...DEFAULT_STROKE, ...rest }),
+    ...structuredClone(rest),
+    ...completeStyle(rest),
   } as { id: string; type: T; name: string; groups?: string[] } & StyleProps;
 }
 
@@ -181,14 +229,7 @@ function paintShown(el: SceneElement, kind: PaintKind): boolean {
 /** A paint's stops, in offset order, always at least two so a gradient is well formed. */
 export function gradientStops(el: SceneElement, kind: PaintKind = "fill"): GradientStop[] {
   const k = PAINT_KEYS[kind];
-  const stops = (el[k.stops] ?? []).filter((s) => Number.isFinite(s.offset));
-  if (stops.length < 2) {
-    return [
-      { offset: 0, color: el[k.color], opacity: el[k.opacity] },
-      { offset: 1, color: "#ffffff", opacity: 1 },
-    ];
-  }
-  return [...stops].sort((a, b) => a.offset - b.offset);
+  return [...el[k.stops]].sort((a, b) => a.offset - b.offset);
 }
 
 /** Whether a paint is drawn as a gradient. */

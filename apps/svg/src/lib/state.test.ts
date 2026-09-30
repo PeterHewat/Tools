@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createInitialState, replaceState, snapshotForUndo, getState } from "./state.js";
+import { createInitialState, replaceState, snapshotDocument, getState } from "./state.js";
 import { DEFAULT_STROKE } from "./model.js";
 import type { ReferenceImage } from "./types.js";
 
@@ -19,12 +19,12 @@ function image(dataUrl: string): ReferenceImage {
   };
 }
 
-describe("snapshotForUndo", () => {
+describe("snapshotDocument", () => {
   it("shares the image data URL rather than copying it", () => {
     const dataUrl = `data:image/png;base64,${"A".repeat(1024)}`;
     replaceState({ ...createInitialState(), images: [image(dataUrl)] });
 
-    const snap = snapshotForUndo();
+    const snap = snapshotDocument();
 
     // Same string object, so a hundred undo steps cost one copy of the pixels, not a hundred.
     expect(snap.images[0]!.dataUrl).toBe(dataUrl);
@@ -32,7 +32,7 @@ describe("snapshotForUndo", () => {
 
   it("still copies the image transform, so undo can restore it", () => {
     replaceState({ ...createInitialState(), images: [image("data:,")] });
-    const snap = snapshotForUndo();
+    const snap = snapshotDocument();
 
     getState().images[0]!.x = 250;
 
@@ -54,7 +54,7 @@ describe("snapshotForUndo", () => {
       ],
     });
 
-    const snap = snapshotForUndo();
+    const snap = snapshotDocument();
     const live = getState().elements[0]!;
     if ("points" in live) live.points[0]!.x = 99;
 

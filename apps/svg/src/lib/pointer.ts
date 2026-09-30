@@ -2,6 +2,65 @@
 
 let coarse: boolean | null = null;
 
+type ActivePointer = { x: number; y: number; touch: boolean; origin: EventTarget[] };
+const activePointers = new Map<number, ActivePointer>();
+const activityListeners = new Set<() => void>();
+let tracking = false;
+
+export function hasActivePointers(): boolean {
+  return activePointers.size > 0;
+}
+
+export function subscribePointerActivity(fn: () => void): () => void {
+  activityListeners.add(fn);
+  return () => activityListeners.delete(fn);
+}
+
+export function touchesOn(canvas: SVGSVGElement): ActivePointer[] {
+  return [...activePointers.values()].filter((p) => p.touch && p.origin.includes(canvas));
+}
+
+/** One pointer lifecycle for canvas gestures and autosave, including interrupted presses. */
+export function initPointerTracking(): void {
+  if (tracking) return;
+  tracking = true;
+  const changed = () => activityListeners.forEach((fn) => fn());
+  window.addEventListener(
+    "pointerdown",
+    (e) => {
+      activePointers.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        touch: e.pointerType === "touch",
+        origin: e.composedPath(),
+      });
+      changed();
+    },
+    true
+  );
+  window.addEventListener(
+    "pointermove",
+    (e) => {
+      const p = activePointers.get(e.pointerId);
+      if (p) {
+        p.x = e.clientX;
+        p.y = e.clientY;
+      }
+    },
+    true
+  );
+  const released = (e: PointerEvent) => {
+    if (activePointers.delete(e.pointerId)) changed();
+  };
+  window.addEventListener("pointerup", released, true);
+  window.addEventListener("pointercancel", released, true);
+  window.addEventListener("lostpointercapture", released, true);
+  window.addEventListener("blur", () => {
+    activePointers.clear();
+    changed();
+  });
+}
+
 /** Pointer target radius, screen pixels. Coarse is ~44px across, the usual touch minimum. */
 export const HIT_R_FINE = 11;
 export const HIT_R_COARSE = 22;

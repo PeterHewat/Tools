@@ -8,7 +8,7 @@
  */
 
 import { readStored, writeStored } from "@tools/ui";
-import { setState } from "./state.js";
+import { setState, refreshState } from "./state.js";
 import type { EditorState, Viewport } from "./types.js";
 
 const KEY = "svg.view";
@@ -68,7 +68,7 @@ export function isSelectMore(): boolean {
 export function setSelectMore(on: boolean): void {
   if (selectMore === on) return;
   selectMore = on;
-  setState({});
+  refreshState();
 }
 
 /** Points snap to other shapes' points, as with Alt held, instead of to the grid. */

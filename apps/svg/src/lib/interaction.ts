@@ -1,7 +1,7 @@
 import {
   getState,
   setState,
-  mutate,
+  mutateDocument,
   replaceElements,
   findElement,
   selectOnly,
@@ -22,6 +22,7 @@ import {
   type AlignOptions,
   magnetTurn,
 } from "./model.js";
+import { createPinch } from "./pinch.js";
 import { screenToWorld, zoomAt } from "./viewport.js";
 import { dist } from "./utils.js";
 import { pushUndo } from "./undo.js";
@@ -35,7 +36,7 @@ import {
   type PointRef,
   type SceneElement,
 } from "./types.js";
-import { closeAndFinishPath, endPath, finishPath } from "./pen-commands.js";
+import { closeAndFinishPath, endPath, finishPath, updatePenPreview } from "./pen-commands.js";
 import {
   endDropTarget,
   mergeDroppedEnd,
@@ -59,12 +60,7 @@ import {
 } from "./points.js";
 import { clickTarget, drillTarget, expandToGroups } from "./groups.js";
 import { beginTextEdit } from "./textedit.js";
-import {
-  type ShapeTool,
-  updatePenPreview,
-  updateShapePreview,
-  finalizeShape,
-} from "./shape-tools.js";
+import { type ShapeTool, updateShapePreview, finalizeShape } from "./shape-tools.js";
 
 const CLOSE_TOL = 12;
 const ALIGN_TOL_PX = 6;
@@ -397,7 +393,7 @@ function onAltKey(e: KeyboardEvent): void {
   if (path?.type !== "path") return;
   const p = path.points[index];
   if (!p) return;
-  mutate(() => applyHandleDrag(p, last, e.type === "keydown"));
+  mutateDocument(() => applyHandleDrag(p, last, e.type === "keydown"));
 }
 
 /**
@@ -485,7 +481,6 @@ function onPointerDown(e: PointerEvent): void {
   drillId = null;
   pointClick = null;
   pointMarquee = false;
-  svg.setPointerCapture(e.pointerId);
   const st = getState();
   const world = pointerWorld(e);
 
@@ -805,7 +800,7 @@ function handlePenDown(world: Point, isDouble: boolean): void {
   let path: PathElement;
   if (active?.type === "path") {
     path = active;
-    mutate(() => path.points.push(point));
+    mutateDocument(() => path.points.push(point));
   } else {
     path = createPath([point]);
     setState((s) => ({
@@ -891,7 +886,7 @@ function onPointerMove(e: PointerEvent): void {
         dy += fit.dy;
       }
     }
-    mutate(() => {
+    mutateDocument(() => {
       for (const id of d.ids) {
         const el = findElement(id);
         const base = d.bases[id];
@@ -918,7 +913,7 @@ function onPointerMove(e: PointerEvent): void {
     if (d.kind === "anchor") {
       const dx = world.x - p.x;
       const dy = world.y - p.y;
-      mutate(() => {
+      mutateDocument(() => {
         p.x = world.x;
         p.y = world.y;
         for (const h of [p.hIn, p.hOut]) {
@@ -929,7 +924,7 @@ function onPointerMove(e: PointerEvent): void {
       });
     } else {
       d.last = world;
-      mutate(() => applyHandleDrag(p, world, e.altKey));
+      mutateDocument(() => applyHandleDrag(p, world, e.altKey));
     }
     setState({
       selection: onePoint(getState().selection, {
@@ -997,7 +992,7 @@ function onPointerMove(e: PointerEvent): void {
     const d = drag;
     const el = findElement(d.elementId);
     const at = { x: world.x + d.grab.x, y: world.y + d.grab.y };
-    if (el) mutate(() => applyResize(el, d.role, at, d.base, e.altKey, e.shiftKey));
+    if (el) mutateDocument(() => applyResize(el, d.role, at, d.base, e.altKey, e.shiftKey));
     showDropTarget(d.elementId, pointIndexForRole(d.role));
     return;
   }
@@ -1008,7 +1003,7 @@ function onPointerMove(e: PointerEvent): void {
     if (path?.type !== "path") return;
     const p = path.points[d.index];
     if (p) {
-      mutate(() => {
+      mutateDocument(() => {
         p.smooth = true;
         p.hOut = { x: world.x, y: world.y };
         p.hIn = mirrorHandle(p, p.hOut);
@@ -1152,17 +1147,26 @@ export function bindInteraction(canvas: SVGSVGElement, canvasWrap: HTMLElement):
   window.addEventListener("keydown", onAltKey);
   window.addEventListener("keyup", onAltKey);
 
-  // A second finger means pinch/pan: drop whatever one-finger drag had started.
-  svg.addEventListener("pinch-start", () => {
+  const pinch = createPinch(svg);
+  let activePointer: number | null = null;
+  function cancelDrag(): void {
+    activePointer = null;
     pending = null;
+    drag = null;
+    drillId = null;
+    pointClick = null;
+    pointMarquee = false;
+    featureCache = null;
     cancelHold();
-    if (drag && drag.type !== "pan") {
-      drag = null;
-      wrap.classList.remove("grabbing");
-      clearDrawing();
-      setState({ dropTarget: null });
-    }
-  });
+    wrap.classList.remove("panning", "grabbing");
+    clearDrawing();
+    setState({ dropTarget: null, align: { x: null, y: null } });
+  }
+  const cancel = () => {
+    pinch.cancel();
+    cancelDrag();
+  };
+  window.addEventListener("blur", cancel);
 
   svg.addEventListener("pointerleave", () => {
     wrap.classList.remove("hover-target");
@@ -1173,9 +1177,36 @@ export function bindInteraction(canvas: SVGSVGElement, canvasWrap: HTMLElement):
       align: { x: null, y: null },
     }));
   });
-  svg.addEventListener("pointerdown", onPointerDown);
-  svg.addEventListener("pointermove", onPointerMove);
-  svg.addEventListener("pointerup", onPointerUp);
+  svg.addEventListener("pointerdown", (e) => {
+    if (pinch.start()) {
+      cancelDrag();
+      svg.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
+    if (activePointer !== null || (e.button !== 0 && e.button !== 1)) return;
+    activePointer = e.pointerId;
+    svg.setPointerCapture(e.pointerId);
+    onPointerDown(e);
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (pinch.move()) {
+      e.preventDefault();
+      return;
+    }
+    if (activePointer === null || activePointer === e.pointerId) onPointerMove(e);
+  });
+  svg.addEventListener("pointerup", (e) => {
+    if (pinch.end() || activePointer !== e.pointerId) return;
+    activePointer = null;
+    onPointerUp(e);
+  });
+  svg.addEventListener("pointercancel", (e) => {
+    if (!pinch.end() && activePointer === e.pointerId) cancelDrag();
+  });
+  svg.addEventListener("lostpointercapture", (e) => {
+    if (!pinch.end() && activePointer === e.pointerId) cancelDrag();
+  });
 
   svg.addEventListener(
     "wheel",

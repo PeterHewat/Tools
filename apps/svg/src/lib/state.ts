@@ -1,7 +1,7 @@
 import { AUTO_NAME_RE } from "./utils.js";
 import { isCoarsePointer } from "./pointer.js";
 import { assignGroupHuesInPlace, pruneGroupsInPlace } from "./groups.js";
-import type { EditorState, PathEdit, SceneElement, Selection } from "./types.js";
+import type { DocumentState, EditorState, PathEdit, SceneElement, Selection } from "./types.js";
 
 export interface NotifyOptions {
   /**
@@ -48,6 +48,39 @@ export function createInitialState(): EditorState {
 
 let state: EditorState = createInitialState();
 const listeners = new Set<Listener>();
+const documentListeners = new Set<() => void>();
+let documentRevision = 0;
+const DOCUMENT_KEYS: readonly (keyof DocumentState)[] = [
+  "artboard",
+  "background",
+  "grid",
+  "elements",
+  "groupNames",
+  "groupHues",
+  "guides",
+  "images",
+];
+
+export const getDocumentRevision = (): number => documentRevision;
+
+export function subscribeDocument(fn: () => void): () => void {
+  documentListeners.add(fn);
+  return () => {
+    documentListeners.delete(fn);
+  };
+}
+
+function normalizeDocument(): void {
+  ensureDefaultNames(state.elements);
+  pruneGroupsInPlace(state.elements);
+  assignGroupHuesInPlace(state.elements, state.groupHues);
+}
+
+function documentChanged(normalize: boolean): void {
+  if (normalize) normalizeDocument();
+  documentRevision++;
+  for (const fn of documentListeners) fn();
+}
 
 export function getState(): EditorState {
   return state;
@@ -63,18 +96,13 @@ export function subscribe(fn: Listener): () => void {
 let pending: NotifyOptions | null = null;
 
 /**
- * Keeps the model's invariants now, and renders on the next frame.
+ * Renders on the next frame; document edits have already normalized the model.
  *
  * A single pointer move can change state two or three times (the cursor, a drag, the hover).
  * Deferred, they cost one render per frame however many there were - and that render is a
  * pointer-only one when all of them were.
  */
 function notify(options: NotifyOptions): void {
-  if (!options.pointerOnly) {
-    ensureDefaultNames(state.elements);
-    pruneGroupsInPlace(state.elements);
-    assignGroupHuesInPlace(state.elements, state.groupHues);
-  }
   if (pending) {
     pending = { pointerOnly: !!pending.pointerOnly && !!options.pointerOnly };
     return;
@@ -127,7 +155,7 @@ const POINTER_KEYS: ReadonlySet<string> = new Set(["cursor", "align", "hoverId",
 
 /**
  * Whether going from `prev` to `next` changed pointer slices and nothing else. A change that
- * touched nothing at all is not one: a caller may have edited in place and wants a full render.
+ * touched nothing at all is not one: a session control may still need a full render.
  */
 function onlyPointerChanged(prev: EditorState, next: EditorState): boolean {
   let changed = false;
@@ -143,6 +171,8 @@ function onlyPointerChanged(prev: EditorState, next: EditorState): boolean {
 export function setState(patch: StatePatch): void {
   const prev = state;
   state = typeof patch === "function" ? patch(state) : { ...state, ...patch };
+  if (DOCUMENT_KEYS.some((key) => prev[key] !== state[key]))
+    documentChanged(prev.elements !== state.elements);
   notify({ pointerOnly: onlyPointerChanged(prev, state) });
 }
 
@@ -150,13 +180,21 @@ export function setState(patch: StatePatch): void {
  * Edits the current state in place, then re-renders. Used where the change is a mutation of
  * existing geometry (drags, field edits) rather than a replacement of a slice.
  */
-export function mutate(fn: (current: EditorState) => void): void {
+export function mutateDocument(fn: (current: DocumentState) => void): void {
   fn(state);
+  documentChanged(true);
+  notify({});
+}
+
+/** A session control changed outside the state object; no document mutation is implied. */
+export function refreshState(): void {
   notify({});
 }
 
 export function replaceState(next: EditorState): void {
   state = next;
+  normalizeDocument();
+  documentRevision++;
   notify({});
 }
 
@@ -165,16 +203,26 @@ export function replaceState(next: EditorState): void {
  * then put back by reference: a base64 image is megabytes, the stack holds a hundred entries,
  * and the pixels never change - only the transform around them, which is what undo has to keep.
  */
-export function snapshotForUndo(): EditorState {
-  const urls = state.images.map((img) => img.dataUrl);
-  const snap = structuredClone({
-    ...state,
-    images: state.images.map((img) => ({ ...img, dataUrl: "" })),
+export function snapshotDocument(): DocumentState {
+  const document = Object.fromEntries(
+    DOCUMENT_KEYS.map((key) => [key, state[key]])
+  ) as unknown as DocumentState;
+  return {
+    ...structuredClone({ ...document, images: [] }),
+    images: state.images.map((image) => ({ ...image })),
+  };
+}
+
+/** Restore history without rewinding the viewport, current tool or transient UI. */
+export function restoreDocument(document: DocumentState): void {
+  const ids = new Set(document.elements.map((element) => element.id));
+  setState({
+    ...document,
+    selection: selectOnly(state.selection.elementIds.filter((id) => ids.has(id))),
+    drawing: null,
+    dropTarget: null,
+    ui: { ...state.ui, editingTextId: null },
   });
-  snap.images.forEach((img, i) => {
-    img.dataUrl = urls[i] ?? "";
-  });
-  return snap;
 }
 
 export function findElement(id: string | null | undefined): SceneElement | undefined {

@@ -17,7 +17,6 @@ Four kinds of document. The kind tells you how much to trust it, and when it get
 | [svg-spec.md](svg-spec.md)                                                       | Reference | Working on SVG                                                    |
 | [plan/app-ideas.md](plan/app-ideas.md)                                           | Plan      | Browsing or prioritizing future Tools apps                        |
 | [plan/code-editor.md](plan/code-editor.md)                                       | Plan      | YAML in, a Diff app on the shared editor                          |
-| [plan/backlog.md](plan/backlog.md)                                               | Plan      | Picking up open items: shared UI, JSON and SVG follow-ups         |
 
 ## Conventions
 

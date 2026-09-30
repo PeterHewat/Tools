@@ -33,7 +33,6 @@ import {
   onFileDrop,
   pickFiles,
 } from "@tools/ui";
-import { bindTouch } from "./touch.js";
 import {
   openColorPicker,
   closeColorPicker,
@@ -44,7 +43,7 @@ import { canPickFromImages, pickFromImages } from "./eyedropper.js";
 import { initRulers, renderRulers } from "./rulers.js";
 import { initActionBar, syncActionBar } from "./actionbar.js";
 import { endTextEdit, initTextEdit, isTextEditing, positionTextEditor } from "./textedit.js";
-import { initPointerKind } from "./pointer.js";
+import { initPointerKind, initPointerTracking } from "./pointer.js";
 import {
   followState,
   isAlignSnap,
@@ -71,6 +70,7 @@ const svg = byId<SVGSVGElement>("viewport-svg");
 const camera = byId<SVGGElement>("camera");
 const wrap = byId("canvas-wrap");
 
+initPointerTracking();
 initPointerKind(() => renderAll(getState()));
 initViewport(svg, camera);
 initRender({
@@ -87,7 +87,6 @@ initTextEdit(wrap);
 initActionBar(byId("action-bar"));
 bindInteraction(svg, wrap);
 setColorSampler({ available: canPickFromImages, pick: () => pickFromImages(wrap, svg) });
-bindTouch(svg);
 
 // Clicking the canvas takes the keyboard back from any field so the shortcuts work again, and
 // drops any leftover page text selection, which would otherwise suppress the Ctrl+C / Ctrl+X

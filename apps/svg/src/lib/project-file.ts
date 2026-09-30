@@ -1,4 +1,4 @@
-import { DEFAULT_STROKE, PAINT_KEYS, PAINT_KINDS } from "./model.js";
+import { completeStyle } from "./model.js";
 import { cleanColor, cleanUnit, isElementType } from "./utils.js";
 import { ofGroupsInUse } from "./groups.js";
 import { MAX_ARTBOARD, PROJECT_VERSION } from "./types.js";
@@ -57,23 +57,14 @@ const PLAIN_ID = /^[A-Za-z][\w-]*$/;
  * default one, as every element holds a complete set. Null when its id or type is not one the
  * app writes.
  */
-export function cleanElement(el: SceneElement): SceneElement | null {
+export function cleanElement(raw: unknown): SceneElement | null {
+  const el = raw as SceneElement | null;
   if (!el || !PLAIN_ID.test(el.id) || !isElementType(el.type)) return null;
-  const out = { ...structuredClone(DEFAULT_STROKE), ...el };
-  out.stroke = cleanColor(el.stroke);
-  out.fill = cleanColor(el.fill);
-  out.strokeOpacity = cleanUnit(el.strokeOpacity);
-  out.fillOpacity = cleanUnit(el.fillOpacity);
-  for (const kind of PAINT_KINDS) {
-    const stops = el[PAINT_KEYS[kind].stops];
-    if (!Array.isArray(stops)) continue;
-    out[PAINT_KEYS[kind].stops] = stops.map((s) => ({
-      ...s,
-      color: cleanColor(s?.color),
-      opacity: cleanUnit(s?.opacity),
-    }));
-  }
-  if (el.groups) out.groups = el.groups.filter((g) => PLAIN_ID.test(g));
+  const out = { ...structuredClone(el), ...completeStyle(el) };
+  if (el.groups)
+    out.groups = Array.isArray(el.groups)
+      ? el.groups.filter((g) => typeof g === "string" && PLAIN_ID.test(g))
+      : [];
   return out;
 }
 

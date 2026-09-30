@@ -289,7 +289,8 @@ export interface Drawing {
   guide?: { axis: "x" | "y"; at: number };
 }
 
-export interface EditorState {
+/** Editable drawing data. Undo and dirty tracking cover these fields only. */
+export interface DocumentState {
   artboard: { width: number; height: number };
   background: BackgroundPaint;
   grid: { step: number; visible: boolean; snap: boolean };
@@ -310,6 +311,10 @@ export interface EditorState {
    */
   guides: Guides;
   images: ReferenceImage[];
+}
+
+/** Where this tab is looking and what it is doing, independent of document history. */
+export interface EditorSession {
   viewport: Viewport;
   tool: ToolName;
   finalOnly: boolean;
@@ -331,6 +336,8 @@ export interface EditorState {
   };
   spacePan: boolean;
 }
+
+export interface EditorState extends DocumentState, EditorSession {}
 
 /** Style plus identity, as copied when an element changes type. */
 export type StyleCarrier = Partial<StyleProps> & {

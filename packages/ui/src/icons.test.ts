@@ -2,6 +2,16 @@ import { describe, expect, test } from "bun:test";
 import { ICONS, withIcons } from "./icons.js";
 
 describe("withIcons", () => {
+  test("injects an app sprite and fills its shared icons in the same pass", () => {
+    const html = withIcons(
+      "<body><!-- tools:icons --></body>",
+      '<svg><defs><symbol id="own"><path d="M0 0"/></symbol><symbol id="shared" data-ui-icon="help"></symbol></defs></svg>'
+    );
+    expect(html).toContain('id="own"');
+    expect(html).toContain('id="shared" data-ui-icon="help" viewBox="0 0 24 24"');
+    expect(html).not.toContain("<!-- tools:icons -->");
+    expect(() => withIcons("<!-- tools:icons -->")).toThrow("app icon sprite");
+  });
   test("fills an empty svg, keeping its attributes and adding the viewBox", () => {
     const html = withIcons('<button><svg class="glyph" data-ui-icon="help"></svg></button>');
     expect(html).toBe(

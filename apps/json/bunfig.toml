@@ -1,0 +1,3 @@
+[test]
+# Find controls use the DOM; parsing and conversion tests remain pure.
+preload = ["./src/test-setup.ts"]

@@ -1,20 +1,13 @@
-import { replaceState, snapshotForUndo } from "./state.js";
-import type { EditorState } from "./types.js";
+import { restoreDocument, snapshotDocument } from "./state.js";
+import type { DocumentState } from "./types.js";
 import { forgetTurns } from "./session.js";
 
 const MAX = 100;
-const undoStack: EditorState[] = [];
-const redoStack: EditorState[] = [];
-
-let listener: () => void = () => {};
-
-export function setHistoryListener(fn: () => void): void {
-  listener = fn;
-}
+const undoStack: DocumentState[] = [];
+const redoStack: DocumentState[] = [];
 
 export function pushUndo(): void {
-  listener();
-  undoStack.push(snapshotForUndo());
+  undoStack.push(snapshotDocument());
   if (undoStack.length > MAX) undoStack.shift();
   redoStack.length = 0;
 }
@@ -22,20 +15,18 @@ export function pushUndo(): void {
 export function undo(): boolean {
   const prev = undoStack.pop();
   if (!prev) return false;
-  redoStack.push(snapshotForUndo());
-  replaceState(prev);
+  redoStack.push(snapshotDocument());
+  restoreDocument(prev);
   forgetTurns();
-  listener();
   return true;
 }
 
 export function redo(): boolean {
   const next = redoStack.pop();
   if (!next) return false;
-  undoStack.push(snapshotForUndo());
-  replaceState(next);
+  undoStack.push(snapshotDocument());
+  restoreDocument(next);
   forgetTurns();
-  listener();
   return true;
 }
 

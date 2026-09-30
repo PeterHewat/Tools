@@ -7,7 +7,6 @@ import { groupsOf, selectedGroups } from "./groups.js";
 import { type EditorState, type SceneElement } from "./types.js";
 import { byId } from "@tools/ui";
 import { createEditor, type Highlight } from "@tools/editor";
-import { noteChange } from "./documents.js";
 
 /* ---------- SVG source: editable, highlighted, synced with the selection ---------- */
 const svgError = byId("svg-error");
@@ -328,7 +327,6 @@ function applySvgText(): void {
     background,
     selection: selectOnly(s.selection.elementIds.filter((id) => ids.has(id))),
   }));
-  noteChange();
 }
 
 /** The caret inside a shape's line selects that shape (like picking it in Primitives). */
