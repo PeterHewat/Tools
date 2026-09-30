@@ -9,6 +9,7 @@
 /* The header every app starts with. On its own too, for an app with its own tokens and controls. */
 @import "./tokens.css";
 @import "./header.css";
+@import "./controls.css";
 /* Docked panels and menus: Help, Settings, "⋯". */
 @import "./panels.css";
 
@@ -41,39 +42,6 @@ a {
 }
 
 /* ---------- Controls ---------- */
-
-.ui-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel-2);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.ui-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
-.ui-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.ui-btn--primary {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-}
-
-.ui-btn.copied {
-  border-color: var(--ok);
-  color: var(--ok);
-}
 
 .ui-input {
   padding: 6px 10px;

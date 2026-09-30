@@ -1,0 +1,55 @@
+/* Standard buttons in every app, including bars and document actions. */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ui-control);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--ui-button-radius, var(--radius, 6px));
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--ui-control-font);
+  line-height: 1.2;
+  cursor: pointer;
+}
+.ui-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.ui-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ui-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ui-btn--primary,
+.ui-btn.active,
+.ui-btn[aria-pressed="true"],
+.ui-btn[aria-expanded="true"] {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.ui-btn.copied {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.ui-icon-btn {
+  flex: 0 0 auto;
+  width: var(--ui-control);
+  height: var(--ui-control);
+  padding: 0;
+}
+.ui-icon-btn > svg {
+  width: var(--ui-glyph);
+  height: var(--ui-glyph);
+  display: block;
+}
+.ui-btn--small {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+}

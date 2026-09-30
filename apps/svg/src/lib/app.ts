@@ -26,6 +26,7 @@ import { canJoin } from "./model.js";
 import {
   THEME_EVENT,
   bindThemeToggle,
+  bindMenu,
   byId,
   copyText,
   downloadBlob,
@@ -128,15 +129,22 @@ document.addEventListener("paste", (e) => {
   if (pasteFromText(e.clipboardData?.getData("text/plain") ?? "")) e.preventDefault();
 });
 
-byId("btn-undo").addEventListener("click", () => undo());
-byId("btn-redo").addEventListener("click", () => redo());
+const historyMenu = bindMenu(byId("btn-history-more"), byId("history-more-menu"));
+const historyButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-history]")];
+for (const button of historyButtons) {
+  button.addEventListener("click", () => {
+    historyMenu.close();
+    if (button.dataset.history === "undo") undo();
+    else redo();
+  });
+}
 
 byId("btn-join").addEventListener("click", () => joinSelected());
 byId("btn-group").addEventListener("click", () => groupSelection());
 byId("btn-merge").addEventListener("click", () => mergeSelection());
 byId("btn-ungroup").addEventListener("click", () => ungroupSelection());
 
-document.querySelectorAll<HTMLElement>(".tool-btn[data-tool]").forEach((btn) => {
+document.querySelectorAll<HTMLElement>("[data-tool]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const tool = btn.dataset.tool as EditorState["tool"];
     // Tapping the active drawing tool puts the canvas back to selecting, which is the way out
@@ -191,13 +199,11 @@ const gridBtn = byId("btn-grid");
 const finalBtn = byId("btn-final");
 const snapBtn = byId("btn-snap");
 const alignBtn = byId("btn-align");
-const undoBtn = byId<HTMLButtonElement>("btn-undo");
-const redoBtn = byId<HTMLButtonElement>("btn-redo");
 const groupBtn = byId<HTMLButtonElement>("btn-group");
 const mergeBtn = byId<HTMLButtonElement>("btn-merge");
 const ungroupBtn = byId<HTMLButtonElement>("btn-ungroup");
 const joinBtn = byId<HTMLButtonElement>("btn-join");
-const toolButtons = [...document.querySelectorAll<HTMLElement>(".tool-btn[data-tool]")];
+const toolButtons = [...document.querySelectorAll<HTMLElement>("[data-tool]")];
 
 function setToggle(btn: HTMLElement, on: boolean): void {
   btn.classList.toggle("active", on);
@@ -232,12 +238,16 @@ function syncPanel(state: EditorState): void {
 
   syncCursorReadout(state);
 
-  for (const btn of toolButtons) btn.classList.toggle("active", btn.dataset.tool === state.tool);
+  for (const btn of toolButtons) {
+    const pressed = btn.dataset.tool === state.tool;
+    btn.classList.toggle("active", pressed);
+    btn.setAttribute("aria-pressed", String(pressed));
+  }
   wrap.classList.toggle("mode-hand", state.spacePan);
   wrap.classList.toggle("mode-select", state.tool === "select" && !state.spacePan);
 
-  undoBtn.disabled = !canUndo();
-  redoBtn.disabled = !canRedo();
+  for (const button of historyButtons)
+    button.disabled = button.dataset.history === "undo" ? !canUndo() : !canRedo();
 
   imageList.sync(state);
   primitiveList.sync(state);

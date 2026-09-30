@@ -155,7 +155,7 @@ function renderDocList(): void {
     li.title = isCurrent ? `Open since ${when}` : `Open (last saved ${when})`;
     li.innerHTML = `<div class="acc-header-row">
         <button type="button" class="acc-expand-btn" data-doc-expand aria-expanded="${open}" aria-label="Tags and details" title="Tags and details">
-          <span class="chevron" aria-hidden="true">▶</span>
+          <svg class="chevron" aria-hidden="true"><use href="#icon-chevron-right" /></svg>
         </button>
         ${rowDotHtml("radio", isCurrent, isCurrent ? "This is the open document" : "Open")}
         <span class="doc-name">
@@ -168,8 +168,8 @@ function renderDocList(): void {
         <button type="button" class="acc-icon-btn doc-act" data-doc-save title="Export document" aria-label="Export document">
           <svg class="glyph" aria-hidden="true"><use href="#icon-export" /></svg>
         </button>
-        <button type="button" class="acc-icon-btn acc-move" data-doc-move="-1" title="Move up the list" aria-label="Move document up"${i > 0 ? "" : " disabled"}>▲</button>
-        <button type="button" class="acc-icon-btn acc-move" data-doc-move="1" title="Move down the list" aria-label="Move document down"${i < last ? "" : " disabled"}>▼</button>
+        <button type="button" class="acc-icon-btn acc-move" data-doc-move="-1" title="Move up the list" aria-label="Move document up"${i > 0 ? "" : " disabled"}><svg class="glyph" aria-hidden="true"><use href="#icon-chevron-up" /></svg></button>
+        <button type="button" class="acc-icon-btn acc-move" data-doc-move="1" title="Move down the list" aria-label="Move document down"${i < last ? "" : " disabled"}><svg class="glyph" aria-hidden="true"><use href="#icon-chevron-down" /></svg></button>
         <button type="button" class="acc-icon-btn acc-trash doc-del" data-doc-delete title="Delete" aria-label="Delete document">
           <svg class="glyph" aria-hidden="true"><use href="#icon-trash" /></svg>
         </button>

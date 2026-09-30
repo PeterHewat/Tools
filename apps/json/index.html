@@ -30,20 +30,23 @@
             Schema
           </button>
         </div>
-        <!-- The same choice on a phone, where six buttons would take a row of their own. -->
-        <select class="view-select" id="view-select" aria-label="Show as">
-          <option value="json">JSON</option>
-          <option value="yaml">YAML</option>
-          <option value="csv">CSV</option>
-          <option value="ts">Types</option>
-          <option value="schema">Schema</option>
-        </select>
+        <!-- The same choice on a phone, where five buttons would take a row of their own. -->
+        <div class="view-picker">
+          <select class="view-select" id="view-select" aria-label="Show as">
+            <option value="json">JSON</option>
+            <option value="yaml">YAML</option>
+            <option value="csv">CSV</option>
+            <option value="ts">Types</option>
+            <option value="schema">Schema</option>
+          </select>
+          <svg data-ui-icon="chevron-down" aria-hidden="true"></svg>
+        </div>
       </div>
 
       <div class="group" role="group" aria-label="Settings">
         <button
           type="button"
-          class="ui-btn icon-btn"
+          class="ui-btn ui-icon-btn"
           id="options-btn"
           title="Settings"
           aria-label="Settings"
@@ -54,10 +57,29 @@
           <div class="ui-menu-label">Format with</div>
           <div class="ui-menu-row">
             <span>Indent</span>
-            <div class="ui-seg small equal" role="group" aria-label="Indent">
-              <button type="button" class="ui-btn" data-indent="2" aria-pressed="true">2</button>
-              <button type="button" class="ui-btn" data-indent="4" aria-pressed="false">4</button>
-              <button type="button" class="ui-btn" data-indent="tab" aria-pressed="false">
+            <div class="ui-seg equal" role="group" aria-label="Indent">
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-indent="2"
+                aria-pressed="true"
+              >
+                2
+              </button>
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-indent="4"
+                aria-pressed="false"
+              >
+                4
+              </button>
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-indent="tab"
+                aria-pressed="false"
+              >
                 Tab
               </button>
             </div>
@@ -88,11 +110,21 @@
           <div class="ui-menu-label">Paths</div>
           <div class="ui-menu-row">
             <span>Style</span>
-            <div class="ui-seg small equal" role="group" aria-label="Path style">
-              <button type="button" class="ui-btn" data-path-style="js" aria-pressed="true">
+            <div class="ui-seg equal" role="group" aria-label="Path style">
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-path-style="js"
+                aria-pressed="true"
+              >
                 a.b[0]
               </button>
-              <button type="button" class="ui-btn" data-path-style="pointer" aria-pressed="false">
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-path-style="pointer"
+                aria-pressed="false"
+              >
                 /a/b/0
               </button>
             </div>
@@ -111,7 +143,7 @@
         <div class="group">
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="find-open"
             title="Find (Ctrl+F)"
             aria-label="Find (Ctrl+F)"
@@ -123,19 +155,19 @@
         <!-- On a phone the file actions fold into this menu, built from the buttons below. -->
         <button
           type="button"
-          class="ui-btn icon-btn more-btn"
+          class="ui-btn ui-icon-btn more-btn"
           id="more-btn"
-          title="Import, export, copy, clear"
-          aria-label="More"
+          title="More actions"
+          aria-label="More actions"
         >
           <svg data-ui-icon="more" aria-hidden="true"></svg>
         </button>
-        <div class="ui-menu more-menu" id="more" aria-label="File"></div>
+        <div class="ui-menu more-menu" id="more" aria-label="More actions"></div>
 
         <div class="group file" role="group" aria-label="File">
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="open"
             title="Import JSON — or a CSV file, which opens as JSON"
             aria-label="Import JSON"
@@ -144,7 +176,7 @@
           </button>
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="download"
             title="Export JSON"
             aria-label="Export JSON"
@@ -153,22 +185,28 @@
           </button>
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="copy"
             title="Copy JSON to clipboard"
             aria-label="Copy JSON to clipboard"
           >
             <svg data-ui-icon="copy" aria-hidden="true"></svg>
           </button>
-          <button type="button" class="ui-btn icon-btn" id="clear" title="Clear" aria-label="Clear">
+          <button
+            type="button"
+            class="ui-btn ui-icon-btn"
+            id="clear"
+            title="Clear"
+            aria-label="Clear"
+          >
             <svg data-ui-icon="trash" aria-hidden="true"></svg>
           </button>
         </div>
 
-        <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
+        <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button>
         <button
           type="button"
-          class="ui-btn icon-btn"
+          class="ui-btn ui-icon-btn"
           id="help-btn"
           title="Help — what everything does"
           aria-label="Help"
@@ -347,7 +385,7 @@
         <div class="ui-seg find-steps" role="group" aria-label="Matches">
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="find-prev"
             title="Previous match (Shift+Enter)"
             aria-label="Previous match (Shift+Enter)"
@@ -356,7 +394,7 @@
           </button>
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="find-next"
             title="Next match (Enter)"
             aria-label="Next match (Enter)"
@@ -366,7 +404,7 @@
         </div>
         <button
           type="button"
-          class="ui-btn icon-btn"
+          class="ui-btn ui-icon-btn"
           id="find-close"
           title="Close (Esc)"
           aria-label="Close (Esc)"
@@ -392,7 +430,7 @@
           </button>
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="unfold-all"
             title="Unfold all"
             aria-label="Unfold all"
@@ -401,7 +439,7 @@
           </button>
           <button
             type="button"
-            class="ui-btn icon-btn"
+            class="ui-btn ui-icon-btn"
             id="fold-all"
             title="Fold all"
             aria-label="Fold all"

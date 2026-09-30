@@ -61,8 +61,7 @@ import type { EditorState, Point, SceneElement } from "./types.js";
 export interface Action {
   key: string;
   label: string;
-  icon?: string;
-  glyph?: string;
+  icon: string;
   danger?: boolean;
   disabled?: boolean;
   /** A switch rather than an action: shown pressed while on. */
@@ -463,7 +462,7 @@ function selectionActions(state: EditorState): Action[] {
     {
       key: "back",
       label: "Send backward (Shift: to the back)",
-      glyph: "▼",
+      icon: "icon-chevron-down",
       pairedWithNext: true,
       disabled: !canMoveSelectionZ(state.elements, ids, -1),
       run: () => moveZOrder("back"),
@@ -471,7 +470,7 @@ function selectionActions(state: EditorState): Action[] {
     {
       key: "forward",
       label: "Bring forward (Shift: to the front)",
-      glyph: "▲",
+      icon: "icon-chevron-up",
       disabled: !canMoveSelectionZ(state.elements, ids, 1),
       run: () => moveZOrder("forward"),
     }
@@ -545,7 +544,7 @@ function build(actions: readonly Action[]): void {
   for (const action of actions) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "tool-btn";
+    btn.className = "ui-btn ui-icon-btn";
     const key = action.key;
     btn.addEventListener("click", () => {
       const current = shownActions.find((a) => a.key === key);
@@ -568,16 +567,10 @@ function updateButtons(): void {
     const btn = bar.children[index] as HTMLButtonElement;
     btn.title = action.label;
     btn.setAttribute("aria-label", action.label);
-    const content = action.icon
-      ? `<svg class="glyph" aria-hidden="true"><use href="#${action.icon}" /></svg>`
-      : (action.glyph ?? "");
-    if (btn.dataset.icon !== (action.icon ?? "") || btn.dataset.glyph !== (action.glyph ?? "")) {
-      if (action.icon) btn.innerHTML = content;
-      else btn.textContent = content;
-      btn.dataset.icon = action.icon ?? "";
-      btn.dataset.glyph = action.glyph ?? "";
+    if (btn.dataset.icon !== action.icon) {
+      btn.innerHTML = `<svg class="glyph" aria-hidden="true"><use href="#${action.icon}" /></svg>`;
+      btn.dataset.icon = action.icon;
     }
-    btn.classList.toggle("tool-btn--text", !action.icon);
     btn.classList.toggle("action-danger", !!action.danger);
     btn.classList.toggle("active", !!action.pressed);
     if (action.pressed === undefined) btn.removeAttribute("aria-pressed");

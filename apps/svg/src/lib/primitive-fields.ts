@@ -167,13 +167,13 @@ function gradientStopsHtml(el: SceneElement, kind: PaintKind): string {
             value="${Math.round(stop.offset * 100)}" aria-label="Stop ${i + 1} position (%)" />
           <span class="grad-stop-unit">%</span>
           <button type="button" class="grad-stop-del" data-stop-remove="${i}" title="Remove stop"
-            aria-label="Remove stop ${i + 1}"${stops.length > 2 ? "" : " disabled"}>×</button>
+            aria-label="Remove stop ${i + 1}"${stops.length > 2 ? "" : " disabled"}><svg class="glyph" aria-hidden="true"><use href="#icon-clear" /></svg></button>
         </div>`
     )
     .join("");
   return `<div class="field-row field-row--wide ${kind}-grad-only grad-stops-row" data-paint="${kind}"><span>Stops</span>
       <div class="grad-stops">${rows}
-        <button type="button" class="grad-stop-add" data-stop-add title="Add a stop">+ Stop</button>
+        <button type="button" class="ui-btn ui-btn--small grad-stop-add" data-stop-add title="Add a stop"><svg class="glyph" aria-hidden="true"><use href="#icon-plus" /></svg>Add stop</button>
       </div>
     </div>`;
 }

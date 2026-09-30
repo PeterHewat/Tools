@@ -791,16 +791,20 @@ wrapBtn.addEventListener("click", () => {
   runNested("wrap");
 });
 
-// On a phone the file actions (Import, Export, Copy, Clear) fold into the "⋯" menu. Its
+// On a phone the file actions fold into the "⋯" menu; Find joins them when the header is full. Its
 // items are made from the bar's buttons each time it opens, so they carry the same names and
 // the same disabled state, and pressing one presses that button.
 const more = byId("more");
 const moreBtn = byId<HTMLButtonElement>("more-btn");
 const fileButtons = [byId("open"), downloadBtn, copyBtn, clearBtn] as HTMLButtonElement[];
+const findButton = byId<HTMLButtonElement>("find-open");
 const moreMenu = bindMenu(moreBtn, more, {
   onOpen: () =>
     more.replaceChildren(
-      ...fileButtons.map((b) => {
+      ...[
+        ...fileButtons,
+        ...(getComputedStyle(findButton).display === "none" ? [findButton] : []),
+      ].map((b) => {
         const item = document.createElement("button");
         item.type = "button";
         item.className = "ui-menu-item";

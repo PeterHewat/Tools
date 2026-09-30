@@ -1,5 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="icon-defs" focusable="false">
   <defs>
+    <symbol id="icon-more" data-ui-icon="more"></symbol>
+    <symbol id="icon-plus" data-ui-icon="plus"></symbol>
+    <symbol id="icon-chevron-up" data-ui-icon="chevron-up"></symbol>
+    <symbol id="icon-chevron-down" data-ui-icon="chevron-down"></symbol>
+    <symbol id="icon-chevron-right" data-ui-icon="chevron-right"></symbol>
     <symbol id="icon-select" viewBox="0 0 24 24">
       <path
         fill="currentColor"
@@ -21,7 +26,7 @@
       <path
         fill="none"
         stroke="currentColor"
-        stroke-width="2.2"
+        stroke-width="2"
         stroke-linecap="round"
         d="M18 13v8M14 17h8"
       />
@@ -113,7 +118,7 @@
       <path
         fill="none"
         stroke="currentColor"
-        stroke-width="2.5"
+        stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
         d="M4 13l5 5L20 6"
@@ -161,7 +166,7 @@
       <path
         fill="none"
         stroke="var(--panel, #24262b)"
-        stroke-width="2.4"
+        stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
         d="M8 12.4 11 15.4 16.2 9"

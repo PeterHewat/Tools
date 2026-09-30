@@ -12,7 +12,8 @@
     "./base.css": "./base.css",
     "./header.css": "./header.css",
     "./panels.css": "./panels.css",
-    "./tokens.css": "./tokens.css"
+    "./tokens.css": "./tokens.css",
+    "./controls.css": "./controls.css"
   },
   "files": [
     "src",
@@ -20,7 +21,8 @@
     "base.css",
     "header.css",
     "panels.css",
-    "tokens.css"
+    "tokens.css",
+    "controls.css"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
