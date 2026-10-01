@@ -6,10 +6,6 @@ import { byId } from "./dom.js";
 export function bindToolHelp(slug: string): void {
   bindThemeToggle(byId("theme-toggle"));
   const dock = bindDock(byId("help"), byId("help-toggle"), { key: `tools.${slug}.help` });
-  byId("help-close").addEventListener("click", () => {
-    dock.setOpen(false);
-    byId("help-toggle").focus();
-  });
   byId("help").addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       dock.setOpen(false);

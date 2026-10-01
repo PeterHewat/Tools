@@ -3,39 +3,69 @@ import {
   byId,
   downloadBlob,
   downloadText,
+  fieldValues,
+  readDraft,
   registerServiceWorker,
+  restoreFields,
   showMessage,
+  writeDraft,
 } from "@tools/ui";
-import { encodeQr, qrSvg } from "./lib/qr.js";
-import type { Level, QrCode } from "./lib/qr.js";
+import { encodeQr } from "./lib/qr.js";
+import type { Level } from "./lib/qr.js";
 import { urlContent, wifiContent } from "./lib/presets.js";
+import { encodeBarcode } from "./lib/barcode.js";
+import type { BarcodeKind } from "./lib/barcode.js";
+import { drawGraphic, graphic } from "./lib/export.js";
+import type { Graphic } from "./lib/export.js";
 bindToolHelp("codes");
 registerServiceWorker();
+const ids = [
+  "kind",
+  "preset",
+  "content",
+  "ssid",
+  "password",
+  "security",
+  "hidden-network",
+  "level",
+  "margin",
+  "resolution",
+];
+const draft = readDraft("codes", 1);
 const input = (id: string) => byId<HTMLInputElement>(id);
 const select = (id: string) => byId<HTMLSelectElement>(id);
-let current: QrCode | null = null;
-let svg = "";
-let timer: ReturnType<typeof setTimeout> | undefined;
-let revision = 0;
-function clearResult(): void {
-  revision++;
-  current = null;
-  svg = "";
-  byId("preview").replaceChildren();
-  byId("encoded").textContent = "";
-  byId<HTMLButtonElement>("save-svg").disabled = true;
-  byId<HTMLButtonElement>("save-png").disabled = true;
+if (!draft.error && draft.found) restoreFields(draft.value, ids);
+else if (!draft.error) byId<HTMLTextAreaElement>("content").value = "https://example.com/";
+let image: Graphic | undefined,
+  revision = 0,
+  timer: ReturnType<typeof setTimeout> | undefined;
+function fields(): void {
+  const qr = select("kind").value === "qr",
+    wifi = qr && select("preset").value === "wifi";
+  byId("qr-options").hidden = !qr;
+  byId("preset-field").hidden = !qr;
+  byId("wifi-fields").hidden = !wifi;
+  byId("content-field").hidden = wifi;
+  byId("content-label").textContent =
+    qr && select("preset").value === "url"
+      ? "URL to encode"
+      : qr
+        ? "Text to encode"
+        : select("kind").value === "code128"
+          ? "Printable ASCII text"
+          : "Digits · check digit calculated or validated";
+  input("password").disabled = select("security").value === "nopass";
+}
+function exportsEnabled(enabled: boolean): void {
+  byId<HTMLButtonElement>("save-svg").disabled = !enabled;
+  byId<HTMLButtonElement>("save-png").disabled = !enabled;
 }
 function render(): void {
-  clearResult();
   try {
-    const preset = select("preset").value;
-    byId("wifi-fields").hidden = preset !== "wifi";
-    byId("content-field").hidden = preset === "wifi";
-    byId("content-label").textContent = preset === "url" ? "URL to encode" : "Text to encode";
-    input("password").disabled = select("security").value === "nopass";
+    const kind = select("kind").value,
+      preset = select("preset").value;
     const content =
-      preset === "wifi"
+      kind === "qr" && preset === "wifi"
         ? wifiContent(
             input("ssid").value,
             input("password").value,
@@ -44,82 +74,105 @@ function render(): void {
           )
         : byId<HTMLTextAreaElement>("content").value;
     if (!content) {
-      showMessage(byId("status"), "Enter content to generate a QR code.");
+      image = undefined;
+      byId("preview").replaceChildren();
+      byId("encoded").textContent = "";
+      exportsEnabled(false);
+      showMessage(byId("status"), "Enter content to generate a code.");
       return;
     }
-    const encoded = preset === "url" ? urlContent(content) : content;
-    current = encodeQr(encoded, select("level").value as Level);
-    svg = qrSvg(current, Number(input("margin").value));
-    // qrSvg contains only generated numeric paths, never user content.
-    const parsed = new DOMParser().parseFromString(svg, "image/svg+xml").documentElement;
+    const encoded = kind === "qr" && preset === "url" ? urlContent(content) : content;
+    const code =
+      kind === "qr"
+        ? encodeQr(encoded, select("level").value as Level)
+        : encodeBarcode(encoded, kind as BarcodeKind);
+    image = graphic(code, Number(input("resolution").value), Number(input("margin").value));
+    const parsed = new DOMParser().parseFromString(image.svg, "image/svg+xml").documentElement;
     parsed.setAttribute("role", "img");
-    parsed.setAttribute("aria-label", "Generated QR code");
-    byId("preview").append(document.importNode(parsed, true));
-    byId("encoded").textContent = encoded;
-    byId<HTMLButtonElement>("save-svg").disabled = false;
-    byId<HTMLButtonElement>("save-png").disabled = false;
+    parsed.setAttribute("aria-label", kind === "qr" ? "Generated QR code" : "Generated barcode");
+    byId("preview").replaceChildren(document.importNode(parsed, true));
+    byId("preview").classList.remove("pending");
+    byId("encoded").textContent = "text" in code ? code.text : encoded;
+    exportsEnabled(true);
     showMessage(
       byId("status"),
-      `Version ${current.version} · ${current.modules.length} × ${current.modules.length} modules · ${current.level} correction · ${new TextEncoder().encode(encoded).length} bytes`
+      ("version" in code
+        ? "QR version " + code.version + " · " + code.level + " correction"
+        : kind.toUpperCase()) +
+        " · export " +
+        image.width +
+        " × " +
+        image.height +
+        " px"
     );
   } catch (error) {
-    clearResult();
+    image = undefined;
+    exportsEnabled(false);
+    byId("preview").classList.add("pending");
     showMessage(byId("status"), (error as Error).message, true);
   }
 }
-for (const element of document.querySelectorAll<
-  HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
->("main input, main textarea, main select"))
-  element.addEventListener("input", () => {
-    clearTimeout(timer);
-    clearResult();
-    if (element.id === "preset" || element.id === "security") render();
-    else {
-      showMessage(byId("status"), "Updating…");
-      timer = setTimeout(render, 120);
-    }
-  });
-byId("save-svg").addEventListener("click", () => {
-  if (svg) downloadText("qr-code.svg", svg, "image/svg+xml");
-});
-byId("save-png").addEventListener("click", () => {
-  if (!current) return;
-  const scale = Number(input("scale").value),
-    margin = Number(input("margin").value);
-  if (!Number.isInteger(scale) || scale < 1 || scale > 32) {
+function update(): void {
+  if (draft.error) return;
+  revision++;
+  clearTimeout(timer);
+  fields();
+  exportsEnabled(false);
+  byId("preview").classList.add("pending");
+  showMessage(byId("status"), "Updating…");
+  if (!writeDraft("codes", 1, fieldValues(ids)))
     showMessage(
       byId("status"),
-      "PNG scale must be an integer from 1 to 32 pixels per module.",
+      "Draft could not be remembered (storage unavailable or over 2 MB).",
       true
     );
-    return;
-  }
-  const version = revision;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = (current.modules.length + margin * 2) * scale;
+  timer = setTimeout(render, 100);
+}
+for (const id of ids) byId(id).addEventListener("input", update);
+byId("save-svg").addEventListener("click", () => {
+  if (image) downloadText(select("kind").value + "-code.svg", image.svg, "image/svg+xml");
+});
+byId("save-png").addEventListener("click", () => {
+  if (!image) return;
+  const version = revision,
+    canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
   const context = canvas.getContext("2d");
   if (!context) {
     showMessage(byId("status"), "This browser cannot export PNG. Use SVG instead.", true);
     return;
   }
-  context.fillStyle = "#fff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#000";
-  current.modules.forEach((row, y) =>
-    row.forEach((dark, x) => {
-      if (dark) context.fillRect((x + margin) * scale, (y + margin) * scale, scale, scale);
-    })
-  );
+  drawGraphic(context, image);
   canvas.toBlob((blob) => {
     if (version !== revision) return;
-    if (blob) downloadBlob("qr-code.png", blob);
+    if (blob) downloadBlob(select("kind").value + "-code.png", blob);
     else showMessage(byId("status"), "PNG export failed. Use SVG instead.", true);
   }, "image/png");
 });
 byId("clear").addEventListener("click", () => {
-  clearTimeout(timer);
   for (const id of ["content", "ssid", "password"]) input(id).value = "";
   input("hidden-network").checked = false;
-  render();
+  select("preset").value = "text";
+  update();
 });
-render();
+byId<HTMLSelectElement>("examples").addEventListener("change", () => {
+  const sample = select("examples").value;
+  select("kind").value = sample === "url" || sample === "text" ? "qr" : sample;
+  select("preset").value = sample === "url" ? "url" : "text";
+  byId<HTMLTextAreaElement>("content").value =
+    (
+      {
+        url: "https://example.com/",
+        text: "Hello, 🌍!",
+        code128: "TOOLS-2026",
+        ean13: "400638133393",
+        upca: "03600029145",
+      } as Record<string, string>
+    )[sample] ?? "";
+  update();
+  select("examples").value = "";
+});
+fields();
+if (draft.error) showMessage(byId("status"), draft.error, true);
+else render();

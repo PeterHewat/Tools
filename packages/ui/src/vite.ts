@@ -350,10 +350,18 @@ function appHeader(appOf: AppOf): Plugin {
       order: "pre",
       handler(html, ctx) {
         const app = appOf(ctx.filename);
-        return app ? withHeaderStart(html, app) : html;
+        return app ? withHelpAbout(withHeaderStart(html, app), app) : html;
       },
     },
   };
+}
+
+/** One About preface for every app, written before first paint from the catalog. */
+export function withHelpAbout(html: string, app: ToolsApp): string {
+  return html.replace(
+    "<div data-tools-about></div>",
+    `<h3>About</h3><ul><li>${escapeHtml(app.name)} is part of a set of <a href="../">Tools</a> that run entirely in your browser and keep working offline.</li></ul>`
+  );
 }
 
 /** Draws the shared icons into a page's empty `<svg data-ui-icon>` and `<symbol data-ui-icon>`. */

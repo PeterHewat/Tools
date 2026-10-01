@@ -80,13 +80,12 @@
             /></label>
           </div>
           <div class="ui-row">
-            <button class="ui-btn ui-btn--primary" id="hash">Compute digest</button
-            ><button class="ui-btn" id="clear">Clear</button>
+            <button class="ui-btn" id="clear">Clear input</button>
           </div>
         </section>
         <section class="ui-card">
           <h2>Result</h2>
-          <p class="ui-message" id="status" role="status">Ready to hash text or a file.</p>
+          <p class="ui-message" id="status" role="status">Results update as you type.</p>
           <div class="ui-row">
             <h2>Hex</h2>
             <button class="ui-btn" id="copy-hex" disabled>Copy hex</button>
@@ -97,17 +96,26 @@
             <button class="ui-btn" id="copy-base64" disabled>Copy Base64</button>
           </div>
           <pre class="ui-output" id="base64"></pre>
+          <label class="ui-field"
+            ><span>Expected digest · hex or Base64</span
+            ><input class="ui-input" id="expected" spellcheck="false"
+          /></label>
+          <p class="ui-message" id="compare-status" role="status"></p>
         </section>
       </div>
     </main>
-    <aside class="ui-dock ui-help" id="help" aria-label="Help" hidden>
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
       <div class="ui-dock-head">
         <h2 class="ui-dock-title">Help</h2>
-        <button class="ui-btn ui-icon-btn" id="help-close" aria-label="Close Help">
-          <svg data-ui-icon="close"></svg>
-        </button>
       </div>
-      <div class="ui-dock-body">
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            The draft is kept only for this tab, up to 2 MB. Reloading restores it; a new tab starts
+            fresh. Light / dark applies to every tool.
+          </li>
+        </ul>
         <h3>Text and files</h3>
         <p>
           Text is hashed as its exact UTF-8 bytes, including spaces and newlines. Pick or drop a
@@ -121,8 +129,9 @@
         </p>
         <h3>HMAC</h3>
         <p>
-          Enable HMAC and enter a non-empty key in UTF-8, hex, Base64 or Base64url. Keys and content
-          are never stored. A hash is not encryption.
+          Enable HMAC and enter a non-empty key in UTF-8, hex, Base64 or Base64url. Keys and text
+          are remembered in this tab's session draft. File bytes must be selected again after a
+          reload. A hash is not encryption.
         </p>
         <p>Web Crypto requires HTTPS or localhost.</p>
       </div>

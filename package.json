@@ -44,16 +44,17 @@
     "*.{json,md,yml,yaml,css,html}": "prettier --write"
   },
   "devDependencies": {
-    "jsqr": "1.4.0",
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.63.0",
     "@tools/ui": "workspace:*",
     "@types/bun": "^1.4.2",
+    "@zxing/library": "0.21.3",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
     "husky": "^9.1.7",
+    "jsqr": "1.4.0",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
     "typescript": "~6.0.3",

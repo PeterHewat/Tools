@@ -12,9 +12,20 @@ import {
   toolsHome,
   toolsSite,
   withHeaderStart,
+  withHelpAbout,
 } from "./vite.js";
 
 const svg = findApp("svg")!;
+
+test("the shared About preface uses each catalog name and leaves existing help intact", () => {
+  for (const slug of ["svg", "json", "jwt", "codec", "codes", "digests"]) {
+    const result = withHelpAbout("<div data-tools-about></div><h3>Features</h3>", findApp(slug)!);
+    expect(result).toContain(findApp(slug)!.name + " is part of a set");
+    expect(result).toContain('href="../"');
+    expect(result).toContain("keep working offline");
+    expect(result).toEndWith("<h3>Features</h3>");
+  }
+});
 
 describe("toolsApp", () => {
   test("refuses an app the catalog does not list", () => {

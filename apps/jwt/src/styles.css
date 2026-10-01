@@ -1,2 +1,67 @@
 @import "@tools/ui/base.css";
 @import "@tools/ui/tool.css";
+.jwt-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.jwt-token-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 780px;
+  position: sticky;
+  top: 10px;
+}
+.jwt-token-card #token {
+  flex: 1;
+  min-height: 480px;
+}
+#token .cm-editor {
+  min-height: 480px;
+}
+#token .cm-scroller {
+  max-height: 600px;
+}
+#token .cm-content {
+  font-size: 18px;
+  line-height: 1.6;
+}
+.jwt-decoded .ui-card:first-child {
+  margin-top: 0;
+}
+.jwt-header {
+  color: color-mix(in srgb, var(--danger) 80%, var(--text));
+}
+.jwt-payload {
+  color: var(--violet);
+}
+.jwt-signature {
+  color: var(--accent);
+}
+#key {
+  min-height: 140px;
+  height: 140px;
+}
+#claims {
+  min-height: 50px;
+  font-size: 12px;
+  padding-top: 6px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .jwt-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .jwt-token-card {
+    min-height: 360px;
+    position: static;
+  }
+  .jwt-token-card #token,
+  #token .cm-editor {
+    min-height: 220px;
+  }
+  #token .cm-content {
+    font-size: 14px;
+  }
+}

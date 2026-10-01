@@ -4,14 +4,21 @@ import {
   bindToolHelp,
   byId,
   copyText,
+  fieldValues,
   formatBytes,
   onFileDrop,
+  readDraft,
   registerServiceWorker,
+  restoreFields,
   showMessage,
+  writeDraft,
 } from "@tools/ui";
 import { hashBytes, hashFile } from "./lib/hash.js";
 bindToolHelp("digests");
 registerServiceWorker();
+const ids = ["text", "source", "algorithm", "hmac", "key", "key-format", "expected"];
+const draft = readDraft("digests", 1);
+if (!draft.error) restoreFields(draft.value, ids);
 const text = byId<HTMLTextAreaElement>("text");
 const source = byId<HTMLSelectElement>("source");
 const algorithm = byId<HTMLSelectElement>("algorithm");
@@ -19,68 +26,105 @@ const keyed = byId<HTMLInputElement>("hmac");
 const key = byId<HTMLInputElement>("key");
 const keyFormat = byId<HTMLSelectElement>("key-format");
 const fileInput = byId<HTMLInputElement>("file");
-const button = byId<HTMLButtonElement>("hash");
 let file: File | undefined;
-let revision = 0;
-function invalidate(): void {
-  revision++;
-  byId("hex").textContent = "";
-  byId("base64").textContent = "";
-  byId<HTMLButtonElement>("copy-hex").disabled = true;
-  byId<HTMLButtonElement>("copy-base64").disabled = true;
-  button.disabled = false;
+let revision = 0,
+  timer: ReturnType<typeof setTimeout> | undefined;
+let fileName = typeof draft.value.fileName === "string" ? draft.value.fileName : "";
+function fields(): void {
   byId("text-field").hidden = source.value !== "text";
   byId("file-field").hidden = source.value !== "file";
   byId("key-fields").hidden = !keyed.checked;
   byId("legacy").hidden = algorithm.value !== "SHA-1";
-  button.textContent = keyed.checked ? "Compute HMAC" : "Compute digest";
-  showMessage(byId("status"), "Ready to compute. Previous result cleared.");
-}
-for (const control of [text, source, algorithm, keyed, key, keyFormat])
-  control.addEventListener("input", invalidate);
-function useFile(next?: File): void {
-  file = next;
-  source.value = "file";
   byId("file-name").textContent = file
-    ? `${file.name} · ${formatBytes(file.size)}`
-    : "No file selected.";
-  invalidate();
+    ? file.name + " · " + formatBytes(file.size)
+    : fileName
+      ? fileName + " · reselect this file after reload"
+      : "Choose or drop a file.";
 }
-fileInput.addEventListener("change", () => useFile(fileInput.files?.[0]));
-onFileDrop(document.querySelector("main")!, (files) => useFile(files[0]));
-button.addEventListener("click", async () => {
-  const version = ++revision;
-  button.disabled = true;
-  showMessage(byId("status"), "Computing…");
+function save(): void {
+  if (!writeDraft("digests", 1, { ...fieldValues(ids), fileName }))
+    showMessage(
+      byId("status"),
+      "Draft could not be remembered (storage unavailable or over 2 MB).",
+      true
+    );
+}
+function clearOutputs(): void {
+  byId("hex").textContent = "";
+  byId("base64").textContent = "";
+  showMessage(byId("compare-status"), "");
+  for (const id of ["copy-hex", "copy-base64"]) byId<HTMLButtonElement>(id).disabled = true;
+}
+async function compute(version: number): Promise<void> {
   try {
     const hash = algorithm.value as HashAlgorithm;
     const hmacKey = keyed.checked
       ? decodeBytes(key.value, keyFormat.value as ByteFormat)
       : undefined;
-    const description =
-      source.value === "file"
-        ? `${file?.name ?? "file"} · ${formatBytes(file?.size ?? 0)}`
-        : `UTF-8 text · ${formatBytes(utf8(text.value).length)}`;
-    if (source.value === "file" && !file) throw new Error("Choose or drop a file first.");
-    const result =
-      source.value === "file"
-        ? await hashFile(file!, hash, hmacKey)
-        : await hashBytes(utf8(text.value), hash, hmacKey);
+    if (source.value === "file" && !file)
+      throw new Error(
+        fileName ? "Reselect the file to recompute its digest." : "Choose or drop a file."
+      );
+    const bytes = source.value === "text" ? utf8(text.value) : undefined;
+    const description = bytes
+      ? "UTF-8 text · " + formatBytes(bytes.length)
+      : file!.name + " · " + formatBytes(file!.size);
+    const result = bytes
+      ? await hashBytes(bytes, hash, hmacKey)
+      : await hashFile(file!, hash, hmacKey);
     if (version !== revision) return;
     byId("hex").textContent = toHex(result);
     byId("base64").textContent = toBase64(result);
-    byId<HTMLButtonElement>("copy-hex").disabled = false;
-    byId<HTMLButtonElement>("copy-base64").disabled = false;
-    showMessage(byId("status"), `${keyed.checked ? "HMAC · " : ""}${hash} · ${description}`);
+    for (const id of ["copy-hex", "copy-base64"]) byId<HTMLButtonElement>(id).disabled = false;
+    showMessage(byId("status"), (keyed.checked ? "HMAC · " : "") + hash + " · " + description);
+    const expected = byId<HTMLInputElement>("expected").value.trim();
+    showMessage(
+      byId("compare-status"),
+      expected
+        ? expected.toLowerCase() === toHex(result) || expected === toBase64(result)
+          ? "Digest matches."
+          : "Digest does not match."
+        : "Paste a hex or Base64 digest to compare.",
+      Boolean(expected && expected.toLowerCase() !== toHex(result) && expected !== toBase64(result))
+    );
   } catch (error) {
-    if (version === revision) showMessage(byId("status"), (error as Error).message, true);
-  } finally {
-    if (version === revision) button.disabled = false;
+    if (version === revision) {
+      clearOutputs();
+      showMessage(byId("status"), (error as Error).message, true);
+    }
   }
+}
+function update(): void {
+  if (draft.error) return;
+  const version = ++revision;
+  clearTimeout(timer);
+  fields();
+  // Leave the fixed result region in place, but never allow copying a pending old result.
+  for (const id of ["copy-hex", "copy-base64"]) byId<HTMLButtonElement>(id).disabled = true;
+  showMessage(byId("status"), "Computing…");
+  showMessage(byId("compare-status"), "");
+  save();
+  timer = setTimeout(() => {
+    void compute(version);
+  }, 100);
+}
+for (const id of ids) byId(id).addEventListener("input", update);
+fileInput.addEventListener("change", () => {
+  file = fileInput.files?.[0];
+  fileName = file?.name ?? "";
+  source.value = "file";
+  update();
+});
+onFileDrop(document.querySelector("main")!, (files) => {
+  fileInput.value = "";
+  file = files[0];
+  fileName = file?.name ?? "";
+  source.value = "file";
+  update();
 });
 for (const id of ["hex", "base64"])
-  byId(`copy-${id}`).addEventListener("click", async () => {
-    if (!(await copyText(byId(id).textContent ?? "", byId(`copy-${id}`))))
+  byId("copy-" + id).addEventListener("click", async () => {
+    if (!(await copyText(byId(id).textContent ?? "", byId("copy-" + id))))
       showMessage(byId("status"), "Clipboard unavailable. Select and copy the result.", true);
   });
 byId("clear").addEventListener("click", () => {
@@ -88,9 +132,10 @@ byId("clear").addEventListener("click", () => {
   key.value = "";
   fileInput.value = "";
   file = undefined;
+  fileName = "";
   source.value = "text";
-  byId("file-name").textContent = "";
-  invalidate();
+  update();
   text.focus();
 });
-invalidate();
+if (draft.error) showMessage(byId("status"), draft.error, true);
+else update();

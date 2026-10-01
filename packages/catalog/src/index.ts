@@ -70,9 +70,9 @@ export const APPS: readonly ToolsApp[] = [
   {
     slug: "jwt",
     name: "JWT",
-    blurb: "Decode JSON Web Tokens, inspect time claims and verify HMAC signatures locally.",
+    blurb: "Decode, encode and verify JSON Web Tokens with HMAC, RSA, ECDSA and Ed25519.",
     icon: "M4 7h16v10H4zM8 7v10m8-10v10M6 4h12M6 20h12",
-    tags: ["jwt", "token", "decode", "verify", "developer"],
+    tags: ["jwt", "token", "decode", "encode", "verify", "developer"],
     art: true,
     compactHeader: 255,
     jsBudget: { entryGzip: 140, totalGzip: 140 },
@@ -95,9 +95,10 @@ export const APPS: readonly ToolsApp[] = [
   {
     slug: "codes",
     name: "Codes",
-    blurb: "Create QR codes for text, URLs and Wi-Fi, with clean SVG and PNG exports.",
+    blurb:
+      "Create QR codes and Code 128, EAN-13 or UPC-A barcodes, with sized SVG and PNG exports.",
     icon: "M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h3v3h3v3h-6zM12 3v9H3m9 3v6m3-9h6",
-    tags: ["qr", "codes", "wifi", "svg", "png"],
+    tags: ["qr", "barcode", "wifi", "svg", "png"],
     art: true,
     compactHeader: 268,
     jsBudget: { entryGzip: 9, totalGzip: 9 },

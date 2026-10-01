@@ -21,14 +21,16 @@
       </div>
     </header>
     <main class="ui-workbench">
-      <h1>One set of bytes. Any representation.</h1>
-      <p class="ui-intro">
-        Convert text and binary encodings in either direction, with the bytes visible.
-      </p>
+      <div class="ui-row">
+        <h1>Codec</h1>
+        <select class="ui-input" id="examples" aria-label="Load example">
+          <option value="">Load example…</option>
+        </select>
+      </div>
+      <p class="ui-intro">Text and byte encodings, updated as you edit either side.</p>
       <div class="ui-columns">
         <section class="ui-card">
           <div class="ui-row">
-            <h2>Left pane</h2>
             <label
               >Format
               <select class="ui-input" id="left-format">
@@ -39,22 +41,24 @@
                 <option value="url">URL component</option>
               </select></label
             >
+            <div class="ui-pane-actions">
+              <button class="ui-btn ui-icon-btn" id="left-copy" aria-label="Copy left">
+                <svg data-ui-icon="copy"></svg></button
+              ><button class="ui-btn ui-icon-btn" id="left-clear" aria-label="Delete left">
+                <svg data-ui-icon="trash"></svg>
+              </button>
+            </div>
           </div>
           <label class="ui-field"
             ><span>Left value</span
             ><textarea class="ui-input" id="left" spellcheck="false"></textarea>
           </label>
-          <div class="ui-row">
-            <button class="ui-btn ui-btn--primary" id="left-convert">Convert to right →</button
-            ><button class="ui-btn" id="left-copy">Copy</button>
-          </div>
           <p class="ui-message" id="left-status" role="status"></p>
           <h2>Bytes · hex</h2>
           <pre class="ui-bytes" id="left-bytes"></pre>
         </section>
         <section class="ui-card">
           <div class="ui-row">
-            <h2>Right pane</h2>
             <label
               >Format
               <select class="ui-input" id="right-format">
@@ -65,40 +69,42 @@
                 <option value="url">URL component</option>
               </select></label
             >
+            <div class="ui-pane-actions">
+              <button class="ui-btn ui-icon-btn" id="right-copy" aria-label="Copy right">
+                <svg data-ui-icon="copy"></svg></button
+              ><button class="ui-btn ui-icon-btn" id="right-clear" aria-label="Delete right">
+                <svg data-ui-icon="trash"></svg>
+              </button>
+            </div>
           </div>
           <label class="ui-field"
             ><span>Right value</span
             ><textarea class="ui-input" id="right" spellcheck="false"></textarea>
           </label>
-          <div class="ui-row">
-            <button class="ui-btn ui-btn--primary" id="right-convert">← Convert to left</button
-            ><button class="ui-btn" id="right-copy">Copy</button>
-          </div>
           <p class="ui-message" id="right-status" role="status"></p>
           <h2>Bytes · hex</h2>
           <pre class="ui-bytes" id="right-bytes"></pre>
         </section>
       </div>
-      <section class="ui-card">
-        <div class="ui-row">
-          <button class="ui-btn" id="sample">Example</button
-          ><button class="ui-btn" id="clear">Clear both</button>
-        </div>
-        <p class="ui-message" id="status" role="status"></p>
-      </section>
+      <p class="ui-message" id="status" role="status"></p>
     </main>
-    <aside class="ui-dock ui-help" id="help" aria-label="Help" hidden>
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
       <div class="ui-dock-head">
         <h2 class="ui-dock-title">Help</h2>
-        <button class="ui-btn ui-icon-btn" id="help-close" aria-label="Close Help">
-          <svg data-ui-icon="close"></svg>
-        </button>
       </div>
-      <div class="ui-dock-body">
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            The draft is kept only for this tab, up to 2 MB. Reloading restores it; a new tab starts
+            fresh. Light / dark applies to every tool.
+          </li>
+        </ul>
         <h3>Convert either way</h3>
         <p>
-          Pick the format for each pane, type on either side, and press its arrow to convert into
-          the other pane. Conversions preserve bytes; text uses UTF-8 and invalid UTF-8 is rejected.
+          Pick the format for each pane and edit either side. The other pane follows immediately.
+          Load example offers Unicode, URL, binary and invisible-character samples. Conversions
+          preserve bytes; text uses UTF-8 and invalid UTF-8 is rejected.
         </p>
         <h3>Formats</h3>
         <p>

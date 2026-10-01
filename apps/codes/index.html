@@ -21,12 +21,32 @@
       </div>
     </header>
     <main class="ui-workbench">
-      <h1>A small square. A useful shortcut.</h1>
-      <p class="ui-intro">Create a QR code for text, a link, or Wi-Fi. Export clean SVG or PNG.</p>
+      <div class="ui-row">
+        <h1>Codes</h1>
+        <select class="ui-input" id="examples" aria-label="Load example">
+          <option value="">Load example…</option>
+          <option value="url">QR · URL</option>
+          <option value="text">QR · Unicode text</option>
+          <option value="code128">Code 128 · reference</option>
+          <option value="ean13">EAN-13 · product</option>
+          <option value="upca">UPC-A · product</option>
+        </select>
+      </div>
+      <p class="ui-intro">
+        QR codes and barcodes, generated locally and exported at the size you choose.
+      </p>
       <div class="ui-columns">
         <section class="ui-card">
           <label class="ui-field"
-            ><span>Content type</span
+            ><span>Code type</span
+            ><select class="ui-input" id="kind">
+              <option value="qr">QR code</option>
+              <option value="code128">Code 128</option>
+              <option value="ean13">EAN-13</option>
+              <option value="upca">UPC-A</option>
+            </select></label
+          ><label class="ui-field" id="preset-field"
+            ><span>QR content</span
             ><select class="ui-input" id="preset">
               <option value="text">Text</option>
               <option value="url">URL</option>
@@ -34,12 +54,7 @@
             </select></label
           ><label class="ui-field" id="content-field"
             ><span id="content-label">Text to encode</span
-            ><textarea
-              class="ui-input"
-              id="content"
-              spellcheck="false"
-              placeholder="Type something to share"
-            ></textarea>
+            ><textarea class="ui-input" id="content" spellcheck="false"></textarea>
           </label>
           <div id="wifi-fields" hidden>
             <label class="ui-field"
@@ -57,23 +72,38 @@
               ><input class="ui-input" id="password" type="password" autocomplete="off" /></label
             ><label><input id="hidden-network" type="checkbox" /> Hidden network</label>
           </div>
-          <div class="ui-row">
-            <label
-              >Error correction
-              <select class="ui-input" id="level">
-                <option value="L">L · 7%</option>
-                <option value="M" selected>M · 15%</option>
-                <option value="Q">Q · 25%</option>
-                <option value="H">H · 30%</option>
-              </select></label
-            ><label
-              >Margin <input class="ui-input" id="margin" type="number" min="4" max="16" value="4"
-            /></label>
-          </div>
           <label class="ui-field"
-            ><span>PNG pixels per module</span
-            ><input class="ui-input" id="scale" type="number" min="1" max="32" value="8" /></label
-          ><button class="ui-btn" id="clear">Clear</button>
+            ><span>Export width · pixels (SVG and PNG)</span
+            ><input
+              class="ui-input"
+              id="resolution"
+              type="number"
+              min="64"
+              max="4096"
+              step="1"
+              value="512"
+          /></label>
+          <div id="qr-options">
+            <div class="ui-row">
+              <label
+                >Error correction
+                <select class="ui-input" id="level">
+                  <option value="L">L · 7%</option>
+                  <option value="M" selected>M · 15%</option>
+                  <option value="Q">Q · 25%</option>
+                  <option value="H">H · 30%</option>
+                </select></label
+              >
+            </div>
+            <details>
+              <summary>Quiet zone</summary>
+              <label class="ui-field"
+                ><span>Margin in modules · at least 4 for scanning</span
+                ><input class="ui-input" id="margin" type="number" min="4" max="16" value="4"
+              /></label>
+            </details>
+          </div>
+          <button class="ui-btn" id="clear">Clear</button>
         </section>
         <section class="ui-card">
           <div class="ui-row">
@@ -83,38 +113,61 @@
               ><button class="ui-btn" id="save-png" disabled>PNG</button>
             </div>
           </div>
-          <div id="preview" role="group" aria-label="QR code preview"></div>
-          <p class="ui-message" id="status" role="status">Enter content to generate a QR code.</p>
+          <div id="preview" role="group" aria-label="Code preview"></div>
+          <p class="ui-message" id="status" role="status"></p>
           <h2>Encoded content</h2>
           <pre class="ui-output" id="encoded"></pre>
         </section>
       </div>
     </main>
-    <aside class="ui-dock ui-help" id="help" aria-label="Help" hidden>
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
       <div class="ui-dock-head">
         <h2 class="ui-dock-title">Help</h2>
-        <button class="ui-btn ui-icon-btn" id="help-close" aria-label="Close Help">
-          <svg data-ui-icon="close"></svg>
-        </button>
       </div>
-      <div class="ui-dock-body">
-        <h3>Make a QR code</h3>
-        <p>
-          Use text, a URL, or the Wi-Fi preset. QR codes are encoded locally as UTF-8, with an
-          explicit UTF-8 ECI marker, using an encoder maintained in this repository.
-        </p>
-        <h3>Scanning</h3>
-        <p>
-          Higher error correction adds redundancy and can make a larger code. Keep a quiet zone of
-          at least four modules, high contrast, and enough physical size for the amount of data.
-          Always test your exported code with the intended scanner.
-        </p>
-        <h3>Export</h3>
-        <p>
-          SVG is a clean vector image with a white background. PNG uses an integer number of pixels
-          per module. Neither export includes the tool interface. Wi-Fi passwords are visible to
-          anyone who scans the code; inputs remain only in memory.
-        </p>
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            The draft is kept only for this tab, up to 2 MB. Reloading restores it; a new tab starts
+            fresh. Light / dark applies to every tool.
+          </li>
+        </ul>
+        <h3>Code types</h3>
+        <ul>
+          <li>
+            QR encodes Unicode text, a URL, or Wi-Fi. Code 128 encodes printable ASCII (up to 80
+            characters), with compact pairs for even-length all-digit input.
+          </li>
+          <li>
+            EAN-13 and UPC-A encode product identifiers. Enter 12/11 digits to calculate the check
+            digit, or 13/12 digits to validate it. These are encoders, not a source of assigned
+            product identifiers.
+          </li>
+        </ul>
+        <h3>Export and scanning</h3>
+        <ul>
+          <li>
+            Export width sets the actual SVG/PNG dimensions. QR exports are square; barcode height
+            follows its width. SVG is a scalable vector image. PNG uses integer module widths and
+            centers spare pixels in the quiet zone.
+          </li>
+          <li>
+            QR needs a clear border of four modules on every side. Quiet zone allows a larger
+            border. Barcode borders are included automatically. Keep the output high contrast and
+            test with the intended scanner.
+          </li>
+          <li>
+            The preview stays in place while editing. It dims and export buttons disable when the
+            current content is invalid or being updated.
+          </li>
+        </ul>
+        <h3>Wi-Fi</h3>
+        <ul>
+          <li>
+            The password is readable by anyone who scans the code. Wi-Fi inputs are remembered only
+            in this tab's session draft.
+          </li>
+        </ul>
       </div>
     </aside>
     <script type="module" src="/src/main.ts"></script>

@@ -10,6 +10,14 @@ const make = (text: string, options: EditorOptions = {}) => {
 const DOC = '{\n  "a": [\n    1,\n    2\n  ],\n  "b": {\n    "c": true\n  }\n}';
 
 describe("createEditor", () => {
+  test("decoder and encoder modes can change editability without losing the document", () => {
+    const ed = make('{"a":1}');
+    ed.setReadOnly(true);
+    expect(ed.dom.querySelector(".cm-content")?.getAttribute("aria-readonly")).toBe("true");
+    ed.setReadOnly(false);
+    expect(ed.dom.querySelector(".cm-content")?.getAttribute("aria-readonly")).toBeNull();
+    expect(ed.text).toBe('{"a":1}');
+  });
   test("holds and replaces the text", () => {
     const ed = make("abc");
     expect(ed.text).toBe("abc");

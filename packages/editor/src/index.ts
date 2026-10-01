@@ -167,6 +167,7 @@ export interface Editor {
   setHighlights(highlights: readonly Highlight[]): void;
   setError(error: EditorError | null): void;
   setColours(colours: Colours): void;
+  setReadOnly(readOnly: boolean): void;
   setIndent(indent: number | "\t"): void;
   /** Numbers the gutter from elsewhere, one entry per line (null leaves it blank); null numbers lines. */
   setLineLabels(labels: readonly (number | string | null)[] | null): void;
@@ -477,6 +478,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
   const indent = new Compartment();
   const gutter = new Compartment();
   const undo = new Compartment();
+  const readOnly = new Compartment();
   /** An `onFolds` call is waiting for the next frame. */
   let foldsPending = false;
   const languageChoice: Language = options.language ?? null;
@@ -508,7 +510,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     language.of(languageExtension(languageChoice, text.length)),
     colours.of(colourExtension(options.colours ?? null)),
     indent.of(indentUnit.of(indentString(options.indent ?? 2))),
-    EditorState.readOnly.of(options.readOnly ?? false),
+    readOnly.of(EditorState.readOnly.of(options.readOnly ?? false)),
     // Files dropped on the editor are the app's to open, not text to insert.
     EditorView.domEventHandlers({
       drop: (e) => e.dataTransfer?.types.includes("Files") ?? false,
@@ -663,6 +665,10 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
 
     setColours(next) {
       view.dispatch({ effects: colours.reconfigure(colourExtension(next)) });
+    },
+
+    setReadOnly(next) {
+      view.dispatch({ effects: readOnly.reconfigure(EditorState.readOnly.of(next)) });
     },
 
     setIndent(next) {

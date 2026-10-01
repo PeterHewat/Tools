@@ -40,12 +40,4 @@ export function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-/** Escapes XML/HTML content. Quotes are left as-is so attribute regexes still match the result. */
-export function escapeXml(s: unknown): string {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-/** Escapes a value going into a double-quoted attribute. */
-export function escapeAttr(s: unknown): string {
-  return escapeXml(s).replace(/"/g, "&quot;");
-}
+export { escapeXml, escapeAttr } from "@tools/ui";

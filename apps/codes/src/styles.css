@@ -2,17 +2,29 @@
 @import "@tools/ui/tool.css";
 #preview {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 12px;
   background: #fff;
   border-radius: var(--radius);
-  min-height: 280px;
+  height: 360px;
+  overflow: hidden;
 }
 #preview svg {
-  width: min(100%, 360px);
+  width: min(100%, 336px);
+  max-height: 336px;
   height: auto;
-  align-self: center;
 }
-#margin {
-  width: 70px;
+#preview.pending svg {
+  opacity: 0.3;
+}
+#encoded {
+  height: 72px;
+  overflow: auto;
+}
+#qr-options {
+  min-height: 100px;
+}
+#qr-options details {
+  margin-bottom: 8px;
 }
