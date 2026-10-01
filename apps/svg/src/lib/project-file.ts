@@ -3,6 +3,13 @@ import { cleanColor, cleanUnit, isElementType } from "./utils.js";
 import { ofGroupsInUse } from "./groups.js";
 import { MAX_ARTBOARD, PROJECT_VERSION } from "./types.js";
 import type { DocumentState, ProjectFile, SceneElement } from "./types.js";
+import {
+  plainId,
+  record,
+  validCollections,
+  validGeometry,
+  validImage,
+} from "./project-validation.js";
 
 /** Fresh document data, independent of the editor and its input device. */
 export function createDocument(snap = false): DocumentState {
@@ -62,7 +69,6 @@ export function isInert(value: unknown, key = ""): boolean {
 /** What a reference image may point at: pixels carried in the document, never the network. */
 const IMAGE_URL = /^data:image\/[\w.+-]+[;,]/;
 /** Element, group and image ids as the app writes them. */
-const PLAIN_ID = /^[A-Za-z][\w-]*$/;
 
 /**
  * An element from outside, made safe to draw: its colours are `#rrggbb` and its opacities run
@@ -71,13 +77,12 @@ const PLAIN_ID = /^[A-Za-z][\w-]*$/;
  * app writes.
  */
 export function cleanElement(raw: unknown): SceneElement | null {
-  const el = raw as SceneElement | null;
-  if (!el || !PLAIN_ID.test(el.id) || !isElementType(el.type)) return null;
+  if (!record(raw) || !plainId(raw.id) || !isElementType(raw.type as string) || !validGeometry(raw))
+    return null;
+  const el = raw as unknown as SceneElement;
   const out = { ...structuredClone(el), ...completeStyle(el) };
-  if (el.groups)
-    out.groups = Array.isArray(el.groups)
-      ? el.groups.filter((g) => typeof g === "string" && PLAIN_ID.test(g))
-      : [];
+  out.name ??= "";
+  if (el.groups) out.groups = Array.isArray(el.groups) ? el.groups.filter(plainId) : [];
   return out;
 }
 
@@ -92,12 +97,13 @@ export function readProject(raw: unknown): Required<ProjectFile> {
   const positive = (n: unknown) => typeof n === "number" && n > 0 && Number.isFinite(n);
   if (
     !json ||
+    !Number.isInteger(version) ||
     typeof version !== "number" ||
     version < 1 ||
     !positive(json.artboard?.width) ||
     !positive(json.artboard?.height) ||
-    !json.grid ||
-    !json.background ||
+    !record(json.grid) ||
+    !record(json.background) ||
     !Array.isArray(json.elements) ||
     !Array.isArray(json.images)
   ) {
@@ -109,18 +115,45 @@ export function readProject(raw: unknown): Required<ProjectFile> {
     );
   }
   const damaged = () => new Error("This document is damaged and cannot be opened.");
-  if (!isInert(json)) throw damaged();
+  if (!isInert(json) || !validCollections(json as unknown as Record<string, unknown>))
+    throw damaged();
   const doc = json as ProjectFile;
+  // A recognized shape with broken geometry must not silently disappear beside valid shapes.
+  for (const el of doc.elements) {
+    if (record(el) && isElementType(el.type) && !validGeometry(el)) throw damaged();
+  }
   const elements = doc.elements.map(cleanElement).filter((e): e is SceneElement => !!e);
+  const ids = new Set<string>();
+  for (const el of elements) {
+    if (ids.has(el.id)) throw damaged();
+    ids.add(el.id);
+  }
+  for (const img of doc.images) {
+    if (
+      record(img) &&
+      plainId(img.id) &&
+      typeof img.dataUrl === "string" &&
+      IMAGE_URL.test(img.dataUrl)
+    ) {
+      if (!validImage(img) || ids.has(img.id)) throw damaged();
+      ids.add(img.id);
+    }
+  }
   const images = doc.images
-    .filter((img) => PLAIN_ID.test(img?.id) && IMAGE_URL.test(img?.dataUrl))
+    .filter(
+      (img) =>
+        record(img) &&
+        plainId(img.id) &&
+        typeof img.dataUrl === "string" &&
+        IMAGE_URL.test(img.dataUrl)
+    )
     .map((img) => ({ ...img, opacity: cleanUnit(img.opacity) }));
   if ((doc.elements.length || doc.images.length) && !elements.length && !images.length) {
     throw damaged();
   }
   return {
     version: PROJECT_VERSION,
-    grid: doc.grid,
+    grid: { step: doc.grid.step, visible: doc.grid.visible, snap: doc.grid.snap },
     artboard: {
       width: Math.min(doc.artboard.width, MAX_ARTBOARD),
       height: Math.min(doc.artboard.height, MAX_ARTBOARD),
