@@ -60,6 +60,16 @@ describe("page head", () => {
     expect(headTags(null).some((t) => t.tag === "style")).toBe(false);
   });
 
+  test('an app may drop "Tools" first, at a wider screen, keeping its name', () => {
+    const css = headTags({ ...svg, compactHeader: 200, compactHome: 389 }).find(
+      (t) => t.tag === "style"
+    )!.children as string;
+    expect(css.indexOf("(width < 390px)")).toBeLessThan(css.indexOf("(width < 201px)"));
+    const first = css.slice(0, css.indexOf("(width < 201px)"));
+    expect(first).toContain(".ui-home-label {");
+    expect(first).not.toContain(".ui-app-name");
+  });
+
   test("the icon is the app's own, addressed from its base rather than from the page", () => {
     expect(attr(headTags(svg), "rel", "icon")?.attrs?.href).toBe(`${appBase("svg")}icon.svg`);
   });

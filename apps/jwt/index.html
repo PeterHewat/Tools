@@ -109,6 +109,10 @@
                 spellcheck="false"
               ></textarea>
               <p class="jwt-check" id="secret-check" hidden></p>
+              <p class="jwt-hint" id="secret-hint" hidden>
+                <span id="secret-hint-text"></span>
+                <button type="button" class="ui-btn" id="secret-reread"></button>
+              </p>
             </div>
             <div id="pair-fields" hidden>
               <div class="jwt-field-head">
@@ -137,7 +141,7 @@
               <p class="jwt-check" id="private-check" hidden></p>
             </div>
             <p class="jwt-note" id="key-status"></p>
-            <div class="jwt-actions">
+            <div class="jwt-actions" id="key-actions">
               <button type="button" class="ui-btn" id="generate-key">Generate key</button
               ><button type="button" class="ui-btn" id="sign">Sign token</button>
             </div>
@@ -188,12 +192,17 @@
           <li>
             With the token cleared, typing a payload starts a new token with a default header.
           </li>
+          <li>
+            A token pasted with its <code>Bearer</code> prefix, or wrapped over several lines, is
+            made compact as it is pasted.
+          </li>
         </ul>
         <h3>Keys</h3>
         <ul>
           <li>
             HS256, HS384 and HS512 use a shared secret, as UTF-8 text, Base64url, Base64, hex or an
-            oct JWK. Changing the encoding rewrites the secret in it, so the key stays the same.
+            oct JWK. Changing the encoding rewrites the secret in it, so the key stays the same; if
+            the text was already written in the new encoding, a button reads it that way instead.
             Signing needs at least 32, 48 or 64 bytes; verifying accepts any length.
           </li>
           <li>
@@ -213,6 +222,10 @@
           <li>
             Valid JWT: three Base64url parts, with a strict JSON header and payload and an
             <code>alg</code>. Signature verified: the key matches the signature.
+          </li>
+          <li>
+            <code>alg</code> <code>none</code> is an unsigned token: its signature is empty, and
+            there is nothing to verify. Encrypted tokens (JWE, five parts) show only their header.
           </li>
           <li>
             Neither says the claims should be trusted: issuer, audience and authorization are for

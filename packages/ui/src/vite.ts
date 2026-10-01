@@ -255,16 +255,25 @@ export const COMPACT_HEADER = 720;
  */
 function compactHeaderTag(app: ToolsApp): HtmlTagDescriptor {
   const width = app.compactHeader ?? COMPACT_HEADER;
-  const css = [
-    // "Up to and including" as a range, so a fractional width (browser zoom) falls on one side.
-    `@media (width < ${width + 1}px) {`,
-    "[data-tools-header] .ui-home { justify-content: center; min-width: 36px; padding: 0; }",
-    "[data-tools-header] .ui-home::before { margin-left: 4px; }",
-    "[data-tools-header] :is(.ui-home-label, .ui-app-name, .ui-app-status, .ui-app-title) {",
+  // Hidden from sight, kept for screen readers.
+  const hide = (selector: string) => [
+    `[data-tools-header] ${selector} {`,
     "  position: absolute; width: 1px; height: 1px; overflow: hidden;",
     "  clip-path: inset(50%); white-space: nowrap;",
     "}",
+  ];
+  // "Up to and including" as a range, so a fractional width (browser zoom) falls on one side.
+  const home = (at: number, selector: string) => [
+    `@media (width < ${at + 1}px) {`,
+    "[data-tools-header] .ui-home { justify-content: center; min-width: 36px; padding: 0; }",
+    "[data-tools-header] .ui-home::before { margin-left: 4px; }",
+    ...hide(selector),
     "}",
+  ];
+  const css = [
+    // An app may drop "Tools" first, keeping its name beside the "‹".
+    ...(app.compactHome && app.compactHome > width ? home(app.compactHome, ".ui-home-label") : []),
+    ...home(width, ":is(.ui-home-label, .ui-app-name, .ui-app-status, .ui-app-title)"),
   ].join("\n");
   return {
     tag: "style",

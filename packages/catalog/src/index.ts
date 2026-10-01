@@ -36,6 +36,11 @@ export interface ToolsApp {
    * 720 when not given.
    */
   readonly compactHeader?: number;
+  /**
+   * Widest screen (px) at which "‹ Tools" alone reduces to "‹", the app's name staying beside
+   * it: a step before `compactHeader`, for an app whose name in full needs the room.
+   */
+  readonly compactHome?: number;
   /** Production JavaScript gzip budgets in KiB; entry includes static module preloads. */
   readonly jsBudget?: { readonly entryGzip: number; readonly totalGzip: number };
   readonly status: AppStatus;
@@ -81,6 +86,7 @@ export const APPS: readonly ToolsApp[] = [
     tags: ["jwt", "token", "decode", "encode", "verify", "developer"],
     art: true,
     compactHeader: 217,
+    compactHome: 389,
     jsBudget: { entryGzip: 140, totalGzip: 140 },
     status: "stable",
     listed: true,

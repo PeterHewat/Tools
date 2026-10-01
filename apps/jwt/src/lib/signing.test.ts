@@ -4,9 +4,9 @@ import {
   ALGORITHMS,
   defaultExample,
   encodeJwt,
-  generateExample,
   checkKey,
   convertSecret,
+  describeKey,
   generateKey,
   isPrivateKey,
   JsonError,
@@ -20,6 +20,17 @@ import {
 } from "./signing.js";
 import { inspectJwt } from "./inspect.js";
 import { constants, createHmac, createPublicKey, verify } from "node:crypto";
+import type { SigningAlgorithm } from "./signing.js";
+
+/** A fresh key for the algorithm, and a token signed with it. */
+async function generateExample(algorithm: SigningAlgorithm) {
+  const header = JSON.stringify({ alg: algorithm, typ: "JWT" }, null, 2);
+  const now = Math.floor(Date.now() / 1000);
+  const payload = JSON.stringify({ sub: "1234567890", iat: now, exp: now + 3600 }, null, 2);
+  const { key, publicKey, format } = await generateKey(algorithm);
+  const token = await encodeJwt(header, payload, key, format, algorithm);
+  return { token, header, payload, key, publicKey, format };
+}
 
 for (const algorithm of ALGORITHMS) {
   test(
@@ -92,8 +103,9 @@ for (const algorithm of ALGORITHMS) {
 }
 test("strict JSON preserves integers and rejects ambiguous or unsupported signing input", async () => {
   expect(strictObject('{"id":9223372036854775807}').compact).toBe('{"id":9223372036854775807}');
-  expect(() => strictObject('{"a":1,"a":2}')).toThrow("unique");
-  expect(() => strictObject('{"a":1,}')).toThrow("strict");
+  expect(() => strictObject('{"a":1,"a":2}')).toThrow('"a" appears twice');
+  expect(() => strictObject('{"a":1,}')).toThrow("Trailing comma");
+  expect(() => strictObject("[1]")).toThrow("Must be a JSON object");
   await expect(encodeJwt('{"alg":"HS512"}', "{}", "key", "text", "HS256")).rejects.toThrow("match");
   await expect(
     encodeJwt('{"alg":"HS256","crit":[]}', "{}", "key", "text", "HS256")
@@ -105,7 +117,7 @@ test("strict JSON preserves integers and rejects ambiguous or unsupported signin
   );
   await expect(
     verifyInput("x", utf8("x"), '{"kty":"oct","k":"YWJj","alg":"HS512"}', "jwk", "HS256")
-  ).rejects.toThrow("match");
+  ).rejects.toThrow("for HS512, not HS256");
 });
 test("private and public JWKs interoperate and mismatched JWK algorithms are rejected", async () => {
   const example = await generateExample("RS256");
@@ -129,7 +141,7 @@ test("private and public JWKs interoperate and mismatched JWK algorithms are rej
       "jwk",
       "RS256"
     )
-  ).rejects.toThrow("match");
+  ).rejects.toThrow("for RS512, not RS256");
 });
 test("default public sample verifies and partial decoding retains both recoverable segments", async () => {
   const example = await defaultExample(),
@@ -202,7 +214,21 @@ test("key pairs: generated keys sign, a public key cannot, and the format is rea
   expect(isPrivateKey(pair.publicKey)).toBe(false);
   expect(isPrivateKey(publicJwk)).toBe(false);
   await expect(checkKey(pair.publicKey, "pem", "ES384", "verify")).rejects.toThrow(
-    "Not a P-384 EC key"
+    "This is a P-256 EC key: ES384 needs a P-384 EC key."
+  );
+  // A key cut short is still the right kind: it is damaged, not wrong.
+  const lines = pair.key.split("\n");
+  const cut = [...lines.slice(0, 2), ...lines.slice(3)].join("\n");
+  await expect(checkKey(cut, "pem", "ES256", "sign")).rejects.toThrow(
+    "Not a valid P-256 EC key: it may be cut short or damaged."
+  );
+  const rsa = await generateKey("RS256");
+  expect([describeKey(rsa.publicKey), describeKey(pair.publicKey), describeKey(publicJwk)]).toEqual(
+    ["an RSA", "a P-256 EC", "a P-256 EC"]
+  );
+  expect(describeKey((await generateKey("EdDSA")).key)).toBe("an Ed25519");
+  await expect(checkKey(rsa.publicKey, "pem", "EdDSA", "verify")).rejects.toThrow(
+    "This is an RSA key: EdDSA needs an Ed25519 key."
   );
   await expect(checkKey("{", "jwk", "RS256", "verify")).rejects.toThrow("not valid JSON");
 });

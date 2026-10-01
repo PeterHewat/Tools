@@ -138,6 +138,10 @@ test("JWT signs edited JSON again and follows the algorithm through every signin
   await page.locator("#generate-key").click();
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
   await page.locator("#algorithm").selectOption("ES256");
+  // Signed with the new pair before its keys are edited, not merely still verified from before.
+  await expect(token).toContainText(
+    Buffer.from('{"alg":"ES256","typ":"JWT"}').toString("base64url")
+  );
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
   await page.locator("#private-key").fill(await page.locator("#public-key").inputValue());
   await expect(page.locator("#private-check")).toHaveText(
@@ -149,7 +153,56 @@ test("JWT signs edited JSON again and follows the algorithm through every signin
   await page.getByRole("textbox", { name: "Decoded JWT header" }).click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type('{"alg":"none"}');
-  await expect(page.locator("#signature-state")).toHaveText("Unsupported algorithm");
+  // Unsigned: an empty signature, still a valid JWT, with no key to show.
+  await expect(page.locator("#signature-state")).toHaveText("Unsigned token");
+  await expect(page.locator("#token-state")).toHaveText("Valid JWT");
+  await expect(page.getByRole("textbox", { name: "JSON Web Token", exact: true })).toHaveText(
+    /\.$/
+  );
+  await expect(page.locator("#secret-fields")).toBeHidden();
+  await expect(page.locator("#generate-key")).toBeHidden();
+});
+
+test("JWT cleans pasted tokens, keeps unreadable headers, and guards keys and encodings", async ({
+  page,
+}) => {
+  await page.goto("/Tools/jwt/");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  const token = page.getByRole("textbox", { name: "JSON Web Token", exact: true });
+  const sample = (await token.innerText()).trim();
+  // Pasted from a request, wrapped by a log: still the same token.
+  await token.fill("Bearer " + sample.slice(0, 40) + "\n  " + sample.slice(40));
+  await expect(token).toHaveText(sample);
+  await expect(page.locator("#token-status")).toHaveText(
+    'Removed the "Bearer " prefix and spaces and line breaks.'
+  );
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  // A header that cannot be read is not replaced by a default one when the payload is edited.
+  const broken = "e30!." + sample.split(".")[1] + ".c2ln";
+  await token.fill(broken);
+  await page.getByRole("textbox", { name: "Decoded JWT payload" }).fill('{"sub":"edited"}');
+  await expect(page.locator("#header-status")).toContainText("could not be read");
+  await expect(token).toHaveText(broken);
+  // A Base64 secret pasted while UTF-8 was chosen: rewritten, with the other reading offered.
+  await token.fill(sample);
+  const base64 = Buffer.from("a-public-example-secret-at-least-32-bytes").toString("base64");
+  await page.locator("#secret").fill(base64);
+  await expect(page.locator("#signature-state")).toHaveText("Invalid signature");
+  await page.locator("#secret-format").selectOption("base64");
+  await expect(page.locator("#secret")).toHaveValue(Buffer.from(base64).toString("base64"));
+  await page.getByRole("button", { name: "Read it as Base64 instead" }).click();
+  await expect(page.locator("#secret")).toHaveValue(base64);
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await expect(page.locator("#secret-hint")).toBeHidden();
+  // A private key in the field for sharing is flagged, though it verifies.
+  await page.locator("#algorithm").selectOption("ES256");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await page.locator("#public-key").fill(await page.locator("#private-key").inputValue());
+  await expect(page.locator("#public-check")).toHaveText(
+    "This is the private key: keep it below, and share only the public one"
+  );
+  await expect(page.locator("#public-check")).toHaveAttribute("data-state", "warn");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
 });
 
 test("Codec converts live in either direction with default examples and fixed result regions", async ({
@@ -373,6 +426,17 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
     await page.locator("#help-toggle").click();
     await expect(page.locator("#help")).toBeHidden();
     expect(errors).toEqual([]);
+    const compactHome = findApp(slug)!.compactHome;
+    if (compactHome) {
+      await page.setViewportSize({ width: compactHome + 1, height: 900 });
+      await expect(page.locator(".ui-home-label")).not.toHaveCSS("position", "absolute");
+      await page.setViewportSize({ width: compactHome, height: 900 });
+      await expect(page.locator(".ui-home-label")).toHaveCSS("position", "absolute");
+      await expect(page.locator(".ui-app-name")).not.toHaveCSS("position", "absolute");
+      expect(await page.locator("header").evaluate((el) => el.scrollWidth <= innerWidth)).toBe(
+        true
+      );
+    }
     await page.setViewportSize({ width: findApp(slug)!.compactHeader!, height: 900 });
     await expect(page.locator(".ui-app-name")).toHaveCSS("position", "absolute");
     expect(await page.locator("header").evaluate((el) => el.scrollWidth <= innerWidth)).toBe(true);

@@ -1,43 +1,58 @@
 import { expect, test } from "bun:test";
-import { hmac, toBase64, utf8 } from "@tools/bytes";
-import { claimTimes, memberNotes, decodeToken, verifyToken } from "./token.js";
+import { toBase64, utf8 } from "@tools/bytes";
+import { claimTimes, memberNotes } from "./token.js";
+import { cleanToken, inspectJwt } from "./inspect.js";
+
+const part = (json: string) => toBase64(utf8(json), true);
+const HS256 = part('{"alg":"HS256"}');
 
 test("JWT inspection preserves exact numbers, escapes and key order", () => {
   const payload = '{"id":9223372036854775807,"decimal":1.0,"overflow":1e400,"name":"\\u0061"}';
-  const token = decodeToken(`e30.${toBase64(utf8(payload), true)}.`);
-  expect(token.payloadText).toContain("9223372036854775807");
-  expect(token.payloadText).toContain("1.0");
-  expect(token.payloadText).toContain("1e400");
-  expect(token.payloadText).toContain('"\\u0061"');
+  const text = inspectJwt(`${HS256}.${part(payload)}.c2ln`).payload.text;
+  for (const exact of ["9223372036854775807", "1.0", "1e400", '"\\u0061"'])
+    expect(text).toContain(exact);
   for (const source of ['{"alg":"HS256","alg":"none"}', '{"x":1,}', '{/*comment*/"x":1}'])
-    expect(() => decodeToken(`${toBase64(utf8(source), true)}.e30.`)).toThrow();
+    expect(inspectJwt(`${part(source)}.e30.c2ln`).header.error).toBeTruthy();
 });
 
-test("decode and verify all supported HMAC algorithms, reject tampering and mismatches", async () => {
-  for (const [algorithm, hash] of [
-    ["HS256", "SHA-256"],
-    ["HS384", "SHA-384"],
-    ["HS512", "SHA-512"],
-  ] as const) {
-    const input = `${toBase64(utf8(JSON.stringify({ alg: algorithm })), true)}.${toBase64(utf8('{"sub":"héllo"}'), true)}`;
-    const key = utf8("test vector key");
-    const token = decodeToken(`${input}.${toBase64(await hmac(utf8(input), key, hash), true)}`);
-    expect(token.payload.sub).toBe("héllo");
-    expect(await verifyToken(token, key, algorithm)).toBe(true);
-    expect(await verifyToken(token, utf8("wrong"), algorithm)).toBe(false);
-    token.signingInput += "a";
-    expect(await verifyToken(token, key, algorithm)).toBe(false);
-  }
-  await expect(
-    verifyToken(decodeToken("eyJhbGciOiJub25lIn0.e30."), utf8("x"), "HS256")
-  ).rejects.toThrow("match");
+test("strict JWT structures", () => {
+  for (const value of ["", "a.b", `${HS256}.e30.a.b`, "W10.e30.c2ln", `${HS256}.W10.c2ln`])
+    expect(inspectJwt(value).valid).toBe(false);
+  expect(inspectJwt(`${HS256}.e30.?`).error).toContain("Base64url");
+  expect(inspectJwt(`${HS256}.e30.`).error).toBe("The signature is empty.");
+  expect(inspectJwt(`${HS256}.e30.c2ln`).valid).toBe(true);
 });
 
-test("strict JWT structures and unsupported extensions", async () => {
-  for (const value of ["", "a.b", "e30.e30.a.b", "W10.e30.", "e30.W10.", "e30.e30.?"])
-    expect(() => decodeToken(value)).toThrow();
-  const token = decodeToken(`${toBase64(utf8('{"alg":"HS256","crit":["custom"]}'), true)}.e30.`);
-  await expect(verifyToken(token, utf8("key"), "HS256")).rejects.toThrow("extensions");
+test("an unsigned token (alg none) is valid with an empty signature, and only then", () => {
+  const none = part('{"alg":"none"}');
+  const unsigned = inspectJwt(`${none}.e30.`);
+  expect(unsigned.valid).toBe(true);
+  expect(unsigned.signature).toEqual(new Uint8Array());
+  expect(inspectJwt(`${none}.e30.c2ln`).error).toContain("must have an empty signature");
+});
+
+test("an encrypted token (JWE) shows its header and says why its payload cannot be read", () => {
+  const jwe = inspectJwt(`${part('{"alg":"RSA-OAEP","enc":"A256GCM"}')}.a2V5.aXY.Y2lwaGVy.dGFn`);
+  expect(jwe.header.object).toEqual({ alg: "RSA-OAEP", enc: "A256GCM" });
+  expect(jwe.valid).toBe(false);
+  expect(jwe.error).toContain("encrypted token (JWE)");
+  expect(jwe.payload.error).toContain("Encrypted");
+});
+
+test("pasted tokens lose a Bearer prefix and the line breaks they were wrapped with", () => {
+  expect(cleanToken("Bearer abc.def.ghi")).toEqual({
+    token: "abc.def.ghi",
+    what: 'the "Bearer " prefix',
+  });
+  expect(cleanToken("abc.de\n  f.ghi\n")).toEqual({
+    token: "abc.def.ghi",
+    what: "spaces and line breaks",
+  });
+  expect(cleanToken("bearer  ab c.d").what).toBe('the "Bearer " prefix and spaces and line breaks');
+  // Nothing to take out: the text stays as it is, surrounding spaces included.
+  expect(cleanToken("  abc.def.ghi\n")).toEqual({ token: "  abc.def.ghi\n", what: "" });
+  // "Bearer " typed on its own is left alone until the token follows it.
+  expect(cleanToken("Bearer ").what).toBe("");
 });
 
 test("NumericDate boundaries, invalid claims and fractional seconds", () => {

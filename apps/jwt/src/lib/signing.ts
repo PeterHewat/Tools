@@ -1,6 +1,6 @@
 import { decodeBytes, encodeBytes, fromBase64, toBase64, utf8, webCrypto } from "@tools/bytes";
 import type { ByteFormat } from "@tools/bytes";
-import { parse, printJson } from "@tools/json-core";
+import { REPAIRS, parse, printJson } from "@tools/json-core";
 
 export const ALGORITHMS = [
   "HS256",
@@ -92,6 +92,38 @@ function keyKind(algorithm: SigningAlgorithm): string {
   if (algorithm === "EdDSA") return "an Ed25519";
   return "a " + (parameters(algorithm).key as EcKeyImportParams).namedCurve + " EC";
 }
+/** Key types by the DER of their object identifier, as a PEM key names its own type. */
+const KEY_OIDS: [kind: string, oid: string][] = [
+  ["an RSA-PSS", "06092a864886f70d01010a"],
+  ["an RSA", "06092a864886f70d010101"],
+  ["a P-256 EC", "06082a8648ce3d030107"],
+  ["a P-384 EC", "06052b81040022"],
+  ["a P-521 EC", "06052b81040023"],
+  ["an Ed25519", "06032b6570"],
+  ["an Ed448", "06032b6571"],
+  ["an X25519", "06032b656e"],
+];
+/** What kind of key the text holds, as `keyKind` names it, when it says; undefined if unsure. */
+export function describeKey(value: string): string | undefined {
+  try {
+    if (pairFormat(value) === "jwk") {
+      const jwk = JSON.parse(value) as JsonWebKey;
+      if (jwk.kty === "RSA") return "an RSA";
+      if (jwk.kty === "EC" && jwk.crv) return `a ${jwk.crv} EC`;
+      if (jwk.kty === "OKP" && jwk.crv) return `an ${jwk.crv}`;
+      if (jwk.kty === "oct") return "a shared-secret (oct)";
+      return undefined;
+    }
+    const body = /-----BEGIN [A-Z ]+-----([A-Za-z0-9+/=\s]+)-----END/.exec(value)?.[1];
+    if (!body) return undefined;
+    const der = [...fromBase64(body)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    // The key's own type comes first; an EC key's curve follows it.
+    const ec = der.includes("06072a8648ce3d0201");
+    return KEY_OIDS.find(([kind, oid]) => der.includes(oid) && (ec || !kind.endsWith(" EC")))?.[0];
+  } catch {
+    return undefined;
+  }
+}
 async function importSigningKey(
   value: string,
   format: KeyFormat,
@@ -103,7 +135,7 @@ async function importSigningKey(
   if (format === "jwk") {
     const jwk: JsonWebKey = JSON.parse(value);
     if (jwk.alg && jwk.alg !== algorithm)
-      throw new Error("The JWK algorithm does not match the selected algorithm.");
+      throw new Error(`The JWK is for ${jwk.alg}, not ${algorithm}.`);
   }
   if (algorithm.startsWith("HS")) {
     const bytes = secretBytes(value, format);
@@ -112,8 +144,6 @@ async function importSigningKey(
   }
   if (format === "jwk") {
     let jwk: JsonWebKey = JSON.parse(value);
-    if (jwk.alg && jwk.alg !== algorithm)
-      throw new Error("The JWK algorithm does not match the selected algorithm.");
     if (usage === "verify" && jwk.d) jwk = publicJwk(jwk);
     if (usage === "sign" && !jwk.d) throw new Error("Signing needs a private key.");
     return subtle.importKey("jwk", jwk, params, false, [usage]);
@@ -153,20 +183,25 @@ export async function checkKey(
   algorithm: SigningAlgorithm,
   usage: "sign" | "verify"
 ): Promise<CryptoKey> {
+  // A key that names its own type is held to it: some browsers import a key of another kind
+  // for an algorithm (Firefox, an Ed25519 key for ES256) and then sign with it regardless.
+  const needed = algorithm.startsWith("HS") ? undefined : keyKind(algorithm),
+    found = needed && describeKey(value);
+  if (needed && found && found !== needed)
+    throw new Error(`This is ${found} key: ${algorithm} needs ${needed} key.`);
   let key: CryptoKey;
   try {
     key = await importSigningKey(value, format, algorithm, usage);
   } catch (error) {
     if (error instanceof SyntaxError)
       throw new Error("The JWK is not valid JSON.", { cause: error });
-    if (error instanceof DOMException)
-      throw new Error(
-        algorithm.startsWith("HS")
-          ? "The secret cannot be used for HMAC."
-          : `Not ${keyKind(algorithm)} key, as ${algorithm} needs.`,
-        { cause: error }
-      );
-    throw error;
+    if (!(error instanceof DOMException)) throw error;
+    if (!needed) throw new Error("The secret cannot be used for HMAC.", { cause: error });
+    // A key of the right kind, or of no kind it names, that the browser still cannot import.
+    throw new Error(
+      `Not a valid ${needed.replace(/^an? /, "")} key: it may be cut short or damaged.`,
+      { cause: error }
+    );
   }
   if (
     usage === "sign" &&
@@ -226,18 +261,15 @@ export interface StrictObject {
 export function strictObject(text: string): StrictObject {
   const parsed = parse(text);
   if (!parsed.ok) throw new JsonError(parsed.message, parsed.offset);
+  if (parsed.edits.length)
+    throw new JsonError(REPAIRS[parsed.edits[0].kind].message + ".", parsed.edits[0].start);
   if (parsed.duplicates.length)
     throw new JsonError(
-      "Use a strict JSON object with unique member names.",
+      `${JSON.stringify(parsed.duplicates[0].key)} appears twice: each name may appear once.`,
       parsed.duplicates[0].offset
     );
-  if (parsed.edits.length)
-    throw new JsonError(
-      "Use a strict JSON object with unique member names.",
-      parsed.edits[0].start
-    );
   if (parsed.root.kind !== "object")
-    throw new JsonError("Use a strict JSON object with unique member names.", parsed.root.start);
+    throw new JsonError("Must be a JSON object, in braces { }.", parsed.root.start);
   const object: unknown = JSON.parse(text);
   return {
     object: object as Record<string, unknown>,
@@ -323,24 +355,6 @@ export async function generateKey(algorithm: SigningAlgorithm): Promise<Generate
     format = "pem";
   }
   return { key, publicKey, format };
-}
-export async function generateExample(algorithm: SigningAlgorithm): Promise<Example> {
-  const header = JSON.stringify({ alg: algorithm, typ: "JWT" }, null, 2);
-  const now = Math.floor(Date.now() / 1000);
-  const payload = JSON.stringify(
-    { sub: "1234567890", name: "Jane Doe", iat: now, exp: now + 3600 },
-    null,
-    2
-  );
-  const { key, publicKey, format } = await generateKey(algorithm);
-  return {
-    token: await encodeJwt(header, payload, key, format, algorithm),
-    header,
-    payload,
-    key,
-    publicKey,
-    format,
-  };
 }
 /** Deterministic public sample so initial rendering does not wait for key generation. */
 export async function defaultExample(): Promise<Example> {

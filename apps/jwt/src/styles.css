@@ -208,6 +208,22 @@
   margin-top: 8px;
 }
 
+/* After the secret's encoding changed: what was done to it, and the other way to read it. */
+.jwt-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.jwt-hint .ui-btn {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
 /* Under each key: whether it is valid for the algorithm, as jwt.io says it. */
 .jwt-check {
   margin: 4px 0 0;

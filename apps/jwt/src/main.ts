@@ -10,7 +10,7 @@ import {
   writeDraft,
 } from "@tools/ui";
 import { claimTimes, memberNotes } from "./lib/token.js";
-import { inspectJwt } from "./lib/inspect.js";
+import { cleanToken, inspectJwt } from "./lib/inspect.js";
 import type { Inspection, InspectedPart } from "./lib/inspect.js";
 import {
   ALGORITHMS,
@@ -68,6 +68,12 @@ const generated = { secret: false, pair: false };
 let secretEncoding: KeyFormat = "text";
 let revision = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
+/**
+ * The header or payload changed and the token has not been rebuilt from them yet. Kept until a
+ * rebuild finishes, so a later edit of a key does not drop it, and saved with the draft, so a
+ * reload in between still rebuilds the token.
+ */
+let pendingResign = false;
 
 const token = createEditor(byId("token"), {
   label: "JSON Web Token",
@@ -113,9 +119,12 @@ function showAlg(alg: unknown): void {
     otherAlg.hidden = false;
     algorithm.value = "";
   }
-  const hmac = isHmac(selected());
-  byId("secret-fields").hidden = !hmac;
-  byId("pair-fields").hidden = hmac;
+  // An unsigned token has no key to show.
+  const hmac = isHmac(selected()),
+    none = alg === "none";
+  byId("secret-fields").hidden = !hmac || none;
+  byId("pair-fields").hidden = hmac || none;
+  byId("key-actions").hidden = none;
 }
 
 /** The key that signs with an algorithm, and the one that verifies (a private key does both). */
@@ -132,6 +141,7 @@ function verifyingKey(alg: SigningAlgorithm): { value: string; format: KeyFormat
 const blank = (alg: SigningAlgorithm, value: string): boolean =>
   isHmac(alg) ? value === "" : !value.trim();
 function useKey(key: GeneratedKey, alg: SigningAlgorithm): void {
+  hint();
   if (isHmac(alg)) {
     secret.value = key.key;
     secretFormat.value = secretEncoding = key.format;
@@ -187,6 +197,10 @@ function decorateToken(inspection: Inspection): void {
       ? "Payload: " + inspection.payload.error
       : (inspection.error ?? "");
   note("token-status", problem, Boolean(problem));
+  showTimes(inspection);
+}
+/** Whether the token is current: not yet valid, expired, or when it expires. */
+function showTimes(inspection: Inspection): void {
   const times = inspection.payload.object ? claimTimes(inspection.payload.object) : [];
   const exp = times.find((time) => time.claim === "exp"),
     nbf = times.find((time) => time.claim === "nbf");
@@ -277,7 +291,15 @@ async function checkPair(
     }
     try {
       await checkKey(value, pairFormat(value), alg, usage);
-      checks.push([id, isPrivateKey(value) ? "Valid private key" : "Valid public key", "ok"]);
+      const secret = isPrivateKey(value);
+      // It verifies, but this is the field people copy and hand out.
+      if (secret && usage === "verify")
+        checks.push([
+          id,
+          "This is the private key: keep it below, and share only the public one",
+          "warn",
+        ]);
+      else checks.push([id, secret ? "Valid private key" : "Valid public key", "ok"]);
     } catch (error) {
       const message = (error as Error).message;
       checks.push(
@@ -298,6 +320,11 @@ async function checkPair(
 
 /** The token was edited: the header and payload follow it, then the signature is checked. */
 function fromToken(): void {
+  // As pasted from a request or a log: "Bearer " and line breaks are not part of a JWT.
+  const cleaned = cleanToken(token.text);
+  if (cleaned.what) token.setText(cleaned.token, "edit");
+  // The token is what was edited last: it wins over a rebuild still waiting.
+  pendingResign = false;
   const inspection = inspectJwt(token.text);
   header.setText(inspection.header.text, "sync");
   payload.setText(inspection.payload.text, "sync");
@@ -305,18 +332,26 @@ function fromToken(): void {
   partNote("payload-status", payload, inspection.payload);
   if (inspection.header.object) showAlg(inspection.header.object.alg);
   decorateToken(inspection);
+  if (cleaned.what && inspection.valid) note("token-status", `Removed ${cleaned.what}.`);
   annotate();
   settle(false);
 }
 /** The header or payload was edited: the token is rebuilt from them and signed again. */
 function fromJson(): void {
-  // A payload typed with no header starts a new token, with the selected algorithm.
-  if (!header.text.trim() && payload.text.trim())
+  // A payload typed with no header starts a new token, with the selected algorithm. Only when
+  // there is no token: one whose header could not be read must not be replaced by a default.
+  if (!header.text.trim() && payload.text.trim() && !token.text.trim())
     header.setText(JSON.stringify({ alg: selected() ?? "HS256", typ: "JWT" }, null, 2), "sync");
   const head = readJson(header),
     body = readJson(payload);
   partNote("header-status", header, head);
   partNote("payload-status", payload, body);
+  if (!header.text.trim() && token.text.trim())
+    note(
+      "header-status",
+      "The token's header could not be read: fix it in the token, or write one here.",
+      true
+    );
   if (head.object) showAlg(head.object.alg);
   annotate();
   settle(true);
@@ -325,16 +360,19 @@ function fromJson(): void {
 /** After the edits stop: signs again when asked, then verifies, saves and reports. */
 function settle(resign: boolean): void {
   const version = ++revision;
+  if (resign) pendingResign = true;
   clearTimeout(timer);
   checkSecret();
   note("key-status", "");
   save();
-  timer = setTimeout(() => void run(version, resign), 120);
+  timer = setTimeout(() => void run(version), 120);
 }
-async function run(version: number, resign: boolean): Promise<void> {
+async function run(version: number): Promise<void> {
+  const resign = pendingResign;
   let signNote = "";
   if (resign) signNote = await resignToken(version);
   if (version !== revision) return;
+  pendingResign = false;
   const inspection = inspectJwt(token.text);
   if (resign) decorateToken(inspection);
   const [result, checks] = await Promise.all([verify(inspection), checkPair(selected())]);
@@ -360,16 +398,21 @@ async function resignToken(version: number): Promise<string> {
     reason = "";
   const alg = head.object.alg;
   try {
-    if (!isAlgorithm(alg))
-      throw new Error(
-        alg === undefined
-          ? "the header has no alg."
-          : `alg ${JSON.stringify(alg)} is not one this tool can sign with.`
-      );
-    const key = signingKey(alg);
-    if (blank(alg, key.value))
-      throw new Error(isHmac(alg) ? "enter a secret." : "add the private key.");
-    next = await encodeJwt(header.text, payload.text, key.value, key.format, alg);
+    if (alg === "none") {
+      // Unsigned: the signature is empty, as RFC 7519 has it.
+      next = input + ".";
+    } else {
+      if (!isAlgorithm(alg))
+        throw new Error(
+          alg === undefined
+            ? "the header has no alg."
+            : `alg ${JSON.stringify(alg)} is not one this tool can sign with.`
+        );
+      const key = signingKey(alg);
+      if (blank(alg, key.value))
+        throw new Error(isHmac(alg) ? "enter a secret." : "add the private key.");
+      next = await encodeJwt(header.text, payload.text, key.value, key.format, alg);
+    }
   } catch (error) {
     const message = (error as Error).message;
     reason = "Not signed: " + message.charAt(0).toLowerCase() + message.slice(1);
@@ -384,6 +427,12 @@ async function verify(
   if (!token.text.trim()) return { text: "", state: "" };
   if (!inspection.valid || !inspection.signature) return { text: "Not verified", state: "" };
   const alg = inspection.header.object?.alg;
+  if (alg === "none")
+    return {
+      text: "Unsigned token",
+      state: "warn",
+      note: "alg none: there is no signature to verify. A service should refuse such a token.",
+    };
   if (!isAlgorithm(alg))
     return {
       text: "Unsupported algorithm",
@@ -434,6 +483,7 @@ function save(): void {
       publicKey: publicKey.value,
       privateKey: privateKey.value,
       generated,
+      resign: pendingResign,
     })
   )
     note(
@@ -445,28 +495,63 @@ function save(): void {
 
 // ---------- Controls ----------
 
+/** A line under the secret with a way to undo what was just done to it; none to hide it. */
+let reread: (() => void) | undefined;
+function hint(text = "", label = "", action?: () => void): void {
+  byId("secret-hint").hidden = !text;
+  byId("secret-hint-text").textContent = text;
+  byId("secret-reread").textContent = label;
+  reread = action;
+}
+byId("secret-reread").addEventListener("click", () => {
+  reread?.();
+  hint();
+});
+const readable = (value: string, format: KeyFormat): boolean => {
+  try {
+    secretBytes(value, format);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const encodingName = (format: KeyFormat): string =>
+  [...secretFormat.options].find((option) => option.value === format)?.text ?? format;
+
 secret.addEventListener("input", () => {
   generated.secret = false;
+  hint();
   settle(false);
 });
-/** The same secret, written in the newly chosen encoding; it stays as typed if it was unreadable. */
+/**
+ * The same secret, written in the newly chosen encoding; it stays as typed if it was unreadable.
+ * When the text could also be read in the new encoding as it is (a Base64 secret pasted while
+ * UTF-8 was chosen), that is offered beside it: which one was meant, only the person knows.
+ */
 secretFormat.addEventListener("change", () => {
-  const to = secretFormat.value as KeyFormat;
-  let readable = true;
-  try {
-    secretBytes(secret.value, secretEncoding);
-  } catch {
-    readable = false;
-  }
-  if (readable && secret.value !== "")
+  const from = secretEncoding,
+    to = secretFormat.value as KeyFormat,
+    typed = secret.value;
+  hint();
+  if (typed !== "" && readable(typed, from))
     try {
-      secret.value = convertSecret(secret.value, secretEncoding, to);
+      secret.value = convertSecret(typed, from, to);
     } catch (error) {
       secretFormat.value = secretEncoding;
       note("key-status", (error as Error).message + " The encoding stays as it was.", true);
       return;
     }
   secretEncoding = to;
+  if (secret.value !== typed && readable(typed, to))
+    hint(
+      `Rewritten in ${encodingName(to)}: the same secret.`,
+      `Read it as ${encodingName(to)} instead`,
+      () => {
+        secret.value = typed;
+        generated.secret = false;
+        settle(false);
+      }
+    );
   settle(false);
 });
 for (const field of [publicKey, privateKey])
@@ -544,6 +629,15 @@ for (const [id, text] of [
     if (!(await copyText(text(), byId(id))))
       note("token-status", "Clipboard unavailable. Select and copy the text.", true);
   });
+/** "Expires in 2 min" and the notes' "expired 3 min ago" keep up with the clock. */
+function refreshTimes(): void {
+  if (document.hidden || !token.text.trim()) return;
+  showTimes(inspectJwt(token.text));
+  annotate();
+}
+setInterval(refreshTimes, 10_000);
+document.addEventListener("visibilitychange", refreshTimes);
+
 // ---------- Start ----------
 
 if (draft.error) {
@@ -564,6 +658,8 @@ if (draft.error) {
   const flags = value.generated as Partial<typeof generated> | undefined;
   generated.secret = flags?.secret === true;
   generated.pair = flags?.pair === true;
+  // Reloaded before the token was rebuilt from an edited header or payload.
+  pendingResign = value.resign === true;
   const head = readJson(header);
   showAlg(head.object?.alg ?? inspectJwt(token.text).header.object?.alg);
   partNote("header-status", header, head);
