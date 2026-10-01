@@ -103,6 +103,21 @@ describe("createEditor", () => {
     expect(ed.dom.querySelector(".cm-error-mark")).toBeNull();
   });
 
+  test("notes show after the text without becoming part of it", () => {
+    const ed = make('{\n  "a": 1\n}');
+    ed.setNotes([
+      { at: 10, text: "first" },
+      { at: 99, text: "past the end" },
+      { at: 10, text: "second", class: "cm-note-warn" },
+    ]);
+    const shown = [...ed.dom.querySelectorAll(".cm-note")];
+    expect(shown.map((note) => note.textContent)).toEqual(["first", "second"]);
+    expect(shown[1].classList.contains("cm-note-warn")).toBe(true);
+    expect(ed.text).toBe('{\n  "a": 1\n}');
+    ed.setNotes([]);
+    expect(ed.dom.querySelector(".cm-note")).toBeNull();
+  });
+
   test("marks and line labels", () => {
     const ed = make("one\ntwo\nthree", { language: null });
     ed.setMarks([{ start: 4, end: 7, current: true }]);

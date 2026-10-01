@@ -93,6 +93,14 @@ export const siteTheme = EditorView.theme({
   ".cm-error-mark-empty": { borderLeft: "2px solid var(--danger)" },
   ".cm-lineNumbers .cm-gutterElement.cm-error-line": { color: "var(--danger)", fontWeight: "700" },
   ".cm-placeholder": { color: "var(--muted)" },
+  ".cm-note": {
+    marginLeft: "2ch",
+    color: "var(--muted)",
+    fontFamily: "system-ui, sans-serif",
+    fontSize: "0.85em",
+    userSelect: "none",
+  },
+  ".cm-note-warn": { color: "var(--warn)" },
   ".cm-panels": {
     backgroundColor: "var(--panel)",
     color: "var(--text)",

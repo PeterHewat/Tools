@@ -31,16 +31,21 @@ test("JWT decodes, verifies live, reads claims and decodes broken segments indep
   await expect(page.locator("#signature-state")).toHaveText("Invalid signature");
   await page.locator("#secret").fill("test key");
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
-  await expect(page.locator("#key-status")).toContainText("signing HS256 needs at least 32");
+  await expect(page.locator("#secret-check")).toHaveText(
+    "Too short to sign HS256: 8 of 32 bytes. It can still verify."
+  );
   await expect(page.getByRole("textbox", { name: "Decoded JWT payload" })).toContainText(
     "9223372036854775807"
   );
   await expect(page.locator("#time-state")).toContainText("Not valid for");
-  await page.locator("#view-claims").click();
-  await expect(page.locator("#claims")).toContainText("Expiration time");
-  await expect(page.locator("#claims")).toContainText("Expired");
-  await expect(page.locator("#claims")).toContainText("9223372036854775807");
-  await page.locator("#view-json").click();
+  // What the claims mean sits beside them, outside the JSON itself.
+  const notes = page.locator("#payload-editor .cm-note");
+  await expect(notes.filter({ hasText: "Subject" })).toBeVisible();
+  await expect(notes.filter({ hasText: "Expiration time" })).toContainText("expired");
+  await expect(notes.filter({ hasText: "Expiration time" })).toHaveClass(/cm-note-warn/);
+  await expect(page.locator("#header-editor .cm-note").first()).toHaveText(
+    "Algorithm: HMAC with SHA-256"
+  );
   await page.locator("#secret").fill("wrong");
   await expect(page.locator("#signature-state")).toHaveText("Invalid signature");
   const whitespaceSecret = " ".repeat(32);
@@ -64,6 +69,13 @@ test("JWT decodes, verifies live, reads claims and decodes broken segments indep
   await page.reload();
   await expect(page.locator("#token .cm-placeholder")).toBeVisible();
   await expect(page.locator("#token-status")).toContainText("Paste a token");
+  // A payload typed into the empty page starts a new token, with a default header.
+  await page.locator("#secret").fill("a-secret-of-at-least-thirty-two-bytes");
+  await page.getByRole("textbox", { name: "Decoded JWT payload" }).fill('{"sub":"new"}');
+  await expect(page.getByRole("textbox", { name: "Decoded JWT header" })).toContainText(
+    '"typ": "JWT"'
+  );
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
 });
 
 test("JWT signs edited JSON again and follows the algorithm through every signing family", async ({
@@ -105,9 +117,19 @@ test("JWT signs edited JSON again and follows the algorithm through every signin
       `"alg": "${algorithm}"`
     );
     await expect(page.locator("#signature-state")).toHaveText("Signature verified");
-    if (!algorithm.startsWith("HS"))
+    if (algorithm.startsWith("HS"))
+      await expect(page.locator("#secret-check")).toHaveText("Valid secret");
+    else {
       await expect(page.locator("#public-key")).toHaveValue(/BEGIN PUBLIC KEY/);
+      await expect(page.locator("#public-check")).toHaveText("Valid public key");
+      await expect(page.locator("#private-check")).toHaveText("Valid private key");
+    }
   }
+  // Another encoding writes the same secret differently: it still verifies.
+  const text = await page.locator("#secret").inputValue();
+  await page.locator("#secret-format").selectOption("hex");
+  await expect(page.locator("#secret")).toHaveValue(Buffer.from(text).toString("hex"));
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
   await page.locator("#secret-format").selectOption("text");
   await page.locator("#secret").fill("short");
   await page.getByRole("textbox", { name: "Decoded JWT payload" }).fill('{"changed":true}');
@@ -117,9 +139,16 @@ test("JWT signs edited JSON again and follows the algorithm through every signin
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
   await page.locator("#algorithm").selectOption("ES256");
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await page.locator("#private-key").fill(await page.locator("#public-key").inputValue());
+  await expect(page.locator("#private-check")).toHaveText(
+    "This is a public key: signing needs the private one"
+  );
   await page.locator("#private-key").fill("");
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
-  await page.getByRole("textbox", { name: "Decoded JWT header" }).fill('{"alg":"none"}');
+  // Typed, not filled: Firefox's fill can miss text beside the notes CodeMirror draws.
+  await page.getByRole("textbox", { name: "Decoded JWT header" }).click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type('{"alg":"none"}');
   await expect(page.locator("#signature-state")).toHaveText("Unsupported algorithm");
 });
 

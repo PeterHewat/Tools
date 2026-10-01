@@ -5,7 +5,10 @@ import {
   defaultExample,
   encodeJwt,
   generateExample,
+  checkKey,
+  convertSecret,
   generateKey,
+  isPrivateKey,
   JsonError,
   pairFormat,
   secretBytes,
@@ -192,6 +195,22 @@ test("key pairs: generated keys sign, a public key cannot, and the format is rea
   const signature = await signInput(input, pair.key, "pem", "ES256");
   expect(await verifyInput(input, signature, publicJwk, "jwk", "ES256")).toBe(true);
   const secret = await generateKey("HS384");
-  expect(secretBytes(secret.key, secret.format).length).toBe(48);
+  expect(secret.format).toBe("text");
+  expect(secretBytes(secret.key, secret.format).length).toBeGreaterThanOrEqual(48);
   expect(secret.publicKey).toBe("");
+  expect(isPrivateKey(pair.key)).toBe(true);
+  expect(isPrivateKey(pair.publicKey)).toBe(false);
+  expect(isPrivateKey(publicJwk)).toBe(false);
+  await expect(checkKey(pair.publicKey, "pem", "ES384", "verify")).rejects.toThrow(
+    "Not a P-384 EC key"
+  );
+  await expect(checkKey("{", "jwk", "RS256", "verify")).rejects.toThrow("not valid JSON");
+});
+test("changing the encoding rewrites the secret as the same bytes", () => {
+  expect(convertSecret("abc", "text", "base64url")).toBe("YWJj");
+  expect(convertSecret("YWJj", "base64url", "hex")).toBe("616263");
+  expect(convertSecret("616263", "hex", "jwk")).toBe('{"kty":"oct","k":"YWJj"}');
+  expect(convertSecret('{"kty":"oct","k":"YWJj"}', "jwk", "text")).toBe("abc");
+  expect(convertSecret("-_8", "base64url", "base64")).toBe("+/8=");
+  expect(() => convertSecret("-_8", "base64url", "text")).toThrow("not UTF-8");
 });

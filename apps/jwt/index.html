@@ -21,7 +21,7 @@
       </div>
     </header>
     <main class="ui-workbench">
-      <h1>JWT Debugger</h1>
+      <h1>JSON Web Token (JWT) Debugger</h1>
       <p class="ui-intro">
         Paste a token to decode and verify it, or edit its header and payload to sign a new one.
         Tokens and keys never leave this browser.
@@ -31,8 +31,7 @@
           <div class="ui-row">
             <h2 id="token-title">Encoded token</h2>
             <div class="ui-pane-actions">
-              <button type="button" class="ui-btn" id="example">Example</button
-              ><button
+              <button
                 type="button"
                 class="ui-btn ui-icon-btn"
                 id="token-copy"
@@ -51,8 +50,8 @@
           </div>
           <div class="ui-editor" id="token"></div>
           <div class="jwt-status" aria-live="polite">
-            <span class="jwt-state" id="token-state"></span
-            ><span class="jwt-state" id="signature-state"></span
+            <span class="jwt-state" id="token-state" hidden></span
+            ><span class="jwt-state" id="signature-state" hidden></span
             ><span class="jwt-state" id="time-state" hidden></span>
           </div>
           <p class="jwt-note" id="token-status"></p>
@@ -60,9 +59,7 @@
         <div class="jwt-decoded">
           <section class="ui-card" aria-labelledby="header-title">
             <div class="ui-row">
-              <h2 id="header-title">
-                Header <span class="jwt-dot jwt-header" aria-hidden="true"></span>
-              </h2>
+              <h2 id="header-title" class="jwt-title-header">Header</h2>
               <button
                 type="button"
                 class="ui-btn ui-icon-btn"
@@ -77,26 +74,7 @@
           </section>
           <section class="ui-card" aria-labelledby="payload-title">
             <div class="ui-row">
-              <h2 id="payload-title">
-                Payload <span class="jwt-dot jwt-payload" aria-hidden="true"></span>
-              </h2>
-              <div class="ui-seg" role="group" aria-label="Payload view">
-                <button
-                  type="button"
-                  class="ui-btn ui-btn--small"
-                  id="view-json"
-                  aria-pressed="true"
-                >
-                  JSON</button
-                ><button
-                  type="button"
-                  class="ui-btn ui-btn--small"
-                  id="view-claims"
-                  aria-pressed="false"
-                >
-                  Claims
-                </button>
-              </div>
+              <h2 id="payload-title" class="jwt-title-payload">Payload</h2>
               <button
                 type="button"
                 class="ui-btn ui-icon-btn"
@@ -107,14 +85,11 @@
               </button>
             </div>
             <div class="ui-editor" id="payload-editor"></div>
-            <div class="jwt-claims" id="claims" hidden></div>
             <p class="jwt-note" id="payload-status"></p>
           </section>
           <section class="ui-card" aria-labelledby="signature-title">
             <div class="ui-row">
-              <h2 id="signature-title">
-                Signature <span class="jwt-dot jwt-signature" aria-hidden="true"></span>
-              </h2>
+              <h2 id="signature-title" class="jwt-title-signature">Signature</h2>
               <label class="jwt-inline"
                 >Algorithm
                 <select class="ui-input" id="algorithm"></select
@@ -138,6 +113,7 @@
                 autocomplete="off"
                 spellcheck="false"
               ></textarea>
+              <p class="jwt-check" id="secret-check" hidden></p>
             </div>
             <div id="pair-fields" hidden>
               <div class="jwt-field-head">
@@ -151,6 +127,7 @@
                 spellcheck="false"
                 placeholder="-----BEGIN PUBLIC KEY-----"
               ></textarea>
+              <p class="jwt-check" id="public-check" hidden></p>
               <div class="jwt-field-head">
                 <label for="private-key">Private key <span>signs · optional</span></label>
               </div>
@@ -162,6 +139,7 @@
                 spellcheck="false"
                 placeholder="-----BEGIN PRIVATE KEY-----"
               ></textarea>
+              <p class="jwt-check" id="private-check" hidden></p>
             </div>
             <p class="jwt-note" id="key-status"></p>
             <div class="jwt-actions">
@@ -203,16 +181,25 @@
             and signs again; if there is no key for it yet, one is generated.
           </li>
           <li>
-            Red, purple and blue mark the header, payload and signature, in the token and in the
+            Orange, violet and green mark the header, payload and signature, in the token and in the
             panel titles.
           </li>
-          <li>Claims shows the payload as a table, with time claims as local dates.</li>
+          <li>
+            Known header parameters and claims are explained at the end of their line, with
+            <code>exp</code>, <code>nbf</code> and <code>iat</code> as local dates and how long ago
+            or ahead they are. The notes are not part of the JSON: they are not copied or signed.
+            JSON written on one line gets no notes.
+          </li>
+          <li>
+            With the token cleared, typing a payload starts a new token with a default header.
+          </li>
         </ul>
         <h3>Keys</h3>
         <ul>
           <li>
             HS256, HS384 and HS512 use a shared secret, as UTF-8 text, Base64url, Base64, hex or an
-            oct JWK. Signing needs at least 32, 48 or 64 bytes; verifying accepts any length.
+            oct JWK. Changing the encoding rewrites the secret in it, so the key stays the same.
+            Signing needs at least 32, 48 or 64 bytes; verifying accepts any length.
           </li>
           <li>
             RS, PS, ES and EdDSA verify with the public key and sign with the private key, each as
@@ -220,8 +207,10 @@
             used to verify.
           </li>
           <li>
-            Generate key makes a fresh secret or key pair for the algorithm and signs the token with
-            it. Sign token signs the current header and payload with the key as it is.
+            Under each key, a line says whether it is a valid secret, public key or private key for
+            the algorithm. Generate key makes a fresh random secret (as text) or key pair for the
+            algorithm and signs the token with it. Sign token signs the current header and payload
+            with the key as it is.
           </li>
         </ul>
         <h3>What the checks mean</h3>

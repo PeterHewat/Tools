@@ -1,4 +1,4 @@
-import { decodeBytes, fromBase64, toBase64, utf8, webCrypto } from "@tools/bytes";
+import { decodeBytes, encodeBytes, fromBase64, toBase64, utf8, webCrypto } from "@tools/bytes";
 import type { ByteFormat } from "@tools/bytes";
 import { parse, printJson } from "@tools/json-core";
 
@@ -66,6 +66,32 @@ export function secretBytes(value: string, format: KeyFormat): Uint8Array<ArrayB
   }
   return decodeBytes(value, format);
 }
+/** The same secret bytes written in another encoding, so changing the encoding keeps the key. */
+export function convertSecret(value: string, from: KeyFormat, to: KeyFormat): string {
+  const bytes = secretBytes(value, from);
+  if (to === "jwk") return JSON.stringify({ kty: "oct", k: toBase64(bytes, true) });
+  if (to === "pem") throw new Error("HMAC needs a shared secret, not a PEM key.");
+  try {
+    return encodeBytes(bytes, to);
+  } catch {
+    throw new Error("The secret's bytes are not UTF-8 text.");
+  }
+}
+/** A private key, as PEM or as a JWK with its private part. */
+export function isPrivateKey(value: string): boolean {
+  if (pairFormat(value) === "pem") return value.includes("-----BEGIN PRIVATE KEY-----");
+  try {
+    return "d" in (JSON.parse(value) as JsonWebKey);
+  } catch {
+    return false;
+  }
+}
+/** The kind of key pair an algorithm needs, as messages name it. */
+function keyKind(algorithm: SigningAlgorithm): string {
+  if (algorithm.startsWith("RS") || algorithm.startsWith("PS")) return "an RSA";
+  if (algorithm === "EdDSA") return "an Ed25519";
+  return "a " + (parameters(algorithm).key as EcKeyImportParams).namedCurve + " EC";
+}
 async function importSigningKey(
   value: string,
   format: KeyFormat,
@@ -120,6 +146,37 @@ async function importSigningKey(
     );
   return imported;
 }
+/** Imports a key for the algorithm, or says plainly why it does not fit. */
+export async function checkKey(
+  value: string,
+  format: KeyFormat,
+  algorithm: SigningAlgorithm,
+  usage: "sign" | "verify"
+): Promise<CryptoKey> {
+  let key: CryptoKey;
+  try {
+    key = await importSigningKey(value, format, algorithm, usage);
+  } catch (error) {
+    if (error instanceof SyntaxError)
+      throw new Error("The JWK is not valid JSON.", { cause: error });
+    if (error instanceof DOMException)
+      throw new Error(
+        algorithm.startsWith("HS")
+          ? "The secret cannot be used for HMAC."
+          : `Not ${keyKind(algorithm)} key, as ${algorithm} needs.`,
+        { cause: error }
+      );
+    throw error;
+  }
+  if (
+    usage === "sign" &&
+    "modulusLength" in key.algorithm &&
+    typeof key.algorithm.modulusLength === "number" &&
+    key.algorithm.modulusLength < 2048
+  )
+    throw new Error("Signing requires an RSA key of at least 2048 bits.");
+  return key;
+}
 export async function signInput(
   input: string,
   value: string,
@@ -133,13 +190,7 @@ export async function signInput(
     throw new Error(
       "Signing requires a shared secret of at least " + Number(algorithm.slice(2)) / 8 + " bytes."
     );
-  const key = await importSigningKey(value, format, algorithm, "sign");
-  if (
-    "modulusLength" in key.algorithm &&
-    typeof key.algorithm.modulusLength === "number" &&
-    key.algorithm.modulusLength < 2048
-  )
-    throw new Error("Signing requires an RSA key of at least 2048 bits.");
+  const key = await checkKey(value, format, algorithm, "sign");
   return new Uint8Array(await webCrypto().sign(parameters(algorithm).operation, key, utf8(input)));
 }
 export async function verifyInput(
@@ -151,7 +202,7 @@ export async function verifyInput(
 ): Promise<boolean> {
   return webCrypto().verify(
     parameters(algorithm).operation,
-    await importSigningKey(value, format, algorithm, "verify"),
+    await checkKey(value, format, algorithm, "verify"),
     signature,
     utf8(input)
   );
@@ -252,8 +303,10 @@ export async function generateKey(algorithm: SigningAlgorithm): Promise<Generate
     publicKey = "",
     format: KeyFormat;
   if (algorithm.startsWith("HS")) {
+    // Random bytes written as Base64url and used as text: a secret anyone can read, type or
+    // paste, longer than the algorithm's minimum.
     key = toBase64(crypto.getRandomValues(new Uint8Array(Number(algorithm.slice(2)) / 8)), true);
-    format = "base64url";
+    format = "text";
   } else {
     const params = parameters(algorithm).key;
     const generation =

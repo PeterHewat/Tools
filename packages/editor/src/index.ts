@@ -97,6 +97,17 @@ export interface Mark {
   current?: boolean;
 }
 
+/**
+ * A remark shown after the text at an offset, such as what a JSON member means. It is not part
+ * of the text: never edited, selected or copied with it.
+ */
+export interface Note {
+  at: number;
+  text: string;
+  /** Added to `cm-note`, as `cm-note-warn` is. */
+  class?: string;
+}
+
 export interface EditorError {
   /** Where the problem is. */
   from: number;
@@ -165,6 +176,7 @@ export interface Editor {
   focus(): void;
   setMarks(marks: readonly Mark[]): void;
   setHighlights(highlights: readonly Highlight[]): void;
+  setNotes(notes: readonly Note[]): void;
   setError(error: EditorError | null): void;
   setColours(colours: Colours): void;
   setReadOnly(readOnly: boolean): void;
@@ -239,6 +251,38 @@ const highlights = decorationField<readonly Highlight[]>((list, state) => {
   }
   return Decoration.set(ranges, true);
 });
+
+class NoteWidget extends WidgetType {
+  constructor(
+    readonly text: string,
+    readonly className: string
+  ) {
+    super();
+  }
+  override eq(other: NoteWidget) {
+    return other.text === this.text && other.className === this.className;
+  }
+  toDOM() {
+    const span = document.createElement("span");
+    span.className = this.className ? `cm-note ${this.className}` : "cm-note";
+    span.textContent = this.text;
+    return span;
+  }
+}
+
+const notes = decorationField<readonly Note[]>((list, state) =>
+  Decoration.set(
+    list
+      .filter((note) => note.at >= 0 && note.at <= state.doc.length)
+      .map((note) =>
+        Decoration.widget({
+          widget: new NoteWidget(note.text, note.class ?? ""),
+          side: 1,
+        }).range(note.at)
+      ),
+    true
+  )
+);
 
 interface PlacedError {
   from: number;
@@ -505,6 +549,7 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     expandExtension,
     marks.field,
     highlights.field,
+    notes.field,
     errorField,
     siteTheme,
     language.of(languageExtension(languageChoice, text.length)),
@@ -643,6 +688,10 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
 
     setHighlights(list) {
       view.dispatch({ effects: highlights.set.of(list) });
+    },
+
+    setNotes(list) {
+      view.dispatch({ effects: notes.set.of(list) });
     },
 
     setError(error) {

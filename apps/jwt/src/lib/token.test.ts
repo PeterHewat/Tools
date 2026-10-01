@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { hmac, toBase64, utf8 } from "@tools/bytes";
-import { claimRows, claimTimes, decodeToken, verifyToken } from "./token.js";
+import { claimTimes, memberNotes, decodeToken, verifyToken } from "./token.js";
 
 test("JWT inspection preserves exact numbers, escapes and key order", () => {
   const payload = '{"id":9223372036854775807,"decimal":1.0,"overflow":1e400,"name":"\\u0061"}';
@@ -50,18 +50,48 @@ test("NumericDate boundaries, invalid claims and fractional seconds", () => {
   expect(claimTimes({ exp: 100.5 }, 100)[0].date).toBe("1970-01-01T00:01:40.500Z");
 });
 
-test("claim rows keep token order and exact values, and read time claims", () => {
-  const rows = claimRows(
-    { sub: "x", exp: 1000, custom: 1, iat: "soon" },
-    { sub: '"x"', exp: "1000", custom: "1.0", iat: '"soon"' },
-    100
+test("notes explain known members at the end of their line, with times read as dates", () => {
+  const date = (seconds: number) => "@" + seconds;
+  const payload = [
+    "{",
+    '  "sub": "x",',
+    '  "exp": 1000,',
+    '  "custom": 1,',
+    '  "aud": [',
+    '    "a"',
+    "  ],",
+    '  "iat": "soon"',
+    "}",
+  ].join("\n");
+  const notes = memberNotes(payload, "payload", date, 100);
+  expect(notes.map((note) => payload.slice(0, note.at).split("\n").pop())).toEqual([
+    '  "sub": "x",',
+    '  "exp": 1000,',
+    '  "aud": [',
+    '  "iat": "soon"',
+  ]);
+  expect(notes.map((note) => note.text)).toEqual([
+    "Subject",
+    "Expiration time · @1000 (expires in 15 min)",
+    "Audience",
+    "Issued at · not a NumericDate (Unix seconds)",
+  ]);
+  expect(notes.map((note) => note.problem)).toEqual([false, false, false, true]);
+  expect(memberNotes('{\n  "exp": 1\n}', "payload", date, 100)[0]).toMatchObject({
+    text: "Expiration time · @1 (expired 1 min ago)",
+    problem: true,
+  });
+  const header = memberNotes('{\n  "alg": "HS256",\n  "typ": "JWT",\n  "x": 1\n}', "header", date);
+  expect(header.map((note) => note.text)).toEqual(["Algorithm: HMAC with SHA-256", "Token type"]);
+  expect(memberNotes('{\n  "alg": "XY1"\n}', "header", date)[0].text).toBe(
+    "Algorithm: not one this tool knows"
   );
-  expect(rows.map((row) => row.claim)).toEqual(["sub", "exp", "custom", "iat"]);
-  expect(rows[0]).toEqual({ claim: "sub", value: '"x"', label: "Subject" });
-  expect(rows[1]).toMatchObject({ time: 1000, relative: "Expires in 15 min", problem: false });
-  expect(rows[2]).toEqual({ claim: "custom", value: "1.0" });
-  expect(rows[3].time).toBeUndefined();
-  expect(rows[3].problem).toBe(true);
+  // Several members on one line, or JSON that does not parse, get no notes.
+  expect(memberNotes('{"sub":"x","exp":1}', "payload", date)).toEqual([]);
+  expect(memberNotes('{"sub":', "payload", date)).toEqual([]);
+  expect(memberNotes('{\n  "iat": 40\n}', "payload", date, 100)[0].text).toBe(
+    "Issued at · @40 (1 min ago)"
+  );
   expect(claimTimes({ exp: 0 }, 3 * 365.25 * 86400)[0].description).toBe("Expired 3 years ago");
   expect(claimTimes({ exp: 0 }, 10 * 86400)[0].description).toBe("Expired 10 days ago");
 });

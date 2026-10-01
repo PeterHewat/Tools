@@ -6,21 +6,22 @@ import {
   copyText,
   readDraft,
   registerServiceWorker,
-  setPressed,
   showMessage,
   writeDraft,
 } from "@tools/ui";
-import { claimRows, claimTimes } from "./lib/token.js";
+import { claimTimes, memberNotes } from "./lib/token.js";
 import { inspectJwt } from "./lib/inspect.js";
 import type { Inspection, InspectedPart } from "./lib/inspect.js";
 import {
   ALGORITHMS,
   JsonError,
+  checkKey,
+  convertSecret,
   defaultExample,
   encodeJwt,
-  generateExample,
   generateKey,
   isAlgorithm,
+  isPrivateKey,
   pairFormat,
   secretBytes,
   signInput,
@@ -63,7 +64,8 @@ const publicKey = byId<HTMLTextAreaElement>("public-key");
 const privateKey = byId<HTMLTextAreaElement>("private-key");
 /** Keys this page made are disposable: choosing another algorithm may replace them. */
 const generated = { secret: false, pair: false };
-let view: "json" | "claims" = "json";
+/** The encoding the secret is written in, so changing it can rewrite the secret. */
+let secretEncoding: KeyFormat = "text";
 let revision = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -132,7 +134,7 @@ const blank = (alg: SigningAlgorithm, value: string): boolean =>
 function useKey(key: GeneratedKey, alg: SigningAlgorithm): void {
   if (isHmac(alg)) {
     secret.value = key.key;
-    secretFormat.value = key.format;
+    secretFormat.value = secretEncoding = key.format;
     generated.secret = true;
   } else {
     privateKey.value = key.key;
@@ -171,7 +173,7 @@ function decorateToken(inspection: Inspection): void {
   if (!text.trim()) {
     state("token-state", "");
     state("time-state", "");
-    note("token-status", "Paste a token, or press Example for a signed one.");
+    note("token-status", "Paste a token, or type a payload to start a new one.");
     return;
   }
   state(
@@ -224,89 +226,72 @@ const dateFormat = new Intl.DateTimeFormat(undefined, {
   second: "2-digit",
   timeZoneName: "short",
 });
-function renderClaims(part: InspectedPart): void {
-  const claims = byId("claims");
-  if (view !== "claims") return;
-  if (!part.object || !part.raw) {
-    const empty = document.createElement("p");
-    empty.className = "jwt-claims-empty";
-    empty.textContent = payload.text.trim()
-      ? "The payload is not valid JSON, so its claims cannot be listed."
-      : "No payload.";
-    claims.replaceChildren(empty);
-    return;
-  }
-  const table = document.createElement("table");
-  const head = table.createTHead().insertRow();
-  for (const title of ["Claim", "Value"]) {
-    const cell = document.createElement("th");
-    cell.scope = "col";
-    cell.textContent = title;
-    head.append(cell);
-  }
-  const body = table.createTBody();
-  for (const row of claimRows(part.object, part.raw)) {
-    const line = body.insertRow();
-    const name = document.createElement("th");
-    name.scope = "row";
-    const code = document.createElement("code");
-    code.textContent = row.claim;
-    name.append(code);
-    if (row.label) {
-      const label = document.createElement("span");
-      label.textContent = row.label;
-      name.append(label);
-    }
-    const value = line.insertCell();
-    const raw = document.createElement("code");
-    raw.textContent = row.value;
-    value.append(raw);
-    if (row.relative) {
-      const when = document.createElement("span");
-      when.dataset.problem = String(Boolean(row.problem));
-      if (row.time === undefined) when.textContent = row.relative;
-      else {
-        const date = new Date(row.time * 1000);
-        when.textContent = dateFormat.format(date) + " · " + row.relative;
-        when.title = date.toISOString();
-      }
-      value.append(when);
-    }
-    line.prepend(name);
-  }
-  if (!body.rows.length) {
-    const empty = document.createElement("p");
-    empty.className = "jwt-claims-empty";
-    empty.textContent = "The payload has no claims.";
-    claims.replaceChildren(empty);
-  } else claims.replaceChildren(table);
-}
-function setView(next: "json" | "claims"): void {
-  view = next;
-  setPressed(byId("view-json"), view === "json");
-  setPressed(byId("view-claims"), view === "claims");
-  byId("payload-editor").hidden = view !== "json";
-  byId("claims").hidden = view !== "claims";
-  renderClaims(readJson(payload));
+/** Says beside each known member what it means, with time claims as local dates. */
+function annotate(): void {
+  const format = (seconds: number) => dateFormat.format(new Date(seconds * 1000));
+  for (const [editor, part] of [
+    [header, "header"],
+    [payload, "payload"],
+  ] as const)
+    editor.setNotes(
+      memberNotes(editor.text, part, format).map((member) => ({
+        at: member.at,
+        text: member.text,
+        ...(member.problem ? { class: "cm-note-warn" } : {}),
+      }))
+    );
 }
 
-function keyNote(): void {
+const lowerFirst = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
+/** Under the secret: valid, too short to sign, or unreadable in its encoding. */
+function checkSecret(): void {
   const alg = selected();
-  if (!alg || !isHmac(alg)) return note("key-status", "");
+  if (!alg || !isHmac(alg) || secret.value === "") return state("secret-check", "");
   try {
     const length = secretBytes(secret.value, secretFormat.value as KeyFormat).length,
       needed = Number(alg.slice(2)) / 8;
-    note(
-      "key-status",
-      !length
-        ? ""
-        : length < needed
-          ? `${length} bytes · enough to verify, but signing ${alg} needs at least ${needed}.`
-          : `${length} bytes.`
-    );
+    if (length >= needed) state("secret-check", "Valid secret", "ok");
+    else
+      state(
+        "secret-check",
+        `Too short to sign ${alg}: ${length} of ${needed} bytes. It can still verify.`,
+        "warn"
+      );
   } catch (error) {
-    note("key-status", (error as Error).message, true);
+    state("secret-check", "Invalid secret: " + lowerFirst((error as Error).message), "error");
   }
+}
+/** Under each half of a key pair: whether it fits the algorithm for what that field does. */
+async function checkPair(
+  alg: SigningAlgorithm | undefined
+): Promise<[id: string, text: string, kind: State][]> {
+  const checks: [string, string, State][] = [];
+  for (const [id, field, usage] of [
+    ["public-check", publicKey, "verify"],
+    ["private-check", privateKey, "sign"],
+  ] as const) {
+    const value = field.value;
+    if (!alg || isHmac(alg) || !value.trim()) {
+      checks.push([id, "", ""]);
+      continue;
+    }
+    try {
+      await checkKey(value, pairFormat(value), alg, usage);
+      checks.push([id, isPrivateKey(value) ? "Valid private key" : "Valid public key", "ok"]);
+    } catch (error) {
+      const message = (error as Error).message;
+      checks.push(
+        usage === "sign" && message === "Signing needs a private key."
+          ? [id, "This is a public key: signing needs the private one", "error"]
+          : [
+              id,
+              `Invalid ${usage === "sign" ? "private" : "public"} key: ${lowerFirst(message)}`,
+              "error",
+            ]
+      );
+    }
+  }
+  return checks;
 }
 
 // ---------- Following edits ----------
@@ -320,17 +305,20 @@ function fromToken(): void {
   partNote("payload-status", payload, inspection.payload);
   if (inspection.header.object) showAlg(inspection.header.object.alg);
   decorateToken(inspection);
-  renderClaims(inspection.payload);
+  annotate();
   settle(false);
 }
 /** The header or payload was edited: the token is rebuilt from them and signed again. */
 function fromJson(): void {
+  // A payload typed with no header starts a new token, with the selected algorithm.
+  if (!header.text.trim() && payload.text.trim())
+    header.setText(JSON.stringify({ alg: selected() ?? "HS256", typ: "JWT" }, null, 2), "sync");
   const head = readJson(header),
     body = readJson(payload);
   partNote("header-status", header, head);
   partNote("payload-status", payload, body);
   if (head.object) showAlg(head.object.alg);
-  renderClaims(body);
+  annotate();
   settle(true);
 }
 
@@ -338,7 +326,8 @@ function fromJson(): void {
 function settle(resign: boolean): void {
   const version = ++revision;
   clearTimeout(timer);
-  keyNote();
+  checkSecret();
+  note("key-status", "");
   save();
   timer = setTimeout(() => void run(version, resign), 120);
 }
@@ -348,9 +337,10 @@ async function run(version: number, resign: boolean): Promise<void> {
   if (version !== revision) return;
   const inspection = inspectJwt(token.text);
   if (resign) decorateToken(inspection);
-  const result = await verify(inspection);
+  const [result, checks] = await Promise.all([verify(inspection), checkPair(selected())]);
   if (version !== revision) return;
   state("signature-state", result.text, result.state);
+  for (const [id, text, kind] of checks) state(id, text, kind);
   if (signNote || result.note)
     note("key-status", signNote || result.note!, Boolean(signNote) || result.state === "error");
   save();
@@ -444,7 +434,6 @@ function save(): void {
       publicKey: publicKey.value,
       privateKey: privateKey.value,
       generated,
-      view,
     })
   )
     note(
@@ -460,7 +449,26 @@ secret.addEventListener("input", () => {
   generated.secret = false;
   settle(false);
 });
-secretFormat.addEventListener("change", () => settle(false));
+/** The same secret, written in the newly chosen encoding; it stays as typed if it was unreadable. */
+secretFormat.addEventListener("change", () => {
+  const to = secretFormat.value as KeyFormat;
+  let readable = true;
+  try {
+    secretBytes(secret.value, secretEncoding);
+  } catch {
+    readable = false;
+  }
+  if (readable && secret.value !== "")
+    try {
+      secret.value = convertSecret(secret.value, secretEncoding, to);
+    } catch (error) {
+      secretFormat.value = secretEncoding;
+      note("key-status", (error as Error).message + " The encoding stays as it was.", true);
+      return;
+    }
+  secretEncoding = to;
+  settle(false);
+});
 for (const field of [publicKey, privateKey])
   field.addEventListener("input", () => {
     generated.pair = false;
@@ -508,24 +516,19 @@ keyButton.addEventListener("click", async () => {
 });
 byId("sign").addEventListener("click", fromJson);
 
-const exampleButton = byId<HTMLButtonElement>("example");
-async function loadExample(initial = false): Promise<void> {
+/** A new tab starts with a signed sample, so every panel shows what it is for. */
+async function loadSample(): Promise<void> {
   const version = ++revision;
-  exampleButton.disabled = true;
   try {
-    const alg = selected() ?? "HS256";
-    const example = initial ? await defaultExample() : await generateExample(alg);
+    const sample = await defaultExample();
     if (version !== revision) return;
-    useKey(example, initial ? "HS256" : alg);
-    token.setText(example.token, "new");
+    useKey(sample, "HS256");
+    token.setText(sample.token, "new");
     fromToken();
   } catch (error) {
     if (version === revision) note("token-status", (error as Error).message, true);
-  } finally {
-    exampleButton.disabled = false;
   }
 }
-exampleButton.addEventListener("click", () => void loadExample());
 
 byId("token-clear").addEventListener("click", () => {
   token.setText("", "edit");
@@ -541,15 +544,6 @@ for (const [id, text] of [
     if (!(await copyText(text(), byId(id))))
       note("token-status", "Clipboard unavailable. Select and copy the text.", true);
   });
-byId("view-json").addEventListener("click", () => {
-  setView("json");
-  save();
-});
-byId("view-claims").addEventListener("click", () => {
-  setView("claims");
-  save();
-});
-
 // ---------- Start ----------
 
 if (draft.error) {
@@ -566,7 +560,7 @@ if (draft.error) {
   publicKey.value = text("publicKey");
   privateKey.value = text("privateKey");
   if ([...secretFormat.options].some((option) => option.value === value.secretFormat))
-    secretFormat.value = value.secretFormat as string;
+    secretFormat.value = secretEncoding = value.secretFormat as KeyFormat;
   const flags = value.generated as Partial<typeof generated> | undefined;
   generated.secret = flags?.secret === true;
   generated.pair = flags?.pair === true;
@@ -575,9 +569,9 @@ if (draft.error) {
   partNote("header-status", header, head);
   partNote("payload-status", payload, readJson(payload));
   decorateToken(inspectJwt(token.text));
-  setView(value.view === "claims" ? "claims" : "json");
+  annotate();
   settle(false);
 } else {
   showAlg("HS256");
-  void loadExample(true);
+  void loadSample();
 }
