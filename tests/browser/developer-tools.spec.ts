@@ -336,7 +336,8 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
           const css = getComputedStyle(child);
           return (
             sum +
-            child.getBoundingClientRect().width +
+            // The name in full takes only the room to spare: cut short, it needs none.
+            (child.matches(".ui-app-title") ? 0 : child.getBoundingClientRect().width) +
             (child.classList.contains("ui-header-end") ? 0 : parseFloat(css.marginLeft)) +
             parseFloat(css.marginRight)
           );
@@ -418,6 +419,7 @@ test("catalog links, install shortcuts and offline cache contain all four tools"
   await context.setOffline(true);
   for (const slug of ["jwt", "codec", "codes", "digests"]) {
     await page.goto(`/Tools/${slug}/`);
-    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.locator(".ui-app-name")).toHaveText(findApp(slug)!.name);
+    await expect(page.locator("main")).toBeVisible();
   }
 });

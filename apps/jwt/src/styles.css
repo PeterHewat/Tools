@@ -121,14 +121,30 @@
   font-size: 12px;
   line-height: 1;
 }
-.jwt-state[data-state="ok"]::before {
-  content: "✓";
-}
-.jwt-state[data-state="error"]::before {
-  content: "✕";
-}
 .jwt-state[data-state="warn"]::before {
   content: "!";
+}
+
+/*
+ * The tick and cross beside a verdict, drawn in the text's colour. A mask rather than the
+ * characters: the stylesheet stays ASCII, so a server that sends it without a charset cannot
+ * turn them into mojibake.
+ */
+:is(.jwt-state, .jwt-check)[data-state="ok"] {
+  --jwt-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 12.5 9.5 17.5 19.5 6.5'/%3E%3C/svg%3E");
+}
+:is(.jwt-state, .jwt-check)[data-state="error"] {
+  --jwt-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E");
+}
+:is(.jwt-state, .jwt-check):is([data-state="ok"], [data-state="error"])::before {
+  content: "";
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  vertical-align: -0.05em;
+  background: currentColor;
+  -webkit-mask: var(--jwt-mark) center / contain no-repeat;
+  mask: var(--jwt-mark) center / contain no-repeat;
 }
 
 /* One quiet line under each panel: a problem in red, otherwise a hint. */
@@ -208,14 +224,11 @@
 .jwt-check[data-state="error"] {
   color: var(--danger);
 }
-.jwt-check[data-state="ok"]::before {
-  content: "✓ ";
+.jwt-check::before {
+  margin-right: 0.35em;
 }
 .jwt-check[data-state="warn"]::before {
-  content: "! ";
-}
-.jwt-check[data-state="error"]::before {
-  content: "✕ ";
+  content: "!";
 }
 
 @media (max-width: 760px) {

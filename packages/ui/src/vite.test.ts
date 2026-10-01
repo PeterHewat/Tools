@@ -119,6 +119,13 @@ describe("app header", () => {
     );
   });
 
+  test("an abbreviated name is followed by the name in full, outside the heading", () => {
+    expect(headerStartHtml({ ...json, title: "JavaScript Object Notation" })).toContain(
+      '<h1 class="ui-app-name">JSON</h1><span class="ui-app-title">JavaScript Object Notation</span>'
+    );
+    expect(headerStartHtml(svg)).not.toContain("ui-app-title");
+  });
+
   test("the marker is found among other attributes", () => {
     const html = withHeaderStart(page('<header class="x" data-tools-header role="toolbar">'), svg);
     expect(html).toContain('role="toolbar"><a class="ui-home"');

@@ -13,6 +13,11 @@ export interface ToolsApp {
   readonly slug: string;
   /** Display name. */
   readonly name: string;
+  /**
+   * What the app is in full, beside its name in the header ("JWT  JSON Web Token Debugger") when
+   * the name alone is an abbreviation. Cut short, then hidden, as the header narrows.
+   */
+  readonly title?: string;
   /** One line, shown on the index card and used as the meta description. */
   readonly blurb: string;
   /** Longer description for the app's own page head. Falls back to `blurb`. */
@@ -47,7 +52,7 @@ export const APPS: readonly ToolsApp[] = [
     description:
       "A single-page SVG tracing editor. Place reference images, draw over them with a Bézier pen and standard shapes, then export pure SVG with no raster embedded.",
     icon: "M6 18.5c3-10 6-13 8-13s2 3 0 6-5 4-7 4 8 1 11-4",
-    tags: ["svg", "vector", "drawing", "tracing"],
+    tags: ["svg", "vector", "drawing", "tracing", "design"],
     art: true,
     compactHeader: 665,
     jsBudget: { entryGzip: 80, totalGzip: 210 },
@@ -70,13 +75,14 @@ export const APPS: readonly ToolsApp[] = [
   {
     slug: "jwt",
     name: "JWT",
+    title: "JSON Web Token Debugger",
     blurb: "Decode, encode and verify JSON Web Tokens with HMAC, RSA, ECDSA and Ed25519.",
     icon: "M4 7h16v10H4zM8 7v10m8-10v10M6 4h12M6 20h12",
     tags: ["jwt", "token", "decode", "encode", "verify", "developer"],
     art: true,
-    compactHeader: 255,
+    compactHeader: 217,
     jsBudget: { entryGzip: 140, totalGzip: 140 },
-    status: "beta",
+    status: "stable",
     listed: true,
   },
   {
@@ -98,7 +104,7 @@ export const APPS: readonly ToolsApp[] = [
     blurb:
       "Create QR codes and Code 128, EAN-13 or UPC-A barcodes, with sized SVG and PNG exports.",
     icon: "M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h3v3h3v3h-6zM12 3v9H3m9 3v6m3-9h6",
-    tags: ["qr", "barcode", "wifi", "svg", "png"],
+    tags: ["qr", "barcode", "wifi", "svg", "png", "print"],
     art: true,
     compactHeader: 268,
     jsBudget: { entryGzip: 9, totalGzip: 9 },

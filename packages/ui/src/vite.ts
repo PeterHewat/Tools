@@ -260,7 +260,7 @@ function compactHeaderTag(app: ToolsApp): HtmlTagDescriptor {
     `@media (width < ${width + 1}px) {`,
     "[data-tools-header] .ui-home { justify-content: center; min-width: 36px; padding: 0; }",
     "[data-tools-header] .ui-home::before { margin-left: 4px; }",
-    "[data-tools-header] :is(.ui-home-label, .ui-app-name, .ui-app-status) {",
+    "[data-tools-header] :is(.ui-home-label, .ui-app-name, .ui-app-status, .ui-app-title) {",
     "  position: absolute; width: 1px; height: 1px; overflow: hidden;",
     "  clip-path: inset(50%); white-space: nowrap;",
     "}",
@@ -308,8 +308,8 @@ export function escapeHtml(s: string): string {
 }
 
 /**
- * How every app's header starts: back to the index, the app's name, and its status while it is
- * not stable. Styled by `@tools/ui/header.css`. They are direct children of the header, so an
+ * How every app's header starts: back to the index, the app's name, its status while it is not
+ * stable, and its name in full when the catalog gives one. Styled by `@tools/ui/header.css`. They are direct children of the header, so an
  * app's own layout (a phone's floating buttons, say) can place each of them.
  */
 export function headerStartHtml(app: ToolsApp): string {
@@ -317,11 +317,13 @@ export function headerStartHtml(app: ToolsApp): string {
     app.status === "stable"
       ? ""
       : `<span class="ui-app-status ui-app-status--${app.status}">${app.status}</span>`;
+  const title = app.title ? `<span class="ui-app-title">${escapeHtml(app.title)}</span>` : "";
   return (
     `<a class="ui-home" href="../" title="All ${escapeHtml(SITE.name.toLowerCase())}">` +
     `<span class="ui-home-label">${escapeHtml(SITE.name)}</span></a>` +
     `<h1 class="ui-app-name">${escapeHtml(app.name)}</h1>` +
-    status
+    status +
+    title
   );
 }
 

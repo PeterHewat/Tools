@@ -107,6 +107,19 @@
   border-color: color-mix(in srgb, var(--violet, #c98fe0) 40%, transparent);
 }
 
+/* The name in full, when the name is an abbreviation (catalog `title`). It takes only the room
+   the header has spare, so it is cut short rather than wrapping the row, and it is hidden with
+   the name on a narrow screen. */
+.ui-app-title {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted, currentColor);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* What sits at the far end - the theme switch, Help - kept together, and wrapping together. */
 .ui-header-end {
   display: inline-flex;
