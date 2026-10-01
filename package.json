@@ -28,7 +28,8 @@
     "format:fix": "prettier --write .",
     "typecheck": "tsc -p . && bun run --filter '*' typecheck",
     "check": "bun run lint && bun run typecheck && bun run format",
-    "test": "bun run --filter '*' test",
+    "test": "bun run --filter '*' test && bun test scripts/bundle-budget.test.ts",
+    "test:browser": "bunx playwright test --config scripts/playwright.config.ts",
     "verify": "bun run check && bun run test && bun run build",
     "new-app": "bun scripts/new-app.ts",
     "outdated": "bun outdated -r",
@@ -43,7 +44,9 @@
     "*.{json,md,yml,yaml,css,html}": "prettier --write"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
     "@tools/ui": "workspace:*",
     "@types/bun": "^1.4.2",
     "eslint": "^10.11.0",

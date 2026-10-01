@@ -63,14 +63,15 @@ editing code, reached only through `packages/editor`
 
 ## Commands
 
-| Command              | What it does                         |
-| -------------------- | ------------------------------------ |
-| `bun run dev [slug]` | Serve the whole site with hot reload |
-| `bun run check`      | Lint, typecheck and format check     |
-| `bun run test`       | Run the test suites                  |
-| `bun run build`      | Build the whole site into `dist/`    |
-| `bun run verify`     | `check` + `test` + `build`           |
-| `bun run new-app`    | Scaffold a new app                   |
+| Command                | What it does                                       |
+| ---------------------- | -------------------------------------------------- |
+| `bun run dev [slug]`   | Serve the whole site with hot reload               |
+| `bun run check`        | Lint, typecheck and format check                   |
+| `bun run test`         | Run the test suites                                |
+| `bun run test:browser` | Check the production build in Chromium and Firefox |
+| `bun run build`        | Build the whole site into `dist/`                  |
+| `bun run verify`       | `check` + `test` + `build`                         |
+| `bun run new-app`      | Scaffold a new app                                 |
 
 ## Contributing
 

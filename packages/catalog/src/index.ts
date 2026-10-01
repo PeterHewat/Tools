@@ -31,6 +31,8 @@ export interface ToolsApp {
    * 720 when not given.
    */
   readonly compactHeader?: number;
+  /** Production JavaScript gzip budgets in KiB; entry includes static module preloads. */
+  readonly jsBudget?: { readonly entryGzip: number; readonly totalGzip: number };
   readonly status: AppStatus;
   /** Hidden from the index while false. Still built. */
   readonly listed: boolean;
@@ -48,6 +50,7 @@ export const APPS: readonly ToolsApp[] = [
     tags: ["svg", "vector", "drawing", "tracing"],
     art: true,
     compactHeader: 665,
+    jsBudget: { entryGzip: 80, totalGzip: 210 },
     status: "stable",
     listed: true,
   },
@@ -60,6 +63,7 @@ export const APPS: readonly ToolsApp[] = [
     tags: ["json", "format", "validate", "fold", "convert", "developer"],
     art: true,
     compactHeader: 730,
+    jsBudget: { entryGzip: 150, totalGzip: 150 },
     status: "stable",
     listed: true,
   },

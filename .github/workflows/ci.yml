@@ -28,3 +28,5 @@ jobs:
       - run: bun run format
       - run: bun run test
       - run: bun run build
+      - run: bunx playwright install --with-deps chromium firefox
+      - run: bun run test:browser
