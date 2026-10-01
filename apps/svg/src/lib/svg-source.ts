@@ -8,6 +8,8 @@ let loaded: SourceEditor | null = null;
 let loading: Promise<void> | null = null;
 let focus: { id: string; field: string } | null = null;
 let held = false;
+/** A failed load waits for the Retry button instead of trying again on every change. */
+let failed = false;
 const host = byId("svg-editor");
 
 function visible(): boolean {
@@ -15,7 +17,7 @@ function visible(): boolean {
 }
 
 function load(): void {
-  if (loaded || loading || !visible()) return;
+  if (loaded || loading || failed || !visible()) return;
   host.setAttribute("aria-busy", "true");
   loading = import("./svg-source-editor.js")
     .then((source) => {
@@ -25,12 +27,14 @@ function load(): void {
       source.setSvgFocus(focus);
     })
     .catch(() => {
+      failed = true;
       const retry = document.createElement("button");
       retry.type = "button";
       retry.className = "ui-btn";
       retry.textContent = "Could not load SVG source. Retry";
       retry.addEventListener("click", () => {
         retry.remove();
+        failed = false;
         load();
       });
       host.replaceChildren(retry);
