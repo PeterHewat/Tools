@@ -562,6 +562,7 @@ function showLayout(text: string): void {
 }
 
 function rewrite(minify: boolean): void {
+  if (stale) validate();
   if (!currentAnalysis.doc) return;
   replaceText(
     printJson(currentAnalysis.doc.root, { indent: minify ? 0 : indent(), sortKeys: isOn(sortKeys) })
@@ -570,6 +571,7 @@ function rewrite(minify: boolean): void {
 
 /** Makes almost-JSON strict in place, keeping the layout: only the offending bits change. */
 function fix(): void {
+  if (stale) validate();
   if (currentAnalysis.fault?.edits)
     replaceText(applyEdits(documentText(), currentAnalysis.fault.edits));
 }
@@ -627,6 +629,7 @@ function fitPath(): void {
 // ---------- Views ----------
 
 function setMode(next: ViewMode): void {
+  if (stale) validate();
   mode = next;
   codeEl.classList.toggle("hidden", mode !== "json");
   for (const b of viewButtons) setPressed(b, b.dataset.view === mode);
