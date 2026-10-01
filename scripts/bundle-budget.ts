@@ -15,9 +15,9 @@ export function checkJsBudget(
   if (!html) throw new Error(`${label}: missing index.html`);
   const text = new TextDecoder().decode(html.bytes);
   const initial = new Set<string>();
-  for (const tag of text.matchAll(/<(?:script|link)\b[^>]*>/g)) {
-    if (!/\b(?:type="module"|rel="modulepreload")/.test(tag[0])) continue;
-    const source = /\b(?:src|href)="([^"]+)"/.exec(tag[0])?.[1];
+  for (const tag of text.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
+    if (!/\b(?:type="module"|rel="modulepreload")/i.test(tag[0])) continue;
+    const source = /\b(?:src|href)="([^"]+)"/i.exec(tag[0])?.[1];
     if (source) initial.add(source.slice(source.lastIndexOf("/assets/") + 1));
   }
   if (!initial.size) throw new Error(`${label}: missing JavaScript entry`);
