@@ -5,14 +5,7 @@
 .codec {
   max-width: 1200px;
 }
-.codec-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
 .codec-count {
-  margin-left: auto;
   color: var(--muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -72,6 +65,6 @@
   padding: 0 2px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--muted) 18%, transparent);
-  color: var(--muted);
+  color: var(--text);
   font-size: 0.85em;
 }

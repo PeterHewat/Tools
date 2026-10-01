@@ -101,8 +101,9 @@ export const APPS: readonly ToolsApp[] = [
     tags: ["base64", "hex", "url", "utf-8", "encoding", "developer"],
     art: true,
     compactHeader: 274,
+    compactHome: 424,
     jsBudget: { entryGzip: 135, totalGzip: 135 },
-    status: "beta",
+    status: "stable",
     listed: true,
   },
   {

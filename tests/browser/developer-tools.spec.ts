@@ -214,9 +214,20 @@ test("Codec rewrites every format live from whichever field is edited", async ({
   const fill = async (format: string, value: string) => {
     await field(format).click();
     await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.insertText(value);
+    if (value) await page.keyboard.insertText(value);
+    else await page.keyboard.press("Backspace");
   };
-  await expect(field("base64")).toHaveText("SGVsbG8sIPCfjI0hCg==");
+  const sample = await page.evaluate(
+    () => JSON.parse(sessionStorage.getItem("tools.codec.draft")!).value.value as string
+  );
+  expect(sample).toContain("中文");
+  expect(sample).toContain("\u0301");
+  expect(sample).toContain("\u200b");
+  await expect(field("base64")).toHaveText(Buffer.from(sample).toString("base64"));
+  await expect(page.locator("#hex-card .ui-row #count")).toHaveText(
+    Buffer.byteLength(sample) + " bytes"
+  );
+  await expect(page.getByRole("button", { name: "Clear all" })).toHaveCount(0);
   await fill("text", "Hello 🌍");
   await expect(field("base64")).toHaveText(Buffer.from("Hello 🌍").toString("base64"));
   await expect(field("url")).toHaveText("Hello%20%F0%9F%8C%8D");
@@ -240,18 +251,20 @@ test("Codec rewrites every format live from whichever field is edited", async ({
   await fill("url", "a+b%20c");
   await expect(field("text")).toHaveText("a+b c");
   // Invisible characters are drawn, and a Windows line break stays two bytes.
-  await page.locator("#examples").selectOption({ label: "Invisible characters" });
+  await fill("hex", "ef bb bf 6c 69 6e 65 20 31 0d 0a 6c 69 6e 65 20 32 09 00");
   const invisible = "ef bb bf 6c 69 6e 65 20 31 0d 0a 6c 69 6e 65 20 32 09 00";
   await expect(field("hex")).toHaveText(invisible);
   await expect(page.locator("#text .cm-specialChar")).toHaveText(["U+FEFF", "\u240d", "\u2400"]);
-  // The draft survives a reload; a new tab starts from the first example.
+  // The draft survives a reload; a new tab starts from the default example.
   await page.reload();
   await expect(field("hex")).toHaveText(invisible);
   const fresh = await context.newPage();
   await fresh.goto("/Tools/codec/");
-  await expect(fresh.locator("#base64 .cm-content")).toHaveText("SGVsbG8sIPCfjI0hCg==");
+  await expect(fresh.locator("#base64 .cm-content")).toHaveText(
+    Buffer.from(sample).toString("base64")
+  );
   await fresh.close();
-  await page.locator("#clear").click();
+  await fill("text", "");
   for (const format of ["text", "url", "base64", "base64url", "hex"])
     await expect(field(format)).toHaveText("");
   await expect(page.locator("#count")).toHaveText("0 bytes");

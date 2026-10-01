@@ -21,13 +21,14 @@ const NAMES: Record<Format, string> = {
   base64url: "Base64url",
   hex: "Hex",
 };
-const examples: { label: string; value: string; from: Format }[] = [
-  { label: "Unicode text", value: "Hello, 🌍!\n", from: "text" },
-  { label: "URL component", value: "hello%20world%20%2B%20caf%C3%A9%20%2F", from: "url" },
-  { label: "Binary bytes", value: "00 ff 10 7f 80", from: "hex" },
-  { label: "Base64url token header", value: "eyJhbGciOiJIUzI1NiJ9", from: "base64url" },
-  { label: "Invisible characters", value: "\ufeffline 1\r\nline 2\t\u0000", from: "text" },
-];
+/**
+ * A new tab shows several scripts, composed and combining accents, emoji, URL punctuation
+ * and invisible characters: BOM, CRLF, nonbreaking and zero-width spaces, a tab and a null.
+ */
+const EXAMPLE =
+  "\ufeffCafé / Cafe\u0301 — Ελληνικά 中文 日本語 Привет العربية 🌍 🚀\r\n" +
+  'URL: a+b=c&x/y? #100% "quotes" <tag> \\\r\n' +
+  "Invisible: A\u00a0B\u200bC\tEnd\u0000";
 
 /** This tab's work, in session storage: the field last edited and what it holds. */
 const DRAFT = 1;
@@ -98,18 +99,6 @@ function load(value: string, from: Format): void {
   update();
 }
 
-const sample = byId<HTMLSelectElement>("examples");
-for (const [index, example] of examples.entries())
-  sample.add(new Option(example.label, String(index)));
-sample.addEventListener("change", () => {
-  const example = examples[Number(sample.value)];
-  if (example) load(example.value, example.from);
-  sample.value = "";
-});
-byId("clear").addEventListener("click", () => {
-  load("", "text");
-  editors.text.focus();
-});
 for (const format of FORMATS) {
   const button = byId(format + "-copy");
   button.addEventListener("click", async () => {
@@ -128,5 +117,5 @@ if (draft.error) {
 } else {
   const { source: saved, value } = draft.value;
   if (FORMATS.includes(saved as Format) && typeof value === "string") load(value, saved as Format);
-  else load(examples[0].value, examples[0].from);
+  else load(EXAMPLE, "text");
 }

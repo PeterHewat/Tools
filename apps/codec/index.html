@@ -21,15 +21,6 @@
       </div>
     </header>
     <main class="ui-workbench codec">
-      <div class="codec-bar">
-        <select class="ui-input" id="examples" aria-label="Load example">
-          <option value="">Load example…</option>
-        </select>
-        <span class="codec-count" id="count" role="status"></span>
-        <button type="button" class="ui-btn ui-icon-btn" id="clear" aria-label="Clear all">
-          <svg data-ui-icon="trash"></svg>
-        </button>
-      </div>
       <p class="ui-message" id="status" role="status" hidden></p>
       <div class="codec-fields">
         <section class="ui-card codec-field" id="text-card" aria-labelledby="text-title">
@@ -95,6 +86,7 @@
         <section class="ui-card codec-field" id="hex-card" aria-labelledby="hex-title">
           <div class="ui-row">
             <h2 id="hex-title">Hex</h2>
+            <span class="codec-count" id="count" role="status"></span>
             <span class="codec-note" id="hex-note"></span>
             <button type="button" class="ui-btn ui-icon-btn" id="hex-copy" aria-label="Copy Hex">
               <svg data-ui-icon="copy"></svg>
@@ -130,7 +122,12 @@
             Bytes that are not valid UTF-8 have no text: the UTF-8 field stays empty and says so.
             Typing in it starts again from text.
           </li>
-          <li>Load example offers Unicode, URL, binary, token and invisible-character samples.</li>
+          <li>
+            A new tab opens with several scripts, composed and combining accents, emoji, URL
+            punctuation, a byte order mark, Windows line breaks, nonbreaking and zero-width spaces,
+            a tab and a null. The byte count appears beside Hex. Select all and delete in any field
+            to empty every format.
+          </li>
         </ul>
         <h3>Formats</h3>
         <ul>
