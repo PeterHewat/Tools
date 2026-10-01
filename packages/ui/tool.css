@@ -1,0 +1,116 @@
+/* A compact workbench for tools with text, controls and results. */
+.ui-workbench {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.ui-workbench h1 {
+  font-size: 24px;
+  margin: 0 0 6px;
+}
+.ui-intro {
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+.ui-workbench h2 {
+  font-size: 15px;
+  margin: 0;
+}
+.ui-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.ui-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.ui-card + .ui-card {
+  margin-top: 20px;
+}
+.ui-columns > .ui-card + .ui-card {
+  margin-top: 0;
+}
+.ui-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ui-row h2 {
+  margin-right: auto;
+}
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.ui-field > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.ui-workbench textarea {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+  font: 14px/1.6 var(--mono);
+}
+.ui-workbench input,
+.ui-workbench select {
+  min-width: 0;
+  max-width: 100%;
+}
+.ui-bytes,
+.ui-output {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.6 var(--mono);
+}
+.ui-bytes {
+  color: var(--muted);
+  max-height: 150px;
+  overflow: auto;
+}
+.ui-message {
+  min-height: 24px;
+  overflow-wrap: anywhere;
+}
+.ui-message[data-error="true"] {
+  color: var(--danger);
+}
+.ui-editor {
+  min-height: 220px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.ui-editor .cm-editor {
+  min-height: 220px;
+}
+.ui-editor .cm-scroller {
+  max-height: 420px;
+  overflow: auto;
+}
+.ui-header:has(+ .ui-workbench) {
+  flex-wrap: nowrap;
+}
+.ui-help a {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .ui-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ui-workbench {
+    padding: 16px;
+  }
+  .ui-card {
+    padding: 14px;
+  }
+}

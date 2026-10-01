@@ -50,6 +50,7 @@ packages/
   catalog/     which apps exist, and where the site is deployed
   ui/          shared styles, browser helpers, build wiring and the offline service worker
   editor/      the code editor the apps share: CodeMirror 6 behind a small API
+  bytes/       strict UTF-8, hex and Base64 codecs, and Web Crypto helpers
   tsconfig/    shared TypeScript config
 scripts/       build and scaffold scripts
 docs/          decisions, reference and plans

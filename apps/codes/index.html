@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <main class="ui-workbench">
+      <h1>A small square. A useful shortcut.</h1>
+      <p class="ui-intro">Create a QR code for text, a link, or Wi-Fi. Export clean SVG or PNG.</p>
+      <div class="ui-columns">
+        <section class="ui-card">
+          <label class="ui-field"
+            ><span>Content type</span
+            ><select class="ui-input" id="preset">
+              <option value="text">Text</option>
+              <option value="url">URL</option>
+              <option value="wifi">Wi-Fi</option>
+            </select></label
+          ><label class="ui-field" id="content-field"
+            ><span id="content-label">Text to encode</span
+            ><textarea
+              class="ui-input"
+              id="content"
+              spellcheck="false"
+              placeholder="Type something to share"
+            ></textarea>
+          </label>
+          <div id="wifi-fields" hidden>
+            <label class="ui-field"
+              ><span>Network name (SSID)</span
+              ><input class="ui-input" id="ssid" autocomplete="off" /></label
+            ><label class="ui-field"
+              ><span>Security</span
+              ><select class="ui-input" id="security">
+                <option value="WPA">WPA / WPA2 / WPA3</option>
+                <option value="WEP">WEP</option>
+                <option value="nopass">Open network</option>
+              </select></label
+            ><label class="ui-field"
+              ><span>Password</span
+              ><input class="ui-input" id="password" type="password" autocomplete="off" /></label
+            ><label><input id="hidden-network" type="checkbox" /> Hidden network</label>
+          </div>
+          <div class="ui-row">
+            <label
+              >Error correction
+              <select class="ui-input" id="level">
+                <option value="L">L · 7%</option>
+                <option value="M" selected>M · 15%</option>
+                <option value="Q">Q · 25%</option>
+                <option value="H">H · 30%</option>
+              </select></label
+            ><label
+              >Margin <input class="ui-input" id="margin" type="number" min="4" max="16" value="4"
+            /></label>
+          </div>
+          <label class="ui-field"
+            ><span>PNG pixels per module</span
+            ><input class="ui-input" id="scale" type="number" min="1" max="32" value="8" /></label
+          ><button class="ui-btn" id="clear">Clear</button>
+        </section>
+        <section class="ui-card">
+          <div class="ui-row">
+            <h2>Preview</h2>
+            <div class="ui-seg">
+              <button class="ui-btn" id="save-svg" disabled>SVG</button
+              ><button class="ui-btn" id="save-png" disabled>PNG</button>
+            </div>
+          </div>
+          <div id="preview" aria-label="QR code preview"></div>
+          <p class="ui-message" id="status" role="status">Enter content to generate a QR code.</p>
+          <h2>Encoded content</h2>
+          <pre class="ui-output" id="encoded"></pre>
+        </section>
+      </div>
+    </main>
+    <aside class="ui-dock ui-help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+        <button class="ui-btn ui-icon-btn" id="help-close" aria-label="Close Help">
+          <svg data-ui-icon="close"></svg>
+        </button>
+      </div>
+      <div class="ui-dock-body">
+        <h3>Make a QR code</h3>
+        <p>
+          Use text, a URL, or the Wi-Fi preset. QR codes are encoded locally as UTF-8, with an
+          explicit UTF-8 ECI marker, using an encoder maintained in this repository.
+        </p>
+        <h3>Scanning</h3>
+        <p>
+          Higher error correction adds redundancy and can make a larger code. Keep a quiet zone of
+          at least four modules, high contrast, and enough physical size for the amount of data.
+          Always test your exported code with the intended scanner.
+        </p>
+        <h3>Export</h3>
+        <p>
+          SVG is a clean vector image with a white background. PNG uses an integer number of pixels
+          per module. Neither export includes the tool interface. Wi-Fi passwords are visible to
+          anyone who scans the code; inputs remain only in memory.
+        </p>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

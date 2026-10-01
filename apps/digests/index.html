@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <main class="ui-workbench">
+      <h1>Know exactly what you hashed.</h1>
+      <p class="ui-intro">
+        SHA digests and HMAC for text and files. All computation stays in your browser.
+      </p>
+      <div class="ui-columns">
+        <section class="ui-card">
+          <div class="ui-row">
+            <h2>Input</h2>
+            <label
+              >Source
+              <select class="ui-input" id="source">
+                <option value="text">Text</option>
+                <option value="file">File</option>
+              </select></label
+            >
+          </div>
+          <label class="ui-field" id="text-field"
+            ><span>UTF-8 text · whitespace is preserved</span
+            ><textarea class="ui-input" id="text" spellcheck="false"></textarea>
+          </label>
+          <div id="file-field" hidden>
+            <label class="ui-field"
+              ><span>File · up to 64 MiB, or drop here</span
+              ><input class="ui-input" type="file" id="file"
+            /></label>
+            <p id="file-name"></p>
+          </div>
+          <div class="ui-row">
+            <label
+              >Algorithm
+              <select class="ui-input" id="algorithm">
+                <option>SHA-256</option>
+                <option>SHA-384</option>
+                <option>SHA-512</option>
+                <option value="SHA-1">SHA-1 (legacy)</option>
+              </select></label
+            ><label><input type="checkbox" id="hmac" /> HMAC</label>
+          </div>
+          <p id="legacy" hidden>SHA-1 is legacy; avoid it for security.</p>
+          <div id="key-fields" hidden>
+            <label class="ui-field"
+              ><span>Key format</span
+              ><select class="ui-input" id="key-format">
+                <option value="text">UTF-8 text</option>
+                <option value="hex">Hex</option>
+                <option value="base64">Base64</option>
+                <option value="base64url">Base64url</option>
+              </select></label
+            ><label class="ui-field"
+              ><span>HMAC key</span
+              ><input
+                class="ui-input"
+                type="password"
+                id="key"
+                autocomplete="off"
+                spellcheck="false"
+            /></label>
+          </div>
+          <div class="ui-row">
+            <button class="ui-btn ui-btn--primary" id="hash">Compute digest</button
+            ><button class="ui-btn" id="clear">Clear</button>
+          </div>
+        </section>
+        <section class="ui-card">
+          <h2>Result</h2>
+          <p class="ui-message" id="status" role="status">Ready to hash text or a file.</p>
+          <div class="ui-row">
+            <h2>Hex</h2>
+            <button class="ui-btn" id="copy-hex" disabled>Copy hex</button>
+          </div>
+          <pre class="ui-output" id="hex"></pre>
+          <div class="ui-row">
+            <h2>Base64</h2>
+            <button class="ui-btn" id="copy-base64" disabled>Copy Base64</button>
+          </div>
+          <pre class="ui-output" id="base64"></pre>
+        </section>
+      </div>
+    </main>
+    <aside class="ui-dock ui-help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+        <button class="ui-btn ui-icon-btn" id="help-close" aria-label="Close Help">
+          <svg data-ui-icon="close"></svg>
+        </button>
+      </div>
+      <div class="ui-dock-body">
+        <h3>Text and files</h3>
+        <p>
+          Text is hashed as its exact UTF-8 bytes, including spaces and newlines. Pick or drop a
+          file to hash its binary bytes locally. Files are limited to 64 MiB because Web Crypto
+          reads them into memory.
+        </p>
+        <h3>Algorithms</h3>
+        <p>
+          SHA-256, SHA-384 and SHA-512 are available. SHA-1 is legacy and should not be used for
+          security. Outputs are hex and Base64.
+        </p>
+        <h3>HMAC</h3>
+        <p>
+          Enable HMAC and enter a non-empty key in UTF-8, hex, Base64 or Base64url. Keys and content
+          are never stored. A hash is not encryption.
+        </p>
+        <p>Web Crypto requires HTTPS or localhost.</p>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

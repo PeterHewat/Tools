@@ -6,6 +6,7 @@ export * from "./menu.js";
 export * from "./panel.js";
 export * from "./storage.js";
 export * from "./theme.js";
+export * from "./tool.js";
 
 declare global {
   interface ImportMetaEnv {

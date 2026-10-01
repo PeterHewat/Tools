@@ -1,0 +1,18 @@
+@import "@tools/ui/base.css";
+@import "@tools/ui/tool.css";
+#preview {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: #fff;
+  border-radius: var(--radius);
+  min-height: 280px;
+}
+#preview svg {
+  width: min(100%, 360px);
+  height: auto;
+  align-self: center;
+}
+#margin {
+  width: 70px;
+}

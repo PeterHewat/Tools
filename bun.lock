@@ -21,6 +21,39 @@
         "vite": "^8.3.1",
       },
     },
+    "apps/codec": {
+      "name": "@tools/codec",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@tools/bytes": "workspace:*",
+        "@tools/catalog": "workspace:*",
+        "@tools/ui": "workspace:*",
+        "typescript": "~6.0.3",
+        "vite": "^8.3.1",
+      },
+    },
+    "apps/codes": {
+      "name": "@tools/codes",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@tools/catalog": "workspace:*",
+        "@tools/ui": "workspace:*",
+        "jsqr": "1.4.0",
+        "typescript": "~6.0.3",
+        "vite": "^8.3.1",
+      },
+    },
+    "apps/digests": {
+      "name": "@tools/digests",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@tools/bytes": "workspace:*",
+        "@tools/catalog": "workspace:*",
+        "@tools/ui": "workspace:*",
+        "typescript": "~6.0.3",
+        "vite": "^8.3.1",
+      },
+    },
     "apps/home": {
       "name": "@tools/home",
       "version": "0.0.0",
@@ -43,6 +76,18 @@
         "vite": "^8.3.1",
       },
     },
+    "apps/jwt": {
+      "name": "@tools/jwt",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@tools/bytes": "workspace:*",
+        "@tools/catalog": "workspace:*",
+        "@tools/editor": "workspace:*",
+        "@tools/ui": "workspace:*",
+        "typescript": "~6.0.3",
+        "vite": "^8.3.1",
+      },
+    },
     "apps/svg": {
       "name": "@tools/svg",
       "version": "0.0.0",
@@ -52,6 +97,13 @@
         "@tools/ui": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.3.1",
+      },
+    },
+    "packages/bytes": {
+      "name": "@tools/bytes",
+      "version": "0.0.0",
+      "devDependencies": {
+        "typescript": "~6.0.3",
       },
     },
     "packages/catalog": {
@@ -201,13 +253,23 @@
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
+    "@tools/bytes": ["@tools/bytes@workspace:packages/bytes"],
+
     "@tools/catalog": ["@tools/catalog@workspace:packages/catalog"],
+
+    "@tools/codec": ["@tools/codec@workspace:apps/codec"],
+
+    "@tools/codes": ["@tools/codes@workspace:apps/codes"],
+
+    "@tools/digests": ["@tools/digests@workspace:apps/digests"],
 
     "@tools/editor": ["@tools/editor@workspace:packages/editor"],
 
     "@tools/home": ["@tools/home@workspace:apps/home"],
 
     "@tools/json": ["@tools/json@workspace:apps/json"],
+
+    "@tools/jwt": ["@tools/jwt@workspace:apps/jwt"],
 
     "@tools/svg": ["@tools/svg@workspace:apps/svg"],
 
@@ -342,6 +404,8 @@
     "json-schema-traverse": ["json-schema-traverse@0.4.1", "", {}, "sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg=="],
 
     "json-stable-stringify-without-jsonify": ["json-stable-stringify-without-jsonify@1.0.1", "", {}, "sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw=="],
+
+    "jsqr": ["jsqr@1.4.0", "", {}, "sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A=="],
 
     "keyv": ["keyv@5.6.0", "", { "dependencies": { "@keyv/serialize": "^1.1.1" } }, "sha512-CYDD3SOtsHtyXeEORYRx2qBtpDJFjRTGXUtmNEMGyzYOKj1TE3tycdlho7kA1Ufx9OYWZzg52QFBGALTirzDSw=="],
 

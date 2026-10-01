@@ -14,7 +14,8 @@
     "./header.css": "./header.css",
     "./panels.css": "./panels.css",
     "./tokens.css": "./tokens.css",
-    "./controls.css": "./controls.css"
+    "./controls.css": "./controls.css",
+    "./tool.css": "./tool.css"
   },
   "files": [
     "src",
@@ -23,7 +24,8 @@
     "header.css",
     "panels.css",
     "tokens.css",
-    "controls.css"
+    "controls.css",
+    "tool.css"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",

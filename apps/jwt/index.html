@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <main class="ui-workbench">
+      <h1>Read a token. Check its signature.</h1>
+      <p class="ui-intro">
+        Decode JWTs locally, inspect their claims, and verify an HMAC signature. Dev use only.
+      </p>
+      <section class="ui-card">
+        <label class="ui-field"
+          ><span>JSON Web Token</span
+          ><textarea
+            class="ui-input"
+            id="token"
+            placeholder="header.payload.signature"
+            spellcheck="false"
+            autocomplete="off"
+          ></textarea>
+        </label>
+        <div class="ui-row">
+          <button class="ui-btn" id="sample">Example</button
+          ><button class="ui-btn" id="clear">Clear</button>
+        </div>
+        <p class="ui-message" id="decode-status" role="status"></p>
+      </section>
+      <div class="ui-columns">
+        <section class="ui-card">
+          <div class="ui-row">
+            <h2>Header</h2>
+            <button class="ui-btn" id="copy-header" disabled>Copy</button>
+          </div>
+          <div class="ui-editor" id="header-editor"></div>
+        </section>
+        <section class="ui-card">
+          <div class="ui-row">
+            <h2>Payload</h2>
+            <button class="ui-btn" id="copy-payload" disabled>Copy</button>
+          </div>
+          <div class="ui-editor" id="payload-editor"></div>
+        </section>
+      </div>
+      <section class="ui-card">
+        <h2>Time claims</h2>
+        <div id="claims"></div>
+      </section>
+      <section class="ui-card">
+        <h2>Signature verification</h2>
+        <p class="ui-intro">
+          Select the algorithm you expect. Signature verification and claim checks are separate.
+        </p>
+        <div class="ui-row">
+          <label
+            >Algorithm
+            <select class="ui-input" id="algorithm">
+              <option>HS256</option>
+              <option>HS384</option>
+              <option>HS512</option>
+            </select></label
+          ><label
+            >Key format
+            <select class="ui-input" id="key-format">
+              <option value="text">UTF-8 text</option>
+              <option value="hex">Hex</option>
+              <option value="base64">Base64</option>
+              <option value="base64url">Base64url</option>
+            </select></label
+          >
+        </div>
+        <label class="ui-field"
+          ><span>Verification key</span
+          ><input
+            class="ui-input"
+            id="key"
+            type="password"
+            autocomplete="off"
+            spellcheck="false" /></label
+        ><button class="ui-btn ui-btn--primary" id="verify" disabled>Verify signature</button>
+        <p class="ui-message" id="verify-status" role="status">Signature not verified.</p>
+      </section>
+    </main>
+    <aside class="ui-dock ui-help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+        <button class="ui-btn ui-icon-btn" id="help-close" aria-label="Close Help">
+          <svg data-ui-icon="close"></svg>
+        </button>
+      </div>
+      <div class="ui-dock-body">
+        <h3>Inspect locally</h3>
+        <p>
+          Paste a compact signed JWT. Header and payload are decoded as UTF-8 JSON, without sending
+          the token anywhere. Encrypted tokens (JWE) are not supported.
+        </p>
+        <h3>Verify a signature</h3>
+        <p>
+          Choose the HMAC algorithm you expect, enter a key as UTF-8, hex, Base64 or Base64url, then
+          press Verify. The selection must match the header. HS256, HS384 and HS512 are supported;
+          other algorithms can be inspected but not verified. Critical header extensions are
+          rejected.
+        </p>
+        <h3>Claims</h3>
+        <p>
+          exp, iat and nbf are Unix seconds, shown in UTC with relative times. A matching signature
+          does not establish audience, issuer, authorization or claim validity. Dev use only.
+        </p>
+        <p>Tokens and keys are held only in memory. Web Crypto requires HTTPS or localhost.</p>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

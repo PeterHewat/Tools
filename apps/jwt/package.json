@@ -1,0 +1,19 @@
+{
+  "name": "@tools/jwt",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@tools/catalog": "workspace:*",
+    "@tools/ui": "workspace:*",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.1",
+    "@tools/bytes": "workspace:*",
+    "@tools/editor": "workspace:*"
+  }
+}
