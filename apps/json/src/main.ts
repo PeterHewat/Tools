@@ -1,17 +1,26 @@
+import { bindHeader } from "./lib/header.js";
 import {
-  bindDock,
+  readPrefs,
+  writePrefs,
+  readDraft,
+  writeDraft,
+  readExactChoices,
+  writeExactChoices,
+  type Prefs,
+  type ViewMode,
+  type PathStyle,
+  type Indent,
+} from "./lib/preferences.js";
+import {
   bindMenu,
-  bindThemeToggle,
   byId,
   copyText,
   downloadText,
   formatBytes,
   onFileDrop,
   pickFiles,
-  readStored,
   registerServiceWorker,
   setPressed,
-  writeStored,
 } from "@tools/ui";
 import { createEditor, type LineLexer } from "@tools/editor";
 import { applyEdits, REPAIRS, type Edit, type JsonNode, type RepairKind } from "./lib/ast.js";
@@ -110,9 +119,6 @@ const exportView = createEditor(exportEl, {
 // ---------- State ----------
 
 /** JSON edits the document; the others show it converted, read-only. */
-type ViewMode = "json" | ExportKind;
-type PathStyle = "js" | "pointer";
-type Indent = "2" | "4" | "tab";
 
 let fileName = "data.json";
 const analysis = createAnalysis();
@@ -137,50 +143,24 @@ const find = bindFind([editor, exportView], () => ({
 
 // ---------- Storage ----------
 
-/**
- * Settings persist (localStorage, shared by every tab). The draft is the person's data, so
- * it lives only as long as the tab (sessionStorage): a reload keeps it, closing the tab ends it.
- */
-const PREFS_KEY = "tools.json.prefs";
-const DRAFT_KEY = "tools.json.draft";
-/** The Exact values turned on, kept beside the draft they were chosen for. */
-const EXACT_KEY = "tools.json.exact";
-/** Past this, a draft is not worth the storage quota it would eat: `false` is kept instead. */
-const MAX_SAVED = 2_000_000;
 /** The tab reloaded after dropping a draft too large to keep: said until the next change. */
 let droppedDraft = false;
 /** Only text changes write the draft; settings changes leave it alone. */
 let draftChanged = true;
 
-interface Prefs {
-  indent: Indent;
-  sortKeys: boolean;
-  view: ViewMode;
-  pathStyle: PathStyle;
-  colours: boolean;
-}
-
-const VIEWS: readonly ViewMode[] = ["json", "yaml", "csv", "ts", "schema"];
-
 function restore(): void {
-  // Each setting is checked: storage holds whatever was last put there.
-  const prefs = (readStored(PREFS_KEY) ?? {}) as Partial<Prefs>;
-  if (prefs.indent === "2" || prefs.indent === "4" || prefs.indent === "tab") {
-    indentChoice = prefs.indent;
-  }
-  setOn(sortKeys, prefs.sortKeys === true);
-  if (prefs.view && VIEWS.includes(prefs.view)) mode = prefs.view;
-  if (prefs.pathStyle === "pointer") pathStyle = "pointer";
-  if (prefs.colours === false) colours = false;
+  const prefs = readPrefs();
+  indentChoice = prefs.indent;
+  setOn(sortKeys, prefs.sortKeys);
+  mode = prefs.view;
+  pathStyle = prefs.pathStyle;
+  colours = prefs.colours;
   // A tab with no draft yet opens on the sample. Cleared, the draft is "" and stays empty.
-  const draft = readStored(DRAFT_KEY, "session");
+  const draft = readDraft();
   showDocument(typeof draft === "string" ? draft : draft === false ? "" : SAMPLE);
   // After the document is in: putting it there was a change, and a change ends the warning.
   droppedDraft = draft === false;
-  const exact = readStored(EXACT_KEY, "session");
-  if (Array.isArray(exact)) {
-    for (const place of exact) if (typeof place === "string") exactPlaces.add(place);
-  }
+  for (const place of readExactChoices()) exactPlaces.add(place);
   showOptions();
 }
 
@@ -192,7 +172,7 @@ function savePrefs(): void {
     pathStyle,
     colours,
   };
-  writeStored(PREFS_KEY, prefs);
+  writePrefs(prefs);
 }
 
 function saveDraft(): void {
@@ -200,11 +180,11 @@ function saveDraft(): void {
   draftChanged = false;
   const text = documentText();
   // False while the empty editor still stands for a draft too large to keep: every reload says so.
-  writeStored(DRAFT_KEY, text.length > MAX_SAVED || droppedDraft ? false : text, "session");
+  writeDraft(text, droppedDraft);
 }
 
 function saveExactChoices(): void {
-  writeStored(EXACT_KEY, [...exactPlaces], "session");
+  writeExactChoices(exactPlaces);
 }
 
 /** Switches (settings that are on or off) keep theirs in aria-checked, as role="switch" has it. */
@@ -807,37 +787,7 @@ wrapBtn.addEventListener("click", () => {
   runNested("wrap");
 });
 
-// On a phone the file actions fold into the "⋯" menu; Find joins them when the header is full. Its
-// items are made from the bar's buttons each time it opens, so they carry the same names and
-// the same disabled state, and pressing one presses that button.
-const more = byId("more");
-const moreBtn = byId<HTMLButtonElement>("more-btn");
-const fileButtons = [byId("open"), downloadBtn, copyBtn, clearBtn] as HTMLButtonElement[];
-const findButton = byId<HTMLButtonElement>("find-open");
-const moreMenu = bindMenu(moreBtn, more, {
-  onOpen: () =>
-    more.replaceChildren(
-      ...[
-        ...fileButtons,
-        ...(getComputedStyle(findButton).display === "none" ? [findButton] : []),
-      ].map((b) => {
-        const item = document.createElement("button");
-        item.type = "button";
-        item.className = "ui-menu-item";
-        item.disabled = b.disabled;
-        item.append(b.querySelector("svg")!.cloneNode(true), b.title.replace(/ —.*/, ""));
-        item.addEventListener("click", () => {
-          moreMenu.close();
-          b.click();
-        });
-        return item;
-      })
-    ),
-});
-
-// Help docks under the header and stays open until its button closes it; a reload of the tab
-// keeps it open.
-bindDock(byId("help"), byId("help-btn"), { key: "tools.json.help" }).restore();
+bindHeader();
 
 pathBtn.addEventListener("click", () => void copyText(pathBtn.textContent ?? "", pathBtn));
 // A phone's status bar: folded away until this opens it over the editor (see styles.css).
@@ -874,7 +824,6 @@ for (const view of [editor, exportView]) {
   });
 }
 
-bindThemeToggle(byId("theme-toggle"));
 restore();
 editor.setIndent(indent());
 showColours();
