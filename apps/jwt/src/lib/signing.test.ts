@@ -10,6 +10,7 @@ import {
   verifyInput,
 } from "./signing.js";
 import { inspectJwt } from "./inspect.js";
+import { constants, createHmac, createPublicKey, verify } from "node:crypto";
 
 for (const algorithm of ALGORITHMS) {
   test(
@@ -18,6 +19,33 @@ for (const algorithm of ALGORITHMS) {
       const example = await generateExample(algorithm);
       const decoded = inspectJwt(example.token);
       expect(decoded.valid).toBe(true);
+      const bits = algorithm.slice(-3);
+      const hash = algorithm === "EdDSA" ? null : "sha" + bits;
+      if (algorithm.startsWith("HS")) {
+        expect(
+          createHmac(hash!, secretBytes(example.key, example.format))
+            .update(decoded.input)
+            .digest("base64url")
+        ).toBe(example.token.split(".")[2]);
+      } else {
+        expect(
+          verify(
+            hash,
+            Buffer.from(decoded.input),
+            {
+              key: createPublicKey(example.publicKey),
+              ...(algorithm.startsWith("PS")
+                ? {
+                    padding: constants.RSA_PKCS1_PSS_PADDING,
+                    saltLength: constants.RSA_PSS_SALTLEN_DIGEST,
+                  }
+                : {}),
+              ...(algorithm.startsWith("ES") ? { dsaEncoding: "ieee-p1363" as const } : {}),
+            },
+            Buffer.from(decoded.signature!)
+          )
+        ).toBe(true);
+      }
       expect(
         await verifyInput(
           decoded.input,
@@ -68,6 +96,30 @@ test("strict JSON preserves integers and rejects ambiguous or unsupported signin
   );
   await expect(
     verifyInput("x", utf8("x"), '{"kty":"oct","k":"YWJj","alg":"HS512"}', "jwk", "HS256")
+  ).rejects.toThrow("match");
+});
+test("private and public JWKs interoperate and mismatched JWK algorithms are rejected", async () => {
+  const example = await generateExample("RS256");
+  const key = (await import("node:crypto")).createPrivateKey(example.key);
+  const privateJwk = JSON.stringify(key.export({ format: "jwk" }));
+  const publicJwk = JSON.stringify(createPublicKey(key).export({ format: "jwk" }));
+  const decoded = inspectJwt(
+    await encodeJwt(example.header, example.payload, privateJwk, "jwk", "RS256")
+  );
+  expect(await verifyInput(decoded.input, decoded.signature!, publicJwk, "jwk", "RS256")).toBe(
+    true
+  );
+  expect(await verifyInput(decoded.input, decoded.signature!, privateJwk, "jwk", "RS256")).toBe(
+    true
+  );
+  await expect(
+    verifyInput(
+      decoded.input,
+      decoded.signature!,
+      JSON.stringify({ ...createPublicKey(key).export({ format: "jwk" }), alg: "RS512" }),
+      "jwk",
+      "RS256"
+    )
   ).rejects.toThrow("match");
 });
 test("default public sample verifies and partial decoding retains both recoverable segments", async () => {

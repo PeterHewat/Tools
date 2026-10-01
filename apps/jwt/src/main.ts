@@ -174,7 +174,7 @@ async function run(version: number): Promise<void> {
       return;
     }
     const decoded = inspectJwt(token.text);
-    if (!decoded.valid || !decoded.signature || !key.value.trim()) return;
+    if (!decoded.valid || !decoded.signature || !key.value) return;
     if (decoded.header.object?.alg !== selected)
       throw new Error("Selected algorithm does not match the token header.");
     if (decoded.header.object?.crit !== undefined || decoded.header.object?.b64 !== undefined)
@@ -238,6 +238,9 @@ function update(): void {
       Boolean(decoded.payload.error)
     );
     showMessage(byId("decode-status"), decoded.error ?? "", Boolean(decoded.error));
+    if (!token.text.trim())
+      for (const id of ["header-status", "payload-status", "decode-status"])
+        showMessage(byId(id), "");
     renderClaims(decoded.payload.object);
   } else {
     badge("token-state", "Encoding…");

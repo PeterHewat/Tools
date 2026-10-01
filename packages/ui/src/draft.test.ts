@@ -33,6 +33,7 @@ test("oversized drafts remove stale state and refused storage does not throw", (
   writeDraft("jwt", 1, { token: "old" });
   expect(writeDraft("jwt", 1, { token: "x".repeat(2 * 1024 * 1024) })).toBe(false);
   expect(values.has("tools.jwt.draft")).toBe(false);
+  expect(writeDraft("jwt", 1, { token: "🌍".repeat(600_000) })).toBe(false);
   Object.defineProperty(globalThis, "sessionStorage", {
     configurable: true,
     get: () => {

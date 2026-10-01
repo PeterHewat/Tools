@@ -3,148 +3,275 @@ import AxeBuilder from "@axe-core/playwright";
 import { createHmac, createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import jsQR from "jsqr";
+import {
+  BarcodeFormat,
+  BinaryBitmap,
+  DecodeHintType,
+  HybridBinarizer,
+  MultiFormatReader,
+  RGBLuminanceSource,
+} from "@zxing/library";
 import { findApp } from "../../packages/catalog/src/index.js";
 
-test("JWT verifies a known signature, rejects a mismatch and clears stale results", async ({
+test("JWT defaults, colored segments, independent partial decode and live signature verification", async ({
   page,
 }) => {
+  await page.goto("/Tools/jwt/");
+  const token = page.getByRole("textbox", { name: "JSON Web Token", exact: true });
+  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+  for (const segment of ["header", "payload", "signature"])
+    await expect(page.locator("#token .jwt-" + segment).first()).toBeVisible();
   const header = Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url");
   const payload = Buffer.from(
     '{"sub":"browser test","id":9223372036854775807,"exp":1,"nbf":4102444800}'
   ).toString("base64url");
-  const input = `${header}.${payload}`;
+  const input = header + "." + payload;
   const signature = createHmac("sha256", "test key").update(input).digest("base64url");
-  await page.goto("/Tools/jwt/");
-  await page.locator("#token").fill(`${input}.${signature}`);
-  await expect(page.getByRole("textbox", { name: "Decoded JWT payload" })).toContainText(
-    "browser test"
-  );
-  await expect(page.locator("#claims")).toContainText("Expired");
+  await token.fill(input + "." + signature);
+  await page.locator("#key").fill("test key");
+  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
   await expect(page.getByRole("textbox", { name: "Decoded JWT payload" })).toContainText(
     "9223372036854775807"
   );
-  await expect(page.locator("#claims")).toContainText("Not valid for");
-  await page.locator("#key").fill("test key");
-  await page.locator("#verify").click();
-  await expect(page.locator("#verify-status")).toContainText("Signature matches");
+  await expect(page.locator("#claims")).toContainText("Expired");
   await page.locator("#key").fill("wrong");
-  await expect(page.locator("#verify-status")).toHaveText("Signature not verified.");
-  await page.locator("#verify").click();
-  await expect(page.locator("#verify-status")).toContainText("does not match");
+  await expect(page.locator("#signature-state")).toHaveText("Signature mismatch");
+  const whitespaceSecret = " ".repeat(32);
+  const whitespaceSignature = createHmac("sha256", whitespaceSecret)
+    .update(input)
+    .digest("base64url");
+  await token.fill(input + "." + whitespaceSignature);
+  await page.locator("#key").fill(whitespaceSecret);
+  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
   await page.locator("#algorithm").selectOption("HS512");
-  await page.locator("#verify").click();
   await expect(page.locator("#verify-status")).toContainText("does not match the token header");
-  await page.locator("#token").fill("invalid");
-  await expect(page.getByRole("textbox", { name: "Decoded JWT payload" })).toBeEmpty();
-  await expect(page.locator("#verify")).toBeDisabled();
-  await expect(page.locator("#decode-status")).toHaveAttribute("data-error", "true");
+  await token.fill(header + "." + Buffer.from('{"broken":').toString("base64url") + ".!!");
+  await expect(page.getByRole("textbox", { name: "Decoded JWT header" })).toContainText("HS256");
+  await expect(page.getByRole("textbox", { name: "Decoded JWT payload" })).toContainText(
+    '{"broken":'
+  );
+  await expect(page.locator("#payload-status")).toHaveAttribute("data-error", "true");
+  await page.locator("#token-clear").click();
+  await expect(token).toBeEmpty();
   await page.reload();
-  await expect(page.locator("#token")).toBeEmpty();
-  await expect(page.locator("#key")).toBeEmpty();
+  await expect(token).toBeEmpty();
 });
 
-test("Codec converts from either pane and keeps binary errors explicit", async ({ page }) => {
+test("JWT encodes exact JSON and generates every signing family in the browser", async ({
+  page,
+}) => {
+  await page.goto("/Tools/jwt/");
+  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+  await page.locator("#encode-mode").click();
+  await page
+    .getByRole("textbox", { name: "Decoded JWT payload" })
+    .fill('{"id":9223372036854775807,"name":"encoded"}');
+  await expect(page.locator("#signature-state")).toHaveText("Signature generated");
+  const token = await page
+    .getByRole("textbox", { name: "JSON Web Token", exact: true })
+    .innerText();
+  expect(Buffer.from(token.split(".")[1], "base64url").toString()).toContain("9223372036854775807");
+  await page.locator("#decode-mode").click();
+  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+  for (const algorithm of [
+    "HS256",
+    "HS384",
+    "HS512",
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "EdDSA",
+  ]) {
+    await page.locator("#algorithm").selectOption(algorithm);
+    await page.locator("#generate").click();
+    await expect(page.locator("#generate")).toBeEnabled();
+    await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+    await expect(page.getByRole("textbox", { name: "Decoded JWT header" })).toContainText(
+      algorithm
+    );
+    if (!algorithm.startsWith("HS")) {
+      await page.locator("#public-key-field summary").click();
+      await page.locator("#use-public-key").click();
+      await expect(page.locator("#key")).toHaveValue(/BEGIN PUBLIC KEY/);
+      await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+      await page.locator("#public-key-field summary").click();
+    }
+  }
+});
+
+test("Codec converts live in either direction with default examples and fixed result regions", async ({
+  page,
+}) => {
   await page.goto("/Tools/codec/");
+  await expect(page.locator("#left")).not.toBeEmpty();
   await page.locator("#left").fill("Hello 🌍\n");
-  await page.locator("#left-convert").click();
   await expect(page.locator("#right")).toHaveValue(Buffer.from("Hello 🌍\n").toString("base64"));
-  await page.locator("#left").fill("");
-  await page.locator("#right-convert").click();
-  await expect(page.locator("#left")).toHaveValue("Hello 🌍\n");
-  await expect(page.locator("#left-bytes")).toContainText("f0 9f 8c 8d 0a");
+  await page.locator("#right").fill(Buffer.from("Changed 🌍").toString("base64"));
+  await expect(page.locator("#left")).toHaveValue("Changed 🌍");
+  await expect(page.locator("#left-bytes")).toContainText("f0 9f 8c 8d");
+  const before = await page.locator("#right").boundingBox();
   await page.locator("#left-format").selectOption("hex");
   await page.locator("#left").fill("ff00");
   await page.locator("#right-format").selectOption("text");
-  await page.locator("#left-convert").click();
   await expect(page.locator("#status")).toContainText("not valid UTF-8");
+  expect(await page.locator("#right").boundingBox()).toEqual(before);
   await page.locator("#right-format").selectOption("base64");
-  await page.locator("#left-convert").click();
   await expect(page.locator("#right")).toHaveValue("/wA=");
-  await page.locator("#clear").click();
+  await page.locator("#examples").selectOption("0");
+  await expect(page.locator("#left")).toHaveValue("Hello, 🌍!\n");
+  await page.locator("#left-clear").click();
   await expect(page.locator("#left")).toBeEmpty();
   await expect(page.locator("#right")).toBeEmpty();
 });
 
-test("Digests hashes exact text, binary files and HMAC, invalidating on edits", async ({
-  page,
-}) => {
+test("Digests computes live text/file/HMAC and compares exact outputs", async ({ page }) => {
   await page.goto("/Tools/digests/");
-  await expect(page.locator("#file-field")).toBeHidden();
-  await expect(page.locator("#key-fields")).toBeHidden();
   await page.locator("#text").fill("abc\n");
-  await page.locator("#hash").click();
   await expect(page.locator("#hex")).toHaveText(createHash("sha256").update("abc\n").digest("hex"));
   await page.locator("#text").fill("abc");
-  await expect(page.locator("#hex")).toBeEmpty();
-  await expect(page.locator("#copy-hex")).toBeDisabled();
+  const expected = createHash("sha256").update("abc").digest("hex");
+  await expect(page.locator("#hex")).toHaveText(expected);
+  await page.locator("#expected").fill(expected.toUpperCase());
+  await expect(page.locator("#compare-status")).toHaveText("Digest matches.");
+  const geometry = await page.locator("#base64").boundingBox();
+  await page.locator("#algorithm").selectOption("SHA-512");
+  await expect(page.locator("#hex")).toHaveText(createHash("sha512").update("abc").digest("hex"));
+  expect(await page.locator("#base64").boundingBox()).toEqual(geometry);
+  await page.locator("#algorithm").selectOption("SHA-256");
   await page.locator("#hmac").check();
   await page.locator("#key").fill("test key");
-  await page.locator("#hash").click();
   await expect(page.locator("#hex")).toHaveText(
     createHmac("sha256", "test key").update("abc").digest("hex")
   );
+  await expect(page.locator("#compare-status")).toHaveText("Digest does not match.");
   await page.locator("#key").fill("");
-  await page.locator("#hash").click();
   await expect(page.locator("#status")).toContainText("non-empty");
+  await expect(page.locator("#copy-hex")).toBeDisabled();
+  expect(await page.locator("#base64").boundingBox()).toEqual(geometry);
   await page.locator("#hmac").uncheck();
   await page.locator("#source").selectOption("file");
-  await expect(page.locator("#text-field")).toBeHidden();
   const bytes = Buffer.from([0, 255, 13, 10]);
   await page
     .locator("#file")
     .setInputFiles({ name: "binary.dat", mimeType: "application/octet-stream", buffer: bytes });
-  await page.locator("#hash").click();
   await expect(page.locator("#hex")).toHaveText(createHash("sha256").update(bytes).digest("hex"));
-  await page.locator("#algorithm").selectOption("SHA-1");
-  await expect(page.locator("#legacy")).toBeVisible();
-  await page.locator("#clear").click();
+  await page.reload();
+  await expect(page.locator("#file-name")).toContainText("binary.dat");
+  await expect(page.locator("#status")).toContainText("Reselect");
   await expect(page.locator("#hex")).toBeEmpty();
+  await page.locator("#clear").click();
+  await expect(page.locator("#hex")).toHaveText(createHash("sha256").update("").digest("hex"));
 });
 
-test("Codes exports SVG and an independently decodable PNG with Wi-Fi content", async ({
+test("Codes keeps preview geometry stable and exports exact-size independently scannable QR and barcodes", async ({
   page,
 }) => {
   await page.goto("/Tools/codes/");
-  await page.locator("#content").fill("https://example.com/🌍");
   await expect(page.locator("#preview svg")).toBeVisible();
+  const before = await page.locator("#preview").boundingBox();
+  await page.locator("#content").fill("https://example.com/🌍");
+  await expect(page.locator("#status")).toContainText("export 512");
+  expect(await page.locator("#preview").boundingBox()).toEqual(before);
+  await page.locator("#resolution").fill("768");
+  await expect(page.locator("#status")).toContainText("768 × 768");
   const svgDownload = page.waitForEvent("download");
   await page.locator("#save-svg").click();
   const svg = await readFile((await (await svgDownload).path())!, "utf8");
-  expect(svg).toContain('shape-rendering="crispEdges"');
-  expect(svg).not.toContain("example.com");
+  expect(svg).toContain('width="768" height="768"');
   await page.locator("#preset").selectOption("wifi");
-  await expect(page.locator("#content-field")).toBeHidden();
   await page.locator("#ssid").fill("office;guest");
   await page.locator("#password").fill("test-password");
-  await expect(page.locator("#encoded")).toHaveText(
-    "WIFI:T:WPA;S:office\\;guest;P:test-password;H:false;;"
-  );
-  const pngDownload = page.waitForEvent("download");
-  await page.locator("#save-png").click();
-  const png = await readFile((await (await pngDownload).path())!);
-  // The browser decodes the actual exported PNG; jsQR checks the exported pixels independently.
-  const pixels = await page.evaluate(async (base64) => {
-    const image = new Image();
-    image.src = `data:image/png;base64,${base64}`;
-    await image.decode();
-    const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const context = canvas.getContext("2d")!;
-    context.drawImage(image, 0, 0);
-    return {
-      width: image.width,
-      height: image.height,
-      data: Array.from(context.getImageData(0, 0, image.width, image.height).data),
-    };
-  }, png.toString("base64"));
-  expect(jsQR(new Uint8ClampedArray(pixels.data), pixels.width, pixels.height)?.data).toBe(
-    "WIFI:T:WPA;S:office\\;guest;P:test-password;H:false;;"
-  );
+  const wifi = "WIFI:T:WPA;S:office\\;guest;P:test-password;H:false;;";
+  await expect(page.locator("#encoded")).toHaveText(wifi);
+  async function pixels() {
+    const downloaded = page.waitForEvent("download");
+    await page.locator("#save-png").click();
+    const png = await readFile((await (await downloaded).path())!);
+    return page.evaluate(async (base64) => {
+      const image = new Image();
+      image.src = "data:image/png;base64," + base64;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(image, 0, 0);
+      return {
+        width: image.width,
+        height: image.height,
+        data: Array.from(ctx.getImageData(0, 0, image.width, image.height).data),
+      };
+    }, png.toString("base64"));
+  }
+  const qr = await pixels();
+  expect(qr.width).toBe(768);
+  expect(jsQR(new Uint8ClampedArray(qr.data), qr.width, qr.height)?.data).toBe(wifi);
+  await page.locator("#qr-options summary").click();
   await page.locator("#margin").fill("3");
   await expect(page.locator("#status")).toContainText("Margin must");
   await expect(page.locator("#save-svg")).toBeDisabled();
-  await expect(page.locator("#preview svg")).toHaveCount(0);
+  expect(await page.locator("#preview").boundingBox()).toEqual(before);
+  for (const [kind, content, expected, format] of [
+    ["code128", "TOOLS-2026", "TOOLS-2026", BarcodeFormat.CODE_128],
+    ["ean13", "400638133393", "4006381333931", BarcodeFormat.EAN_13],
+    ["upca", "03600029145", "036000291452", BarcodeFormat.UPC_A],
+  ] as const) {
+    await page.locator("#kind").selectOption(kind);
+    await page.locator("#content").fill(content);
+    await expect(page.locator("#encoded")).toHaveText(expected);
+    const image = await pixels();
+    const gray = new Uint8ClampedArray(image.width * image.height);
+    for (let i = 0; i < gray.length; i++) gray[i] = image.data[i * 4];
+    const reader = new MultiFormatReader();
+    expect(
+      reader
+        .decode(
+          new BinaryBitmap(
+            new HybridBinarizer(new RGBLuminanceSource(gray, image.width, image.height))
+          ),
+          new Map([[DecodeHintType.POSSIBLE_FORMATS, [format]]])
+        )
+        .getText()
+    ).toBe(expected);
+  }
+});
+
+for (const [slug, field, value] of [
+  ["codec", "#left", "remember codec"],
+  ["codes", "#content", "remember codes"],
+  ["digests", "#text", "remember digests"],
+  ["jwt", "#key", "remember jwt"],
+] as const) {
+  test(
+    slug + " draft survives reload but a fresh tab starts independently",
+    async ({ page, context }) => {
+      await page.goto("/Tools/" + slug + "/");
+      if (slug === "jwt")
+        await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+      await page.locator(field).fill(value);
+      await page.reload();
+      await expect(page.locator(field)).toHaveValue(value);
+      const fresh = await context.newPage();
+      await fresh.goto("/Tools/" + slug + "/");
+      await expect(fresh.locator(field)).not.toHaveValue(value);
+      await fresh.close();
+    }
+  );
+}
+test("incompatible drafts fail closed without overwriting saved data", async ({ page }) => {
+  await page.goto("/Tools/codec/");
+  const saved = JSON.stringify({ version: 999, value: { left: "old version" } });
+  await page.evaluate((value) => sessionStorage.setItem("tools.codec.draft", value), saved);
+  await page.reload();
+  await expect(page.locator("#status")).toContainText("Clear this app's session storage");
+  await page.locator("#left").fill("do not overwrite");
+  expect(await page.evaluate(() => sessionStorage.getItem("tools.codec.draft"))).toBe(saved);
 });
 
 for (const slug of ["jwt", "codec", "codes", "digests"]) {
@@ -193,7 +320,9 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
     await expect(page.locator("html")).toHaveAttribute("data-theme", /light|dark/);
     await page.locator("#help-toggle").click();
     await expect(page.locator("#help")).toBeVisible();
-    await page.locator("#help-close").click();
+    await expect(page.locator("#help")).toContainText(findApp(slug)!.name + " is part of a set");
+    await expect(page.locator("#help-close")).toHaveCount(0);
+    await page.locator("#help-toggle").click();
     await expect(page.locator("#help")).toBeHidden();
     expect(errors).toEqual([]);
     await page.setViewportSize({ width: findApp(slug)!.compactHeader!, height: 900 });
@@ -202,14 +331,12 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
     await page.setViewportSize({ width: 320, height: 900 });
     await page.screenshot({ path: `test-results/${slug}-phone.png`, fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
-    if (slug === "jwt" || slug === "codec") await page.locator("#sample").click();
     if (slug === "codes") {
       await page.locator("#content").fill("https://example.com/");
       await expect(page.locator("#preview svg")).toBeVisible();
     }
     if (slug === "digests") {
       await page.locator("#text").fill("Hello, world!");
-      await page.locator("#hash").click();
       await expect(page.locator("#hex")).not.toBeEmpty();
     }
     await page.screenshot({ path: `test-results/${slug}-desktop.png`, fullPage: true });
@@ -221,6 +348,9 @@ test("catalog links, install shortcuts and offline cache contain all four tools"
   context,
 }) => {
   await page.goto("/Tools/");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  expect((await page.locator(".grid").boundingBox())!.width).toBeGreaterThan(1300);
+  await page.screenshot({ path: "test-results/home-desktop.png", fullPage: true });
   for (const slug of ["jwt", "codec", "codes", "digests"])
     await expect(page.locator(`a[href="/Tools/${slug}/"]`)).toBeVisible();
   const manifest = await (await page.request.get("/Tools/manifest.webmanifest")).json();

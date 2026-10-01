@@ -40,7 +40,7 @@ export function readDraft(slug: string, version: number): Draft {
   return { found: true, value: raw.value as Record<string, unknown> };
 }
 export function writeDraft(slug: string, version: number, value: Record<string, unknown>): boolean {
-  if (JSON.stringify(value).length > MAX_DRAFT) {
+  if (new TextEncoder().encode(JSON.stringify({ version, value })).byteLength > MAX_DRAFT) {
     writeStored(`tools.${slug}.draft`, undefined, "session");
     return false;
   }

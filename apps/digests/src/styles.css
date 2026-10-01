@@ -1,2 +1,8 @@
 @import "@tools/ui/base.css";
 @import "@tools/ui/tool.css";
+
+#hex,
+#base64 {
+  height: 54px;
+  overflow: auto;
+}
