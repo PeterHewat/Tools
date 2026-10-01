@@ -1,120 +1,132 @@
-import { toHex } from "@tools/bytes";
+import { createEditor } from "@tools/editor";
+import type { Editor } from "@tools/editor";
 import {
   bindToolHelp,
   byId,
   copyText,
-  fieldValues,
   readDraft,
   registerServiceWorker,
-  restoreFields,
   showMessage,
   writeDraft,
 } from "@tools/ui";
-import { convert, readValue } from "./lib/convert.js";
+import { FORMATS, readValue, writeAll } from "./lib/convert.js";
 import type { Format } from "./lib/convert.js";
 bindToolHelp("codec");
 registerServiceWorker();
-const ids = ["left", "right", "left-format", "right-format"];
-const draft = readDraft("codec", 1);
-const field = (side: string) => byId<HTMLTextAreaElement>(side);
-const format = (side: string) => byId<HTMLSelectElement>(side + "-format");
-const examples = [
-  { label: "Unicode · UTF-8 → Base64", value: "Hello, 🌍!\n", from: "text", to: "base64" },
-  { label: "URL component · text → URL", value: "hello world + café /", from: "text", to: "url" },
-  { label: "Binary bytes · hex → Base64", value: "00 ff 10 7f 80", from: "hex", to: "base64" },
-  {
-    label: "Base64url · token bytes → text",
-    value: "eyJhbGciOiJIUzI1NiJ9",
-    from: "base64url",
-    to: "text",
-  },
-  {
-    label: "Invisible characters · text → hex",
-    value: "\ufeffline 1\r\nline 2\t\u0000",
-    from: "text",
-    to: "hex",
-  },
+
+const NAMES: Record<Format, string> = {
+  text: "UTF-8 text",
+  url: "URL component",
+  base64: "Base64",
+  base64url: "Base64url",
+  hex: "Hex",
+};
+const examples: { label: string; value: string; from: Format }[] = [
+  { label: "Unicode text", value: "Hello, 🌍!\n", from: "text" },
+  { label: "URL component", value: "hello%20world%20%2B%20caf%C3%A9%20%2F", from: "url" },
+  { label: "Binary bytes", value: "00 ff 10 7f 80", from: "hex" },
+  { label: "Base64url token header", value: "eyJhbGciOiJIUzI1NiJ9", from: "base64url" },
+  { label: "Invisible characters", value: "\ufeffline 1\r\nline 2\t\u0000", from: "text" },
 ];
-let active =
-  typeof draft.value.active === "string" && draft.value.active === "right" ? "right" : "left";
-let composing = false;
-function save(): void {
-  if (!writeDraft("codec", 1, { ...fieldValues(ids), active }))
-    showMessage(
-      byId("status"),
-      "Draft could not be remembered (storage unavailable or over 2 MB).",
-      true
-    );
+
+/** This tab's work, in session storage: the field last edited and what it holds. */
+const DRAFT = 1;
+const draft = readDraft("codec", DRAFT);
+
+/** The field being edited: the others are written from its bytes. */
+let source: Format = "text";
+
+const editors = Object.fromEntries(
+  FORMATS.map((format) => [
+    format,
+    createEditor(byId(format), {
+      label: NAMES[format],
+      lineWrapping: true,
+      exact: true,
+      onChange: (user) => {
+        if (!user) return;
+        source = format;
+        update();
+      },
+    }),
+  ])
+) as Record<Format, Editor>;
+
+function note(format: Format, text: string, error = false): void {
+  const element = byId(format + "-note");
+  element.textContent = text;
+  element.dataset.error = String(error);
 }
-function inspect(side: string): void {
+
+function update(): void {
+  let bytes: Uint8Array;
   try {
-    const bytes = readValue(field(side).value, format(side).value as Format);
-    byId(side + "-bytes").textContent =
-      toHex(bytes.subarray(0, 4096)).replace(/(..)/g, "$1 ").trim() +
-      (bytes.length > 4096 ? "\n… first 4096 bytes shown" : "");
-    showMessage(byId(side + "-status"), bytes.length.toLocaleString() + " bytes");
+    bytes = readValue(editors[source].text, source);
   } catch (error) {
-    byId(side + "-bytes").textContent = "";
-    showMessage(byId(side + "-status"), (error as Error).message, true);
+    note(source, (error as Error).message, true);
+    for (const format of FORMATS)
+      byId(format + "-card").toggleAttribute("data-stale", format !== source);
+    save();
+    return;
   }
-}
-function update(side: string): void {
-  if (draft.error || composing) return;
-  active = side;
-  const target = side === "left" ? "right" : "left";
-  try {
-    field(target).value = convert(
-      field(side).value,
-      format(side).value as Format,
-      format(target).value as Format
-    ).text;
-    showMessage(byId("status"), "Live · " + side + " → " + target);
-  } catch (error) {
-    field(target).value = "";
-    showMessage(byId("status"), (error as Error).message, true);
+  const all = writeAll(bytes);
+  for (const format of FORMATS) {
+    byId(format + "-card").removeAttribute("data-stale");
+    const value = all[format];
+    if (format !== source) editors[format].setText(value ?? "", "sync");
+    byId<HTMLButtonElement>(format + "-copy").disabled = value === null;
+    note(format, value === null ? "Not valid UTF-8: these bytes have no text." : "");
   }
-  inspect(side);
-  inspect(target);
+  byId("count").textContent =
+    bytes.length === 1 ? "1 byte" : bytes.length.toLocaleString() + " bytes";
   save();
 }
-function loadExample(index: number): void {
-  const example = examples[index];
-  if (!example) return;
-  format("left").value = example.from;
-  format("right").value = example.to;
-  field("left").value = example.value;
-  update("left");
+
+function save(): void {
+  if (draft.error) return;
+  if (!writeDraft("codec", DRAFT, { source, value: editors[source].text })) {
+    const status = byId("status");
+    status.hidden = false;
+    showMessage(status, "Draft could not be remembered (storage unavailable or over 2 MB).", true);
+  }
 }
+
+function load(value: string, from: Format): void {
+  source = from;
+  for (const format of FORMATS) if (format !== from) editors[format].setText("", "sync");
+  editors[from].setText(value);
+  update();
+}
+
 const sample = byId<HTMLSelectElement>("examples");
 for (const [index, example] of examples.entries())
   sample.add(new Option(example.label, String(index)));
 sample.addEventListener("change", () => {
-  loadExample(Number(sample.value));
+  const example = examples[Number(sample.value)];
+  if (example) load(example.value, example.from);
   sample.value = "";
 });
-for (const side of ["left", "right"]) {
-  field(side).addEventListener("compositionstart", () => {
-    composing = true;
-  });
-  field(side).addEventListener("compositionend", () => {
-    composing = false;
-    update(side);
-  });
-  field(side).addEventListener("input", () => update(side));
-  format(side).addEventListener("change", () => update(active));
-  byId(side + "-copy").addEventListener("click", async () => {
-    if (!(await copyText(field(side).value, byId(side + "-copy"))))
-      showMessage(byId("status"), "Clipboard unavailable. Select and copy the text.", true);
-  });
-  byId(side + "-clear").addEventListener("click", () => {
-    field(side).value = "";
-    update(side);
-    field(side).focus();
+byId("clear").addEventListener("click", () => {
+  load("", "text");
+  editors.text.focus();
+});
+for (const format of FORMATS) {
+  const button = byId(format + "-copy");
+  button.addEventListener("click", async () => {
+    if (!(await copyText(editors[format].text, button))) {
+      const status = byId("status");
+      status.hidden = false;
+      showMessage(status, "Clipboard unavailable. Select and copy the text.", true);
+    }
   });
 }
-if (draft.error) showMessage(byId("status"), draft.error, true);
-else if (draft.found) {
-  restoreFields(draft.value, ids);
-  inspect("left");
-  inspect("right");
-} else loadExample(0);
+
+if (draft.error) {
+  const status = byId("status");
+  status.hidden = false;
+  showMessage(status, draft.error, true);
+} else {
+  const { source: saved, value } = draft.value;
+  if (FORMATS.includes(saved as Format) && typeof value === "string") load(value, saved as Format);
+  else load(examples[0].value, examples[0].from);
+}

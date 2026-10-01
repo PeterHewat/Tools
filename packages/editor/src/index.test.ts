@@ -40,6 +40,14 @@ describe("createEditor", () => {
     expect(ed.selection.head).toBe(2);
   });
 
+  test("exact text keeps a carriage return and draws invisible characters", () => {
+    const ed = make("\ufeffa\r\nb\u0000", { language: null, exact: true });
+    expect(ed.text).toBe("\ufeffa\r\nb\u0000");
+    expect(ed.lineCount).toBe(2);
+    const drawn = [...ed.dom.querySelectorAll(".cm-specialChar")].map((s) => s.textContent);
+    expect(drawn).toEqual(["U+FEFF", "\u240d", "\u2400"]);
+  });
+
   test("position and line are 1-based", () => {
     const ed = make(DOC);
     const at = DOC.indexOf('"c"');

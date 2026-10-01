@@ -1,2 +1,77 @@
 @import "@tools/ui/base.css";
 @import "@tools/ui/tool.css";
+
+/* One field per format, stacked; each grows with its value, then scrolls inside. */
+.codec {
+  max-width: 1200px;
+}
+.codec-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.codec-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.codec-fields {
+  display: grid;
+  gap: 10px;
+}
+.codec-fields .ui-card + .ui-card {
+  margin-top: 0;
+}
+.codec-field .ui-row {
+  flex-wrap: nowrap;
+}
+.codec-field .ui-row h2 {
+  flex: none;
+  margin-right: 0;
+}
+.codec-note {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.codec-note[data-error="true"] {
+  color: var(--danger);
+}
+.codec-field .ui-editor,
+.codec-field .cm-editor {
+  min-height: 0;
+}
+.codec-field .cm-scroller {
+  max-height: 240px;
+}
+.codec-field .cm-gutters {
+  display: none;
+}
+.codec-field .cm-activeLine {
+  background: transparent;
+}
+.codec-field .cm-content {
+  min-height: 3em;
+  padding: 6px 4px;
+}
+/* The others while the field being edited cannot be read: their last value, dimmed. */
+.codec-field[data-stale] .cm-content {
+  opacity: 0.45;
+}
+/* A tab: a line across its width. */
+.codec-field .cm-tab {
+  background: linear-gradient(var(--muted), var(--muted)) center / calc(100% - 4px) 1px no-repeat;
+}
+.codec-field .cm-specialChar {
+  margin: 0 1px;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--muted);
+  font-size: 0.85em;
+}

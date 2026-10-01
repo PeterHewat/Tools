@@ -20,73 +20,89 @@
         </button>
       </div>
     </header>
-    <main class="ui-workbench">
-      <div class="ui-row">
-        <h1>Codec</h1>
+    <main class="ui-workbench codec">
+      <div class="codec-bar">
         <select class="ui-input" id="examples" aria-label="Load example">
           <option value="">Load example…</option>
         </select>
+        <span class="codec-count" id="count" role="status"></span>
+        <button type="button" class="ui-btn ui-icon-btn" id="clear" aria-label="Clear all">
+          <svg data-ui-icon="trash"></svg>
+        </button>
       </div>
-      <p class="ui-intro">Text and byte encodings, updated as you edit either side.</p>
-      <div class="ui-columns">
-        <section class="ui-card">
+      <p class="ui-message" id="status" role="status" hidden></p>
+      <div class="codec-fields">
+        <section class="ui-card codec-field" id="text-card" aria-labelledby="text-title">
           <div class="ui-row">
-            <label
-              >Format
-              <select class="ui-input" id="left-format">
-                <option value="text">UTF-8 text</option>
-                <option value="hex">Hex</option>
-                <option value="base64">Base64</option>
-                <option value="base64url">Base64url</option>
-                <option value="url">URL component</option>
-              </select></label
+            <h2 id="text-title">UTF-8 text</h2>
+            <span class="codec-note" id="text-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="text-copy"
+              aria-label="Copy UTF-8 text"
             >
-            <div class="ui-pane-actions">
-              <button class="ui-btn ui-icon-btn" id="left-copy" aria-label="Copy left">
-                <svg data-ui-icon="copy"></svg></button
-              ><button class="ui-btn ui-icon-btn" id="left-clear" aria-label="Delete left">
-                <svg data-ui-icon="trash"></svg>
-              </button>
-            </div>
+              <svg data-ui-icon="copy"></svg>
+            </button>
           </div>
-          <label class="ui-field"
-            ><span>Left value</span
-            ><textarea class="ui-input" id="left" spellcheck="false"></textarea>
-          </label>
-          <p class="ui-message" id="left-status" role="status"></p>
-          <h2>Bytes · hex</h2>
-          <pre class="ui-bytes" id="left-bytes"></pre>
+          <div class="ui-editor" id="text"></div>
         </section>
-        <section class="ui-card">
+        <section class="ui-card codec-field" id="url-card" aria-labelledby="url-title">
           <div class="ui-row">
-            <label
-              >Format
-              <select class="ui-input" id="right-format">
-                <option value="text">UTF-8 text</option>
-                <option value="hex">Hex</option>
-                <option value="base64">Base64</option>
-                <option value="base64url">Base64url</option>
-                <option value="url">URL component</option>
-              </select></label
+            <h2 id="url-title">URL component</h2>
+            <span class="codec-note" id="url-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="url-copy"
+              aria-label="Copy URL component"
             >
-            <div class="ui-pane-actions">
-              <button class="ui-btn ui-icon-btn" id="right-copy" aria-label="Copy right">
-                <svg data-ui-icon="copy"></svg></button
-              ><button class="ui-btn ui-icon-btn" id="right-clear" aria-label="Delete right">
-                <svg data-ui-icon="trash"></svg>
-              </button>
-            </div>
+              <svg data-ui-icon="copy"></svg>
+            </button>
           </div>
-          <label class="ui-field"
-            ><span>Right value</span
-            ><textarea class="ui-input" id="right" spellcheck="false"></textarea>
-          </label>
-          <p class="ui-message" id="right-status" role="status"></p>
-          <h2>Bytes · hex</h2>
-          <pre class="ui-bytes" id="right-bytes"></pre>
+          <div class="ui-editor" id="url"></div>
+        </section>
+        <section class="ui-card codec-field" id="base64-card" aria-labelledby="base64-title">
+          <div class="ui-row">
+            <h2 id="base64-title">Base64</h2>
+            <span class="codec-note" id="base64-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="base64-copy"
+              aria-label="Copy Base64"
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor" id="base64"></div>
+        </section>
+        <section class="ui-card codec-field" id="base64url-card" aria-labelledby="base64url-title">
+          <div class="ui-row">
+            <h2 id="base64url-title">Base64url</h2>
+            <span class="codec-note" id="base64url-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="base64url-copy"
+              aria-label="Copy Base64url"
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor" id="base64url"></div>
+        </section>
+        <section class="ui-card codec-field" id="hex-card" aria-labelledby="hex-title">
+          <div class="ui-row">
+            <h2 id="hex-title">Hex</h2>
+            <span class="codec-note" id="hex-note"></span>
+            <button type="button" class="ui-btn ui-icon-btn" id="hex-copy" aria-label="Copy Hex">
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor" id="hex"></div>
         </section>
       </div>
-      <p class="ui-message" id="status" role="status"></p>
     </main>
     <aside class="ui-dock help" id="help" aria-label="Help" hidden>
       <div class="ui-dock-head">
@@ -100,24 +116,40 @@
             fresh. Light / dark applies to every tool.
           </li>
         </ul>
-        <h3>Convert either way</h3>
-        <p>
-          Pick the format for each pane and edit either side. The other pane follows immediately.
-          Load example offers Unicode, URL, binary and invisible-character samples. Conversions
-          preserve bytes; text uses UTF-8 and invalid UTF-8 is rejected.
-        </p>
+        <h3>Editing</h3>
+        <ul>
+          <li>
+            Every field holds the same bytes. Edit any of them and the others are rewritten as you
+            type; the one you edit is left as you wrote it.
+          </li>
+          <li>
+            While what you type cannot be read yet (an odd hex digit, a cut Base64 group), the error
+            shows beside its name and the other fields keep their last value, dimmed.
+          </li>
+          <li>
+            Bytes that are not valid UTF-8 have no text: the UTF-8 field stays empty and says so.
+            Typing in it starts again from text.
+          </li>
+          <li>Load example offers Unicode, URL, binary, token and invisible-character samples.</li>
+        </ul>
         <h3>Formats</h3>
-        <p>
-          Base64 accepts whitespace and optional padding; Base64url uses an unpadded URL-safe
-          alphabet. Both reject nonzero padding bits. Hex accepts whitespace between complete byte
-          pairs. URL uses percent encoding for a component (encodeURIComponent); + is a literal
-          plus, not a space.
-        </p>
-        <h3>Inspect</h3>
-        <p>
-          The byte view includes invisible characters, including newlines and a UTF-8 BOM. Input
-          stays only in memory.
-        </p>
+        <ul>
+          <li>
+            UTF-8 text is kept byte for byte: a Windows line break stays <code>\r\n</code>, and
+            invisible characters are drawn: a tab as a line across its width, control characters as
+            symbols (␀ ␍), others by their code point, such as U+FEFF for a byte order mark. Hover a
+            symbol for its name.
+          </li>
+          <li>
+            URL component is percent encoding as <code>encodeURIComponent</code> writes it; a byte
+            that is not part of UTF-8 text is written as %XX too. A + is a plus, not a space.
+          </li>
+          <li>
+            Base64 accepts white space and optional padding; Base64url uses the unpadded URL-safe
+            alphabet. Both refuse padding bits that are not zero.
+          </li>
+          <li>Hex accepts white space between complete byte pairs, in either case.</li>
+        </ul>
       </div>
     </aside>
     <script type="module" src="/src/main.ts"></script>

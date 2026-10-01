@@ -205,29 +205,56 @@ test("JWT cleans pasted tokens, keeps unreadable headers, and guards keys and en
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
 });
 
-test("Codec converts live in either direction with default examples and fixed result regions", async ({
+test("Codec rewrites every format live from whichever field is edited", async ({
   page,
+  context,
 }) => {
   await page.goto("/Tools/codec/");
-  await expect(page.locator("#left")).not.toBeEmpty();
-  await page.locator("#left").fill("Hello 🌍\n");
-  await expect(page.locator("#right")).toHaveValue(Buffer.from("Hello 🌍\n").toString("base64"));
-  await page.locator("#right").fill(Buffer.from("Changed 🌍").toString("base64"));
-  await expect(page.locator("#left")).toHaveValue("Changed 🌍");
-  await expect(page.locator("#left-bytes")).toContainText("f0 9f 8c 8d");
-  const before = await page.locator("#right").boundingBox();
-  await page.locator("#left-format").selectOption("hex");
-  await page.locator("#left").fill("ff00");
-  await page.locator("#right-format").selectOption("text");
-  await expect(page.locator("#status")).toContainText("not valid UTF-8");
-  expect(await page.locator("#right").boundingBox()).toEqual(before);
-  await page.locator("#right-format").selectOption("base64");
-  await expect(page.locator("#right")).toHaveValue("/wA=");
-  await page.locator("#examples").selectOption("0");
-  await expect(page.locator("#left")).toHaveValue("Hello, 🌍!\n");
-  await page.locator("#left-clear").click();
-  await expect(page.locator("#left")).toBeEmpty();
-  await expect(page.locator("#right")).toBeEmpty();
+  const field = (format: string) => page.locator(`#${format} .cm-content`);
+  const fill = async (format: string, value: string) => {
+    await field(format).click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.insertText(value);
+  };
+  await expect(field("base64")).toHaveText("SGVsbG8sIPCfjI0hCg==");
+  await fill("text", "Hello 🌍");
+  await expect(field("base64")).toHaveText(Buffer.from("Hello 🌍").toString("base64"));
+  await expect(field("url")).toHaveText("Hello%20%F0%9F%8C%8D");
+  await expect(field("hex")).toHaveText("48 65 6c 6c 6f 20 f0 9f 8c 8d");
+  await expect(page.locator("#count")).toHaveText("10 bytes");
+  await fill("base64", Buffer.from("Changed").toString("base64"));
+  await expect(field("text")).toHaveText("Changed");
+  await expect(field("base64url")).toHaveText("Q2hhbmdlZA");
+  // Half-typed hex: the error beside its name, the others kept and dimmed.
+  await fill("hex", "ff0");
+  await expect(page.locator("#hex-note")).toContainText("complete pairs");
+  await expect(page.locator("#text-card")).toHaveAttribute("data-stale", "");
+  await expect(field("text")).toHaveText("Changed");
+  await page.keyboard.insertText("0");
+  await expect(page.locator("#text-card")).not.toHaveAttribute("data-stale");
+  await expect(page.locator("#text-note")).toContainText("Not valid UTF-8");
+  await expect(field("text")).toHaveText("");
+  await expect(page.locator("#text-copy")).toBeDisabled();
+  await expect(field("url")).toHaveText("%FF%00");
+  await expect(field("base64")).toHaveText("/wA=");
+  await fill("url", "a+b%20c");
+  await expect(field("text")).toHaveText("a+b c");
+  // Invisible characters are drawn, and a Windows line break stays two bytes.
+  await page.locator("#examples").selectOption({ label: "Invisible characters" });
+  const invisible = "ef bb bf 6c 69 6e 65 20 31 0d 0a 6c 69 6e 65 20 32 09 00";
+  await expect(field("hex")).toHaveText(invisible);
+  await expect(page.locator("#text .cm-specialChar")).toHaveText(["U+FEFF", "\u240d", "\u2400"]);
+  // The draft survives a reload; a new tab starts from the first example.
+  await page.reload();
+  await expect(field("hex")).toHaveText(invisible);
+  const fresh = await context.newPage();
+  await fresh.goto("/Tools/codec/");
+  await expect(fresh.locator("#base64 .cm-content")).toHaveText("SGVsbG8sIPCfjI0hCg==");
+  await fresh.close();
+  await page.locator("#clear").click();
+  for (const format of ["text", "url", "base64", "base64url", "hex"])
+    await expect(field(format)).toHaveText("");
+  await expect(page.locator("#count")).toHaveText("0 bytes");
 });
 
 test("Digests computes live text/file/HMAC and compares exact outputs", async ({ page }) => {
@@ -343,7 +370,6 @@ test("Codes keeps preview geometry stable and exports exact-size independently s
 });
 
 for (const [slug, field, value] of [
-  ["codec", "#left", "remember codec"],
   ["codes", "#content", "remember codes"],
   ["digests", "#text", "remember digests"],
   ["jwt", "#secret", "remember jwt"],
@@ -370,7 +396,11 @@ test("incompatible drafts fail closed without overwriting saved data", async ({ 
   await page.evaluate((value) => sessionStorage.setItem("tools.codec.draft", value), saved);
   await page.reload();
   await expect(page.locator("#status")).toContainText("Clear this app's session storage");
-  await page.locator("#left").fill("do not overwrite");
+  await page.locator("#text .cm-content").click();
+  await page.keyboard.insertText("do not overwrite");
+  await expect(page.locator("#base64 .cm-content")).toHaveText(
+    Buffer.from("do not overwrite").toString("base64")
+  );
   expect(await page.evaluate(() => sessionStorage.getItem("tools.codec.draft"))).toBe(saved);
 });
 

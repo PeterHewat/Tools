@@ -132,6 +132,11 @@ export interface EditorOptions {
   label?: string;
   placeholder?: string;
   lineWrapping?: boolean;
+  /**
+   * The text is data, kept exactly as it is: only "\n" breaks a line (a "\r" stays a character),
+   * control and invisible characters are drawn as symbols, and brackets are not closed as typed.
+   */
+  exact?: boolean;
   /** Indent unit: a number of spaces, or a tab. Two spaces by default. */
   indent?: number | "\t";
   /** Extra keys, tried before the editor's own. */
@@ -516,6 +521,21 @@ function numbers(labels: readonly (number | string | null)[] | null): Extension 
   });
 }
 
+/**
+ * An invisible character in exact text: a control character as its Unicode control picture
+ * (␀, ␍, ␛…), any other as its code point, both named on hover. A tab keeps its width, as a
+ * `cm-tab` the app may draw.
+ */
+function specialChar(code: number, description: string | null): HTMLElement {
+  const span = document.createElement("span");
+  const point = "U+" + code.toString(16).toUpperCase().padStart(4, "0");
+  span.className = "cm-specialChar";
+  span.textContent =
+    code < 0x20 ? String.fromCharCode(0x2400 + code) : code === 0x7f ? "\u2421" : point;
+  span.title = description ? `${description} (${point})` : point;
+  return span;
+}
+
 export function createEditor(parent: HTMLElement, options: EditorOptions = {}): Editor {
   const language = new Compartment();
   const colours = new Compartment();
@@ -533,7 +553,12 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     gutter.of(numbers(null)),
     folding,
     highlightActiveLineGutter(),
-    highlightSpecialChars(),
+    options.exact
+      ? [
+          EditorState.lineSeparator.of("\n"),
+          highlightSpecialChars({ render: specialChar, addSpecialChars: /\t/ }),
+        ]
+      : [highlightSpecialChars(), closeBrackets()],
     undo.of(history()),
     drawSelection(),
     dropCursor(),
@@ -541,7 +566,6 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     EditorState.tabSize.of(2),
     indentOnInput(),
     bracketMatching(),
-    closeBrackets(),
     rectangularSelection(),
     highlightActiveLine(),
     highlightSelectionMatches({ minSelectionLength: 2 }),
