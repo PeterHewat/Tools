@@ -1,5 +1,7 @@
 @import "@tools/ui/base.css";
 @import "@tools/ui/tool.css";
+
+/* Token on the left, what it holds on the right; one column on a phone. */
 .jwt-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -9,57 +11,230 @@
 .jwt-token-card {
   display: flex;
   flex-direction: column;
-  min-height: 780px;
   position: sticky;
   top: 10px;
 }
-.jwt-token-card #token {
-  flex: 1;
-  min-height: 480px;
-}
+/* A token is one long line: no line numbers, and a fixed height that scrolls inside. */
 #token .cm-editor {
-  min-height: 480px;
+  height: clamp(220px, calc(100vh - 300px), 560px);
 }
 #token .cm-scroller {
-  max-height: 600px;
+  max-height: none;
+}
+#token .cm-gutters {
+  display: none;
+}
+#token .cm-activeLine {
+  background: transparent;
 }
 #token .cm-content {
-  font-size: 18px;
+  padding: 8px 4px;
+  font-size: 16px;
   line-height: 1.6;
+}
+#header-editor .cm-editor,
+#header-editor {
+  min-height: 0;
+}
+#header-editor .cm-scroller {
+  max-height: 200px;
 }
 .jwt-decoded .ui-card:first-child {
   margin-top: 0;
 }
+
+/* The three parts keep one colour each: in the token and beside each panel's title. */
 .jwt-header {
-  color: color-mix(in srgb, var(--danger) 80%, var(--text));
+  --part: color-mix(in srgb, var(--danger) 80%, var(--text));
+  color: var(--part);
 }
 .jwt-payload {
-  color: var(--violet);
+  --part: var(--violet);
+  color: var(--part);
 }
 .jwt-signature {
-  color: var(--accent);
+  --part: var(--accent);
+  color: var(--part);
 }
-#key {
-  min-height: 140px;
-  height: 140px;
+.jwt-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--part);
+  vertical-align: 1px;
 }
-#claims {
-  min-height: 50px;
+
+/* Verdicts under the token: what it is, whether the key matches, whether it is current. */
+.jwt-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 30px;
+  margin-top: 10px;
+}
+.jwt-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  --tone: var(--muted);
+}
+.jwt-state[data-state="ok"] {
+  --tone: var(--ok);
+}
+.jwt-state[data-state="error"] {
+  --tone: var(--danger);
+}
+.jwt-state[data-state="warn"] {
+  --tone: var(--warn);
+}
+.jwt-state[data-state]:not([data-state=""]) {
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 55%, transparent);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+}
+.jwt-state::before {
   font-size: 12px;
-  padding-top: 6px;
+  line-height: 1;
+}
+.jwt-state[data-state="ok"]::before {
+  content: "✓";
+}
+.jwt-state[data-state="error"]::before {
+  content: "✕";
+}
+.jwt-state[data-state="warn"]::before {
+  content: "!";
+}
+
+/* One quiet line under each panel: a problem in red, otherwise a hint. */
+.jwt-note {
+  min-height: 18px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
+.jwt-note[data-error="true"] {
+  color: var(--danger);
+}
+
+.jwt-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.jwt-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+  min-height: 28px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.jwt-field-head label {
+  font-weight: 600;
+  color: var(--text);
+}
+.jwt-field-head label span {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.ui-workbench #secret-fields textarea,
+.ui-workbench #pair-fields textarea {
+  min-height: 0;
+  font-size: 12px;
+}
+.ui-workbench #secret {
+  height: 60px;
+}
+.ui-workbench #public-key,
+.ui-workbench #private-key {
+  height: 110px;
+}
+#pair-fields textarea + .jwt-field-head {
+  margin-top: 8px;
+}
+.jwt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Claims: the payload as a table, time claims read as dates. */
+.jwt-claims {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 320px;
+  overflow: auto;
+}
+.jwt-claims table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.jwt-claims th,
+.jwt-claims td {
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.jwt-claims tr:last-child > * {
+  border-bottom: 0;
+}
+.jwt-claims thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-weight: 600;
+}
+.jwt-claims tbody th {
+  width: 35%;
+  font-weight: 400;
+}
+.jwt-claims code {
+  font: 12px/1.5 var(--mono);
+  overflow-wrap: anywhere;
+}
+.jwt-claims tbody th span,
+.jwt-claims td span {
+  display: block;
+  color: var(--muted);
+}
+.jwt-claims td span[data-problem="true"] {
+  color: var(--warn);
+}
+.jwt-claims-empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 @media (max-width: 760px) {
   .jwt-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .jwt-token-card {
-    min-height: 360px;
     position: static;
   }
-  .jwt-token-card #token,
   #token .cm-editor {
-    min-height: 220px;
+    height: 180px;
   }
   #token .cm-content {
     font-size: 14px;

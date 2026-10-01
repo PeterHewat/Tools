@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { hmac, toBase64, utf8 } from "@tools/bytes";
-import { claimTimes, decodeToken, verifyToken } from "./token.js";
+import { claimRows, claimTimes, decodeToken, verifyToken } from "./token.js";
 
 test("JWT inspection preserves exact numbers, escapes and key order", () => {
   const payload = '{"id":9223372036854775807,"decimal":1.0,"overflow":1e400,"name":"\\u0061"}';
@@ -48,4 +48,20 @@ test("NumericDate boundaries, invalid claims and fractional seconds", () => {
   ]);
   expect(claimTimes({ exp: "100", nbf: 1e20 }, 100).every((c) => c.problem)).toBe(true);
   expect(claimTimes({ exp: 100.5 }, 100)[0].date).toBe("1970-01-01T00:01:40.500Z");
+});
+
+test("claim rows keep token order and exact values, and read time claims", () => {
+  const rows = claimRows(
+    { sub: "x", exp: 1000, custom: 1, iat: "soon" },
+    { sub: '"x"', exp: "1000", custom: "1.0", iat: '"soon"' },
+    100
+  );
+  expect(rows.map((row) => row.claim)).toEqual(["sub", "exp", "custom", "iat"]);
+  expect(rows[0]).toEqual({ claim: "sub", value: '"x"', label: "Subject" });
+  expect(rows[1]).toMatchObject({ time: 1000, relative: "Expires in 15 min", problem: false });
+  expect(rows[2]).toEqual({ claim: "custom", value: "1.0" });
+  expect(rows[3].time).toBeUndefined();
+  expect(rows[3].problem).toBe(true);
+  expect(claimTimes({ exp: 0 }, 3 * 365.25 * 86400)[0].description).toBe("Expired 3 years ago");
+  expect(claimTimes({ exp: 0 }, 10 * 86400)[0].description).toBe("Expired 10 days ago");
 });

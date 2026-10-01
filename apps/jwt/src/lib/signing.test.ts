@@ -5,9 +5,15 @@ import {
   defaultExample,
   encodeJwt,
   generateExample,
+  generateKey,
+  JsonError,
+  pairFormat,
   secretBytes,
+  signInput,
+  signingInput,
   strictObject,
   verifyInput,
+  withAlg,
 } from "./signing.js";
 import { inspectJwt } from "./inspect.js";
 import { constants, createHmac, createPublicKey, verify } from "node:crypto";
@@ -140,4 +146,52 @@ test("default public sample verifies and partial decoding retains both recoverab
   );
   expect(inspectJwt(header + "=.e30.AA").header.error).toContain("unpadded");
   expect(fromBase64(example.token.split(".")[2], true).length).toBe(32);
+});
+test("choosing an algorithm rewrites only the header's alg, keeping the text as typed", () => {
+  expect(withAlg('{\n  "alg": "HS256",\n  "typ": "JWT"\n}', "RS256")).toBe(
+    '{\n  "alg": "RS256",\n  "typ": "JWT"\n}'
+  );
+  expect(withAlg('{\n  "typ": "JWT"\n}', "ES256")).toBe('{\n  "alg": "ES256",\n  "typ": "JWT"\n}');
+  expect(withAlg('{"typ":"JWT"}', "EdDSA")).toBe('{"alg": "EdDSA", "typ":"JWT"}');
+  expect(withAlg("{}", "HS512")).toBe('{"alg": "HS512"}');
+  expect(withAlg('{"alg":', "HS512")).toBe('{"alg":');
+});
+test("strict JSON reports where it fails and keeps each member's exact value", () => {
+  const result = strictObject('{"id":9223372036854775807,"aud":["a", "b"]}');
+  expect(result.raw).toEqual({ id: "9223372036854775807", aud: '["a","b"]' });
+  for (const [source, offset] of [
+    ['{"a":1 "b":2}', 7],
+    ['{"a":1,"a":2}', 7],
+    ['{"a":1,}', 6],
+    ["[1]", 0],
+  ] as const) {
+    let caught: unknown;
+    try {
+      strictObject(source);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(JsonError);
+    expect((caught as JsonError).offset).toBe(offset);
+  }
+});
+test("key pairs: generated keys sign, a public key cannot, and the format is read from the text", async () => {
+  expect(pairFormat('  {"kty":"EC"}')).toBe("jwk");
+  expect(pairFormat("-----BEGIN PUBLIC KEY-----")).toBe("pem");
+  const header = strictObject('{"alg":"ES256"}'),
+    payload = strictObject('{"sub":"x"}');
+  const input = signingInput(header, payload);
+  expect(input).toBe(
+    toBase64(utf8('{"alg":"ES256"}'), true) + "." + toBase64(utf8('{"sub":"x"}'), true)
+  );
+  const pair = await generateKey("ES256");
+  expect(pair.format).toBe("pem");
+  const publicJwk = JSON.stringify(createPublicKey(pair.publicKey).export({ format: "jwk" }));
+  await expect(signInput(input, publicJwk, "jwk", "ES256")).rejects.toThrow("private key");
+  await expect(signInput(input, pair.publicKey, "pem", "ES256")).rejects.toThrow("private key");
+  const signature = await signInput(input, pair.key, "pem", "ES256");
+  expect(await verifyInput(input, signature, publicJwk, "jwk", "ES256")).toBe(true);
+  const secret = await generateKey("HS384");
+  expect(secretBytes(secret.key, secret.format).length).toBe(48);
+  expect(secret.publicKey).toBe("");
 });

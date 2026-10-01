@@ -1,9 +1,13 @@
 import { fromBase64, textFromBytes } from "@tools/bytes";
-import { strictObject } from "./signing.js";
+import { JsonError, strictObject } from "./signing.js";
 export interface InspectedPart {
   text: string;
   object?: Record<string, unknown>;
+  /** Each member's value as exact compact JSON. */
+  raw?: Record<string, string>;
   error?: string;
+  /** Where in `text` the JSON problem is, when known. */
+  offset?: number;
 }
 export interface Inspection {
   header: InspectedPart;
@@ -11,6 +15,8 @@ export interface Inspection {
   signature?: Uint8Array<ArrayBuffer>;
   input: string;
   error?: string;
+  /** Where each of the three segments sits in the trimmed token. */
+  segments: { from: number; to: number }[];
   valid: boolean;
 }
 function inspectPart(value: string | undefined): InspectedPart {
@@ -22,15 +28,24 @@ function inspectPart(value: string | undefined): InspectedPart {
     return {
       text: result.pretty,
       object: result.object,
+      raw: result.raw,
       ...(value.includes("=") ? { error: "JWT Base64url must be unpadded." } : {}),
     };
   } catch (error) {
-    return { text, error: (error as Error).message };
+    return {
+      text,
+      error: (error as Error).message,
+      ...(error instanceof JsonError && error.offset !== undefined ? { offset: error.offset } : {}),
+    };
   }
 }
 /** Inspect each JSON segment independently, even if the other segment or signature is broken. */
 export function inspectJwt(value: string): Inspection {
-  const parts = value.trim().split(".");
+  const trimmed = value.trim(),
+    parts = trimmed.split("."),
+    segments: { from: number; to: number }[] = [];
+  for (let i = 0, from = 0; i < parts.length; from += parts[i].length + 1, i++)
+    segments.push({ from, to: from + parts[i].length });
   const header = inspectPart(parts[0]),
     payload = inspectPart(parts[1]);
   let signature: Uint8Array<ArrayBuffer> | undefined, error: string | undefined;
@@ -48,6 +63,7 @@ export function inspectJwt(value: string): Inspection {
     signature,
     input: parts.slice(0, 2).join("."),
     error,
+    segments,
     valid: !header.error && !payload.error && !error,
   };
 }

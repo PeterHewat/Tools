@@ -89,9 +89,11 @@ export function claimTimes(payload: Record<string, unknown>, now = Date.now() / 
           ? `${seconds} s`
           : seconds < 3600
             ? `${Math.floor(seconds / 60)} min`
-            : seconds < 86400
+            : seconds < 172800
               ? `${Math.floor(seconds / 3600)} h`
-              : `${Math.floor(seconds / 86400)} d`;
+              : seconds < 2 * 31557600
+                ? `${Math.floor(seconds / 86400)} days`
+                : `${Math.floor(seconds / 31557600)} years`;
       const description =
         claim === "exp"
           ? difference <= 0
@@ -111,4 +113,64 @@ export function claimTimes(payload: Record<string, unknown>, now = Date.now() / 
         problem: claim === "exp" ? difference <= 0 : difference > 0,
       };
     });
+}
+
+/** What the registered (RFC 7519) and common OpenID Connect claim names mean. */
+export const CLAIM_NAMES: Readonly<Record<string, string>> = {
+  iss: "Issuer",
+  sub: "Subject",
+  aud: "Audience",
+  exp: "Expiration time",
+  nbf: "Not before",
+  iat: "Issued at",
+  jti: "JWT ID",
+  azp: "Authorized party",
+  auth_time: "Authentication time",
+  nonce: "Nonce",
+  scope: "Scope",
+  client_id: "Client ID",
+  sid: "Session ID",
+  name: "Full name",
+  given_name: "Given name",
+  family_name: "Family name",
+  preferred_username: "Preferred username",
+  email: "Email address",
+  email_verified: "Email verified",
+  roles: "Roles",
+  groups: "Groups",
+};
+
+export interface ClaimRow {
+  claim: string;
+  /** Exact compact JSON of the value. */
+  value: string;
+  /** What the name means, when it is a known claim. */
+  label?: string;
+  /** NumericDate claims: the time in Unix seconds and how far it is from now. */
+  time?: number;
+  relative?: string;
+  problem?: boolean;
+}
+/** One row per payload member, in token order, with time claims read as dates. */
+export function claimRows(
+  payload: Record<string, unknown>,
+  raw: Record<string, string>,
+  now = Date.now() / 1000
+): ClaimRow[] {
+  const times = new Map(claimTimes(payload, now).map((time) => [time.claim, time]));
+  return Object.keys(raw).map((claim) => {
+    const time = times.get(claim);
+    return {
+      claim,
+      value: raw[claim],
+      ...(Object.hasOwn(CLAIM_NAMES, claim) ? { label: CLAIM_NAMES[claim] } : {}),
+      ...(time
+        ? {
+            ...(time.date === "Invalid NumericDate" ? {} : { time: payload[claim] as number }),
+            relative: time.description,
+            problem: time.problem,
+          }
+        : {}),
+    };
+  });
 }

@@ -53,6 +53,10 @@ function publicJwk(key: JsonWebKey): JsonWebKey {
     delete result[name as keyof JsonWebKey];
   return result;
 }
+/** Asymmetric keys are PEM or JWK, and which one is plain from the text. */
+export function pairFormat(value: string): "pem" | "jwk" {
+  return value.trimStart().startsWith("{") ? "jwk" : "pem";
+}
 export function secretBytes(value: string, format: KeyFormat): Uint8Array<ArrayBuffer> {
   if (format === "pem") throw new Error("HMAC needs a shared secret, not a PEM key.");
   if (format === "jwk") {
@@ -85,6 +89,7 @@ async function importSigningKey(
     if (jwk.alg && jwk.alg !== algorithm)
       throw new Error("The JWK algorithm does not match the selected algorithm.");
     if (usage === "verify" && jwk.d) jwk = publicJwk(jwk);
+    if (usage === "sign" && !jwk.d) throw new Error("Signing needs a private key.");
     return subtle.importKey("jwk", jwk, params, false, [usage]);
   }
   if (format !== "pem") throw new Error("Choose JWK or PEM for this signing algorithm.");
@@ -97,7 +102,7 @@ async function importSigningKey(
       "Use a PUBLIC KEY (SPKI) or PRIVATE KEY (PKCS#8) PEM. Certificates and PKCS#1 keys are not supported."
     );
   const privateKey = match[1] === "PRIVATE KEY";
-  if (usage === "sign" && !privateKey) throw new Error("Encoding needs a private signing key.");
+  if (usage === "sign" && !privateKey) throw new Error("Signing needs a private key.");
   const imported = await subtle.importKey(
     privateKey ? "pkcs8" : "spki",
     fromBase64(match[2]),
@@ -151,21 +156,50 @@ export async function verifyInput(
     utf8(input)
   );
 }
-export function strictObject(text: string): {
+/** A JSON problem, with where it is when the parser knows. */
+export class JsonError extends Error {
+  constructor(
+    message: string,
+    readonly offset?: number
+  ) {
+    super(message);
+  }
+}
+export interface StrictObject {
   object: Record<string, unknown>;
+  /** Each member's value as exact compact JSON, so large integers keep every digit. */
+  raw: Record<string, string>;
   compact: string;
   pretty: string;
-} {
+}
+export function strictObject(text: string): StrictObject {
   const parsed = parse(text);
-  if (!parsed.ok) throw new Error(parsed.message);
-  if (parsed.edits.length || parsed.duplicates.length || parsed.root.kind !== "object")
-    throw new Error("Use a strict JSON object with unique member names.");
+  if (!parsed.ok) throw new JsonError(parsed.message, parsed.offset);
+  if (parsed.duplicates.length)
+    throw new JsonError(
+      "Use a strict JSON object with unique member names.",
+      parsed.duplicates[0].offset
+    );
+  if (parsed.edits.length)
+    throw new JsonError(
+      "Use a strict JSON object with unique member names.",
+      parsed.edits[0].start
+    );
+  if (parsed.root.kind !== "object")
+    throw new JsonError("Use a strict JSON object with unique member names.", parsed.root.start);
   const object: unknown = JSON.parse(text);
   return {
     object: object as Record<string, unknown>,
+    raw: Object.fromEntries(
+      parsed.root.members.map((member) => [member.key, printJson(member.value, { indent: 0 })])
+    ),
     compact: printJson(parsed.root, { indent: 0 }),
     pretty: printJson(parsed.root),
   };
+}
+/** The header and payload of a JWT as its first two segments, before the signature. */
+export function signingInput(header: StrictObject, payload: StrictObject): string {
+  return toBase64(utf8(header.compact), true) + "." + toBase64(utf8(payload.compact), true);
 }
 export async function encodeJwt(
   header: string,
@@ -180,7 +214,7 @@ export async function encodeJwt(
     throw new Error("The header alg must match the selected algorithm.");
   if (h.object.crit !== undefined || h.object.b64 !== undefined)
     throw new Error("crit and b64 header extensions are not supported.");
-  const input = toBase64(utf8(h.compact), true) + "." + toBase64(utf8(p.compact), true);
+  const input = signingInput(h, p);
   return input + "." + toBase64(await signInput(input, value, format, algorithm), true);
 }
 function pem(bytes: ArrayBuffer, privateKey: boolean): string {
@@ -205,14 +239,15 @@ export interface Example {
   publicKey: string;
   format: KeyFormat;
 }
-export async function generateExample(algorithm: SigningAlgorithm): Promise<Example> {
-  const header = JSON.stringify({ alg: algorithm, typ: "JWT" }, null, 2);
-  const now = Math.floor(Date.now() / 1000);
-  const payload = JSON.stringify(
-    { sub: "1234567890", name: "Jane Doe", iat: now, exp: now + 3600 },
-    null,
-    2
-  );
+export interface GeneratedKey {
+  /** The shared secret, or the private key as PEM. */
+  key: string;
+  /** The public key as PEM; empty for HMAC. */
+  publicKey: string;
+  format: KeyFormat;
+}
+/** A fresh random secret of the algorithm's minimum length, or a fresh key pair. */
+export async function generateKey(algorithm: SigningAlgorithm): Promise<GeneratedKey> {
   let key: string,
     publicKey = "",
     format: KeyFormat;
@@ -234,6 +269,17 @@ export async function generateExample(algorithm: SigningAlgorithm): Promise<Exam
     publicKey = pem(await webCrypto().exportKey("spki", pair.publicKey), false);
     format = "pem";
   }
+  return { key, publicKey, format };
+}
+export async function generateExample(algorithm: SigningAlgorithm): Promise<Example> {
+  const header = JSON.stringify({ alg: algorithm, typ: "JWT" }, null, 2);
+  const now = Math.floor(Date.now() / 1000);
+  const payload = JSON.stringify(
+    { sub: "1234567890", name: "Jane Doe", iat: now, exp: now + 3600 },
+    null,
+    2
+  );
+  const { key, publicKey, format } = await generateKey(algorithm);
   return {
     token: await encodeJwt(header, payload, key, format, algorithm),
     header,
@@ -257,4 +303,24 @@ export async function defaultExample(): Promise<Example> {
     publicKey: "",
     format: "text",
   };
+}
+/** The header with its alg set, keeping the rest of the text as it was typed. */
+export function withAlg(header: string, algorithm: SigningAlgorithm): string {
+  const parsed = parse(header);
+  if (!parsed.ok || parsed.root.kind !== "object") return header;
+  const member = parsed.root.members.find((candidate) => candidate.key === "alg");
+  if (member)
+    return (
+      header.slice(0, member.value.start) +
+      JSON.stringify(algorithm) +
+      header.slice(member.value.end)
+    );
+  const open = parsed.root.start + 1;
+  const indent = /\n([ \t]*)\S/.exec(header.slice(open))?.[1];
+  const entry = JSON.stringify("alg") + ": " + JSON.stringify(algorithm);
+  return parsed.root.members.length
+    ? header.slice(0, open) +
+        (indent === undefined ? entry + ", " : "\n" + indent + entry + ",") +
+        header.slice(open)
+    : header.slice(0, open) + entry + header.slice(open);
 }

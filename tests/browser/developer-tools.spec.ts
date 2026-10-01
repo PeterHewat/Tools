@@ -13,12 +13,12 @@ import {
 } from "@zxing/library";
 import { findApp } from "../../packages/catalog/src/index.js";
 
-test("JWT defaults, colored segments, independent partial decode and live signature verification", async ({
+test("JWT decodes, verifies live, reads claims and decodes broken segments independently", async ({
   page,
 }) => {
   await page.goto("/Tools/jwt/");
   const token = page.getByRole("textbox", { name: "JSON Web Token", exact: true });
-  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
   for (const segment of ["header", "payload", "signature"])
     await expect(page.locator("#token .jwt-" + segment).first()).toBeVisible();
   const header = Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url");
@@ -28,53 +28,64 @@ test("JWT defaults, colored segments, independent partial decode and live signat
   const input = header + "." + payload;
   const signature = createHmac("sha256", "test key").update(input).digest("base64url");
   await token.fill(input + "." + signature);
-  await page.locator("#key").fill("test key");
-  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+  await expect(page.locator("#signature-state")).toHaveText("Invalid signature");
+  await page.locator("#secret").fill("test key");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await expect(page.locator("#key-status")).toContainText("signing HS256 needs at least 32");
   await expect(page.getByRole("textbox", { name: "Decoded JWT payload" })).toContainText(
     "9223372036854775807"
   );
+  await expect(page.locator("#time-state")).toContainText("Not valid for");
+  await page.locator("#view-claims").click();
+  await expect(page.locator("#claims")).toContainText("Expiration time");
   await expect(page.locator("#claims")).toContainText("Expired");
-  await page.locator("#key").fill("wrong");
-  await expect(page.locator("#signature-state")).toHaveText("Signature mismatch");
+  await expect(page.locator("#claims")).toContainText("9223372036854775807");
+  await page.locator("#view-json").click();
+  await page.locator("#secret").fill("wrong");
+  await expect(page.locator("#signature-state")).toHaveText("Invalid signature");
   const whitespaceSecret = " ".repeat(32);
   const whitespaceSignature = createHmac("sha256", whitespaceSecret)
     .update(input)
     .digest("base64url");
   await token.fill(input + "." + whitespaceSignature);
-  await page.locator("#key").fill(whitespaceSecret);
-  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
-  await page.locator("#algorithm").selectOption("HS512");
-  await expect(page.locator("#verify-status")).toContainText("does not match the token header");
+  await page.locator("#secret").fill(whitespaceSecret);
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
   await token.fill(header + "." + Buffer.from('{"broken":').toString("base64url") + ".!!");
+  await expect(page.locator("#token-state")).toHaveText("Invalid JWT");
   await expect(page.getByRole("textbox", { name: "Decoded JWT header" })).toContainText("HS256");
   await expect(page.getByRole("textbox", { name: "Decoded JWT payload" })).toContainText(
     '{"broken":'
   );
   await expect(page.locator("#payload-status")).toHaveAttribute("data-error", "true");
+  // An empty token shows its placeholder, which is all the text box then holds.
   await page.locator("#token-clear").click();
-  await expect(token).toBeEmpty();
+  await expect(page.locator("#token .cm-placeholder")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Decoded JWT header" })).toBeEmpty();
   await page.reload();
-  await expect(token).toBeEmpty();
+  await expect(page.locator("#token .cm-placeholder")).toBeVisible();
+  await expect(page.locator("#token-status")).toContainText("Paste a token");
 });
 
-test("JWT encodes exact JSON and generates every signing family in the browser", async ({
+test("JWT signs edited JSON again and follows the algorithm through every signing family", async ({
   page,
 }) => {
   await page.goto("/Tools/jwt/");
-  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
-  await page.locator("#encode-mode").click();
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  const token = page.getByRole("textbox", { name: "JSON Web Token", exact: true });
   await page
     .getByRole("textbox", { name: "Decoded JWT payload" })
     .fill('{"id":9223372036854775807,"name":"encoded"}');
-  await expect(page.locator("#signature-state")).toHaveText("Signature generated");
-  const token = await page
-    .getByRole("textbox", { name: "JSON Web Token", exact: true })
-    .innerText();
-  expect(Buffer.from(token.split(".")[1], "base64url").toString()).toContain("9223372036854775807");
-  await page.locator("#decode-mode").click();
-  await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+  await expect(token).toContainText(
+    Buffer.from('{"id":9223372036854775807,"name":"encoded"}').toString("base64url")
+  );
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  const [input, signature] = (await token.innerText()).trim().split(/\.(?=[^.]*$)/);
+  expect(
+    createHmac("sha256", "a-public-example-secret-at-least-32-bytes")
+      .update(input)
+      .digest("base64url")
+  ).toBe(signature);
   for (const algorithm of [
-    "HS256",
     "HS384",
     "HS512",
     "RS256",
@@ -87,22 +98,29 @@ test("JWT encodes exact JSON and generates every signing family in the browser",
     "ES384",
     "ES512",
     "EdDSA",
+    "HS256",
   ]) {
     await page.locator("#algorithm").selectOption(algorithm);
-    await page.locator("#generate").click();
-    await expect(page.locator("#generate")).toBeEnabled();
-    await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
     await expect(page.getByRole("textbox", { name: "Decoded JWT header" })).toContainText(
-      algorithm
+      `"alg": "${algorithm}"`
     );
-    if (!algorithm.startsWith("HS")) {
-      await page.locator("#public-key-field summary").click();
-      await page.locator("#use-public-key").click();
-      await expect(page.locator("#key")).toHaveValue(/BEGIN PUBLIC KEY/);
-      await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
-      await page.locator("#public-key-field summary").click();
-    }
+    await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+    if (!algorithm.startsWith("HS"))
+      await expect(page.locator("#public-key")).toHaveValue(/BEGIN PUBLIC KEY/);
   }
+  await page.locator("#secret-format").selectOption("text");
+  await page.locator("#secret").fill("short");
+  await page.getByRole("textbox", { name: "Decoded JWT payload" }).fill('{"changed":true}');
+  await expect(page.locator("#key-status")).toContainText("Not signed");
+  await expect(page.locator("#signature-state")).toHaveText("Invalid signature");
+  await page.locator("#generate-key").click();
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await page.locator("#algorithm").selectOption("ES256");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await page.locator("#private-key").fill("");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await page.getByRole("textbox", { name: "Decoded JWT header" }).fill('{"alg":"none"}');
+  await expect(page.locator("#signature-state")).toHaveText("Unsupported algorithm");
 });
 
 test("Codec converts live in either direction with default examples and fixed result regions", async ({
@@ -246,14 +264,14 @@ for (const [slug, field, value] of [
   ["codec", "#left", "remember codec"],
   ["codes", "#content", "remember codes"],
   ["digests", "#text", "remember digests"],
-  ["jwt", "#key", "remember jwt"],
+  ["jwt", "#secret", "remember jwt"],
 ] as const) {
   test(
     slug + " draft survives reload but a fresh tab starts independently",
     async ({ page, context }) => {
       await page.goto("/Tools/" + slug + "/");
       if (slug === "jwt")
-        await expect(page.locator("#signature-state")).toHaveText("Signature Verified");
+        await expect(page.locator("#signature-state")).toHaveText("Signature verified");
       await page.locator(field).fill(value);
       await page.reload();
       await expect(page.locator(field)).toHaveValue(value);
