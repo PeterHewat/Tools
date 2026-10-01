@@ -36,10 +36,11 @@ Code editing uses **CodeMirror 6**, bundled into each app's static files at pinn
 - The first runtime dependency in the repo. ADR 001's goal still holds: the output is static
   files that run from any server and need nothing at runtime that is not in them.
 - Each app that edits code grows by about 120 KB gzipped (CodeMirror's view and state alone are
-  about 65 KB): the JSON app is 141 KB with it, 20 KB of that its own code; the SVG app 189 KB,
-  65 KB its own. Apps are
-  built one by one, so each carries its own copy, and the site's service worker precaches them
-  all. That is paid once per deploy, for an editor that would otherwise be months of work.
+  about 65 KB). JSON loads its editor immediately, about 140 KB of JavaScript in total. SVG loads
+  about 68 KB initially and a further 126 KB when its source panel is shown. Apps are built one
+  by one, so each carries its own copy, and the site's service worker precaches every chunk,
+  including lazy ones. That is paid once per deploy. Catalog budgets bound both initial and
+  total JavaScript cost; splitting a bundle does not remove its offline download cost.
 - Upgrades are deliberate: versions are pinned, and `bun run outdated` shows what moved.
 - An app with a plain text field (a token, a key) keeps an `<input>` or `<textarea>`; the
   editor is for code.

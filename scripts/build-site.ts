@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { APPS } from "../packages/catalog/src/index.ts";
 import { siteBase } from "../packages/catalog/src/site.ts";
 import { SITE_WORKER, readTree, siteWorker } from "@tools/ui/site-worker";
+import { checkJsBudget } from "./bundle-budget.ts";
 
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "dist");
@@ -37,6 +38,11 @@ async function main(): Promise<void> {
     }
     console.log(`\n→ ${app.name}`);
     await run(["bun", "run", "build"], dir);
+    const budget = app.jsBudget ?? { entryGzip: 150, totalGzip: 210 };
+    const sizes = checkJsBudget(app.name, readTree(join(DIST, app.slug)), budget);
+    console.log(
+      `JavaScript gzip: entry ${(sizes.entry / 1024).toFixed(1)} KiB, total ${(sizes.total / 1024).toFixed(1)} KiB`
+    );
   }
 
   // GitHub Pages serves 404.html for unknown paths; point it at the index.
