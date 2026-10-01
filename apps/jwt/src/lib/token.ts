@@ -1,21 +1,30 @@
 import { fromBase64, textFromBytes, utf8, webCrypto } from "@tools/bytes";
 import type { HashAlgorithm } from "@tools/bytes";
+import { parse, printJson } from "@tools/json-core";
 
 export interface Token {
   header: Record<string, unknown>;
   payload: Record<string, unknown>;
+  headerText: string;
+  payloadText: string;
   signingInput: string;
   signature: Uint8Array<ArrayBuffer>;
 }
 
-function objectPart(part: string, label: string): Record<string, unknown> {
+function objectPart(part: string, label: string): { value: Record<string, unknown>; text: string } {
   try {
-    const value: unknown = JSON.parse(textFromBytes(fromBase64(part, true)));
+    const source = textFromBytes(fromBase64(part, true));
+    const parsed = parse(source);
+    if (!parsed.ok || parsed.edits.length || parsed.duplicates.length)
+      throw new Error("Expected strict JSON with unique member names");
+    const value: unknown = JSON.parse(source);
     if (!value || typeof value !== "object" || Array.isArray(value))
       throw new Error("Expected an object");
-    return value as Record<string, unknown>;
+    return { value: value as Record<string, unknown>, text: printJson(parsed.root) };
   } catch {
-    throw new Error(`${label} must be a Base64url-encoded UTF-8 JSON object.`);
+    throw new Error(
+      `${label} must be a Base64url-encoded UTF-8 JSON object with unique member names.`
+    );
   }
 }
 
@@ -24,9 +33,13 @@ export function decodeToken(value: string): Token {
   if (parts.length !== 3 || !parts[0] || !parts[1])
     throw new Error("A signed JWT has three dot-separated parts: header.payload.signature.");
   const [header, payload, signature] = parts;
+  const decodedHeader = objectPart(header, "Header");
+  const decodedPayload = objectPart(payload, "Payload");
   return {
-    header: objectPart(header, "Header"),
-    payload: objectPart(payload, "Payload"),
+    header: decodedHeader.value,
+    payload: decodedPayload.value,
+    headerText: decodedHeader.text,
+    payloadText: decodedPayload.text,
     signingInput: `${header}.${payload}`,
     signature: fromBase64(signature, true),
   };

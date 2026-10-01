@@ -47,8 +47,8 @@ function decode(): void {
   current = null;
   try {
     if (tokenInput.value.trim()) current = decodeToken(tokenInput.value);
-    header.setText(current ? JSON.stringify(current.header, null, 2) : "", "new");
-    payload.setText(current ? JSON.stringify(current.payload, null, 2) : "", "new");
+    header.setText(current?.headerText ?? "", "new");
+    payload.setText(current?.payloadText ?? "", "new");
     showMessage(
       byId("decode-status"),
       current

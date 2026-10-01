@@ -2,6 +2,17 @@ import { expect, test } from "bun:test";
 import { hmac, toBase64, utf8 } from "@tools/bytes";
 import { claimTimes, decodeToken, verifyToken } from "./token.js";
 
+test("JWT inspection preserves exact numbers, escapes and key order", () => {
+  const payload = '{"id":9223372036854775807,"decimal":1.0,"overflow":1e400,"name":"\\u0061"}';
+  const token = decodeToken(`e30.${toBase64(utf8(payload), true)}.`);
+  expect(token.payloadText).toContain("9223372036854775807");
+  expect(token.payloadText).toContain("1.0");
+  expect(token.payloadText).toContain("1e400");
+  expect(token.payloadText).toContain('"\\u0061"');
+  for (const source of ['{"alg":"HS256","alg":"none"}', '{"x":1,}', '{/*comment*/"x":1}'])
+    expect(() => decodeToken(`${toBase64(utf8(source), true)}.e30.`)).toThrow();
+});
+
 test("decode and verify all supported HMAC algorithms, reject tampering and mismatches", async () => {
   for (const [algorithm, hash] of [
     ["HS256", "SHA-256"],

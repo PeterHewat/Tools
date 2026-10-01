@@ -1,4 +1,4 @@
-const escapeWifi = (value: string) => value.replace(/[\\;,:"']/g, "\\$&");
+const escapeWifi = (value: string) => value.replace(/[\\;,:\u0022]/g, "\\$&");
 export function wifiContent(
   ssid: string,
   password: string,

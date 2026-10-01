@@ -51,6 +51,7 @@ packages/
   ui/          shared styles, browser helpers, build wiring and the offline service worker
   editor/      the code editor the apps share: CodeMirror 6 behind a small API
   bytes/       strict UTF-8, hex and Base64 codecs, and Web Crypto helpers
+  json-core/   source-preserving JSON parser and formatter shared by JSON and JWT
   tsconfig/    shared TypeScript config
 scripts/       build and scaffold scripts
 docs/          decisions, reference and plans

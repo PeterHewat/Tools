@@ -1,4 +1,11 @@
 /* A compact workbench for tools with text, controls and results. */
+.ui-workbench [hidden] {
+  display: none;
+}
+.ui-workbench > .ui-card,
+.ui-workbench > .ui-columns {
+  margin-top: 20px;
+}
 .ui-workbench {
   max-width: 1200px;
   margin: 0 auto;
