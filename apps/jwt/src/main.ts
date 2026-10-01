@@ -35,8 +35,8 @@ import type { GeneratedKey, KeyFormat, SigningAlgorithm } from "./lib/signing.js
 bindToolHelp("jwt");
 registerServiceWorker();
 
-/** Version 2: no Decode / Encode mode, the algorithm comes from the header, keys split by kind. */
-const DRAFT = 2;
+/** This tab's work, in session storage: fields are read one by one, with a default if missing. */
+const DRAFT = 1;
 const draft = readDraft("jwt", DRAFT);
 
 const algorithm = byId<HTMLSelectElement>("algorithm");
