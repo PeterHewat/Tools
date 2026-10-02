@@ -6,12 +6,13 @@
  * built and listed. Last, it writes the site's one service worker at the root, precaching every
  * file of every app (see `@tools/ui/site-worker`), so the installed site is whole offline.
  */
-import { rm, mkdir, copyFile, readdir, writeFile } from "node:fs/promises";
+import { rm, mkdir, copyFile, readFile, readdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { APPS } from "../packages/catalog/src/index.ts";
 import { siteBase } from "../packages/catalog/src/site.ts";
 import { SITE_WORKER, readTree, siteWorker } from "@tools/ui/site-worker";
+import { cfBeaconTag } from "@tools/ui/vite";
 import { checkJsBudget } from "./bundle-budget.ts";
 
 const ROOT = join(import.meta.dir, "..");
@@ -47,6 +48,18 @@ async function main(): Promise<void> {
 
   // GitHub Pages serves 404.html for unknown paths; point it at the index.
   await copyFile(join(DIST, "index.html"), join(DIST, "404.html"));
+
+  // With a token, every page counts its visits: a page built without the beacon fails the deploy.
+  const beacon = cfBeaconTag()?.attrs?.["data-cf-beacon"];
+  if (typeof beacon === "string") {
+    const marker = beacon.replaceAll('"', "&quot;");
+    for (const page of ["index.html", ...APPS.map((app) => `${app.slug}/index.html`)]) {
+      const html = await readFile(join(DIST, page), "utf8");
+      if (!html.includes(marker) && !html.includes(beacon)) {
+        throw new Error(`${page} has no analytics beacon`);
+      }
+    }
+  }
 
   // Last, once every file it precaches is in place: the one worker, for the whole site.
   await writeFile(join(DIST, SITE_WORKER), siteWorker(readTree(DIST)));
