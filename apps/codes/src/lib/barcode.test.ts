@@ -8,7 +8,8 @@ import {
   MultiFormatReader,
   RGBLuminanceSource,
 } from "@zxing/library";
-import { graphic } from "./export.js";
+import { DEFAULT_DESIGN, barcodeScene } from "./design.js";
+import { sceneSvg } from "./render.js";
 test("published EAN/UPC check digits and EAN symbol vector", () => {
   expect(checkDigit("400638133393")).toBe("1");
   expect(encodeBarcode("400638133393", "ean13").text).toBe("4006381333931");
@@ -61,11 +62,12 @@ for (const [kind, input, expected, format] of [
   });
 }
 test("exports have explicit dimensions, readable modules and XML-safe labels", () => {
-  const result = graphic(encodeBarcode("<script>", "code128"), 512);
-  expect(result.svg).toContain('width="512"');
-  expect(result.svg).toContain("&lt;script&gt;");
-  expect(result.svg).not.toContain("<script>");
-  expect(() => graphic(encodeBarcode("x".repeat(80), "code128"), 512)).toThrow("Increase");
+  const svg = sceneSvg(barcodeScene(encodeBarcode("<script>", "code128"), DEFAULT_DESIGN), 512);
+  expect(svg).toContain('width="512"');
+  expect(svg).toContain("&lt;script&gt;");
+  expect(svg).not.toContain("<script>");
+  const long = barcodeScene(encodeBarcode("x".repeat(80), "code128"), DEFAULT_DESIGN);
+  expect(() => sceneSvg(long, 512)).toThrow("Increase");
 });
 test("Code 128 B and C symbol/checksum vectors", () => {
   expect(encodeBarcode("AB", "code128").symbols).toEqual([104, 33, 34, 102, 106]);
@@ -84,8 +86,8 @@ test("each barcode keeps its standard quiet zones", () => {
     ["TOOLS", "code128", 10, 10],
   ] as const) {
     const code = encodeBarcode(value, kind);
-    const { svg } = graphic(code, 512);
+    const svg = sceneSvg(barcodeScene(code, DEFAULT_DESIGN), 512);
     expect(svg).toContain(`viewBox="0 0 ${code.modules.length + left + right} 80"`);
-    expect(svg).toContain(`d="M${left} 4h1`);
+    expect(svg).toContain(`d="M${left} 4h`);
   }
 });

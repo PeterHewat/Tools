@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createHmac, createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
@@ -9,6 +10,7 @@ import {
   DecodeHintType,
   HybridBinarizer,
   MultiFormatReader,
+  QRCodeReader,
   RGBLuminanceSource,
 } from "@zxing/library";
 import { findApp } from "../../packages/catalog/src/index.js";
@@ -377,14 +379,62 @@ test("Digests computes live text/file/HMAC and compares exact outputs", async ({
   await expect(page.locator("#hex")).toHaveText(createHash("sha256").update("").digest("hex"));
 });
 
-test("Codes keeps preview geometry stable and exports exact-size independently scannable QR and barcodes", async ({
+/** Reads the pixels of a downloaded PNG in the page. */
+async function downloadedPixels(page: Page, button = "#save-png") {
+  const downloaded = page.waitForEvent("download");
+  await page.locator(button).click();
+  const png = await readFile((await (await downloaded).path())!);
+  return page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = "data:image/png;base64," + base64;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(image, 0, 0);
+    return {
+      width: image.width,
+      height: image.height,
+      data: Array.from(ctx.getImageData(0, 0, image.width, image.height).data),
+    };
+  }, png.toString("base64"));
+}
+/**
+ * What a QR code in the image says, read by jsQR or, if it cannot, by ZXing, which reads styled
+ * codes (dots, round corners) as phone scanners do. Transparent pixels count as white.
+ */
+function scanQr(image: { width: number; height: number; data: number[] }): string | undefined {
+  const found = jsQR(new Uint8ClampedArray(image.data), image.width, image.height)?.data;
+  if (found) return found;
+  const gray = new Uint8ClampedArray(image.width * image.height);
+  for (let i = 0; i < gray.length; i++) {
+    const alpha = image.data[i * 4 + 3] / 255;
+    gray[i] = image.data[i * 4] * alpha + 255 * (1 - alpha);
+  }
+  try {
+    return new QRCodeReader()
+      .decode(
+        new BinaryBitmap(
+          new HybridBinarizer(new RGBLuminanceSource(gray, image.width, image.height))
+        ),
+        new Map([[DecodeHintType.TRY_HARDER, true]])
+      )
+      .getText();
+  } catch {
+    return undefined;
+  }
+}
+
+test("Codes makes each kind of content, keeps the preview in place and exports scannable codes", async ({
   page,
 }) => {
   await page.goto("/Tools/codes/");
   await expect(page.locator("#preview svg")).toBeVisible();
   const before = await page.locator("#preview").boundingBox();
-  await page.locator("#content").fill("https://example.com/🌍");
-  await expect(page.locator("#status")).toContainText("export 512");
+  await page.locator("#link-url").fill("example.com/🌍");
+  await expect(page.locator("#encoded")).toHaveText("https://example.com/🌍");
+  await expect(page.locator("#status")).toContainText("1024 × 1024");
   expect(await page.locator("#preview").boundingBox()).toEqual(before);
   await page.locator("#resolution").fill("768");
   await expect(page.locator("#status")).toContainText("768 × 768");
@@ -392,47 +442,49 @@ test("Codes keeps preview geometry stable and exports exact-size independently s
   await page.locator("#save-svg").click();
   const svg = await readFile((await (await svgDownload).path())!, "utf8");
   expect(svg).toContain('width="768" height="768"');
-  await page.locator("#preset").selectOption("wifi");
+  const plain = await downloadedPixels(page);
+  expect(plain.width).toBe(768);
+  expect(scanQr(plain)).toBe("https://example.com/🌍");
+
+  const fill = async (type: string, values: Record<string, string>, encoded: string | RegExp) => {
+    await page.locator(`[data-type="${type}"]`).click();
+    for (const [id, value] of Object.entries(values)) await page.locator(id).fill(value);
+    await expect(page.locator("#encoded")).toHaveText(encoded);
+  };
+  await fill(
+    "email",
+    { "#email-to": "a@b.co", "#email-subject": "Hi there" },
+    "mailto:a@b.co?subject=Hi%20there"
+  );
+  await fill("call", { "#call-number": "+44 20 7946 0000" }, "tel:+442079460000");
+  await fill("sms", { "#sms-number": "+1 555 0100", "#sms-message": "Hi" }, "SMSTO:+15550100:Hi");
+  await fill("whatsapp", { "#wa-number": "+44 7700 900000" }, "https://wa.me/447700900000");
+  await fill("vcard", { "#vc-first": "Ada", "#vc-last": "Lovelace" }, /^BEGIN:VCARD/);
+  await fill("event", { "#ev-title": "Launch", "#ev-start": "2026-10-02T09:00" }, /^BEGIN:VEVENT/);
+  await fill("text", { "#text-content": "Hello, 🌍!" }, "Hello, 🌍!");
+
+  await page.locator('[data-type="wifi"]').click();
   await page.locator("#ssid").fill("office;guest");
   await page.locator("#password").fill("test-password");
   const wifi = "WIFI:T:WPA;S:office\\;guest;P:test-password;H:false;;";
   await expect(page.locator("#encoded")).toHaveText(wifi);
-  async function pixels() {
-    const downloaded = page.waitForEvent("download");
-    await page.locator("#save-png").click();
-    const png = await readFile((await (await downloaded).path())!);
-    return page.evaluate(async (base64) => {
-      const image = new Image();
-      image.src = "data:image/png;base64," + base64;
-      await image.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(image, 0, 0);
-      return {
-        width: image.width,
-        height: image.height,
-        data: Array.from(ctx.getImageData(0, 0, image.width, image.height).data),
-      };
-    }, png.toString("base64"));
-  }
-  const qr = await pixels();
-  expect(qr.width).toBe(768);
-  expect(jsQR(new Uint8ClampedArray(qr.data), qr.width, qr.height)?.data).toBe(wifi);
+  expect(scanQr(await downloadedPixels(page))).toBe(wifi);
   await page.locator("#ssid").fill("");
   await expect(page.locator("#status")).toContainText("Enter the network name");
   await expect(page.locator("#save-svg")).toBeDisabled();
   expect(await page.locator("#preview").boundingBox()).toEqual(before);
+
   for (const [kind, content, expected, format] of [
     ["code128", "TOOLS-2026", "TOOLS-2026", BarcodeFormat.CODE_128],
     ["ean13", "400638133393", "4006381333931", BarcodeFormat.EAN_13],
     ["upca", "03600029145", "036000291452", BarcodeFormat.UPC_A],
   ] as const) {
-    await page.locator("#kind").selectOption(kind);
-    await page.locator("#content").fill(content);
+    await page.locator('[data-type="barcode"]').click();
+    await expect(page.locator("#tab-shapes")).toBeHidden();
+    await page.locator("#symbology").selectOption(kind);
+    await page.locator("#barcode-value").fill(content);
     await expect(page.locator("#encoded")).toHaveText(expected);
-    const image = await pixels();
+    const image = await downloadedPixels(page);
     const gray = new Uint8ClampedArray(image.width * image.height);
     for (let i = 0; i < gray.length; i++) gray[i] = image.data[i * 4];
     const reader = new MultiFormatReader();
@@ -449,8 +501,79 @@ test("Codes keeps preview geometry stable and exports exact-size independently s
   }
 });
 
+test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/Tools/codes/");
+  await page.locator("#link-url").fill("https://example.com/");
+  // Small enough to decode quickly, large enough for several pixels a module.
+  await page.locator("#resolution").fill("400");
+  await page.locator("#tab-shapes").click();
+  const designs: [string, string, string][] = [
+    ["rounded", "rounded", "rounded"],
+    ["dots", "circle", "circle"],
+    ["soft", "leaf", "leaf"],
+    ["diamond", "square", "diamond"],
+    ["vertical", "rounded", "square"],
+    ["horizontal", "circle", "rounded"],
+  ];
+  for (const [modules, frame, ball] of designs) {
+    await page.locator(`#module-options [data-value="${modules}"]`).click();
+    await page.locator(`#eye-frame-options [data-value="${frame}"]`).click();
+    await page.locator(`#eye-ball-options [data-value="${ball}"]`).click();
+    await expect(page.locator(`#module-options [data-value="${modules}"]`)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(page.locator("#save-png")).toBeEnabled();
+    expect(scanQr(await downloadedPixels(page)), modules).toBe("https://example.com/");
+  }
+  await page.locator("#tab-colours").click();
+  await page.locator("#fg").fill("#3a1c71");
+  await page.locator("#gradient").check();
+  await page.locator("#eye-own").check();
+  await page.locator("#eye-color").fill("#b3122e");
+  await expect(page.locator("#warnings")).toBeEmpty();
+  await page.locator("#tab-logo").click();
+  await page.locator('#logo-options [data-value="wifi"]').click();
+  await expect(page.locator("#level")).toBeDisabled();
+  await expect(page.locator("#status")).toContainText("H correction");
+  await page.locator("#tab-frame").click();
+  await page.locator('#frame-options [data-value="below"]').click();
+  await expect(page.locator("#status")).toContainText("400 × 462");
+  const framed = await downloadedPixels(page);
+  expect(framed.height).toBeGreaterThan(framed.width);
+  expect(scanQr(framed)).toBe("https://example.com/");
+  // An uploaded logo, kept with the draft.
+  await page.locator("#tab-logo").click();
+  const chooser = page.waitForEvent("filechooser");
+  await page.locator("#logo-upload").click();
+  const logo = Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#c00"/></svg>'
+  );
+  await (await chooser).setFiles({ name: "logo.svg", mimeType: "image/svg+xml", buffer: logo });
+  await expect(page.locator('#logo-options [data-value="upload"]')).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  await expect(page.locator("#preview svg image")).toHaveCount(1);
+  expect(scanQr(await downloadedPixels(page))).toBe("https://example.com/");
+  await page.reload();
+  await expect(page.locator('#logo-options [data-value="upload"]')).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  // Poor colours are flagged, and reset brings back the plain code.
+  await page.locator("#tab-colours").click();
+  await page.locator("#gradient").uncheck();
+  await page.locator("#fg").fill("#bbbbbb");
+  await expect(page.locator("#warnings")).toContainText("Low contrast");
+  await page.locator("#reset-design").click();
+  await expect(page.locator("#warnings")).toBeEmpty();
+  await expect(page.locator("#status")).toContainText("400 × 400");
+});
+
 for (const [slug, field, value] of [
-  ["codes", "#content", "remember codes"],
+  ["codes", "#link-url", "example.org/remember"],
   ["digests", "#text", "remember digests"],
   ["jwt", "#secret", "remember jwt"],
 ] as const) {
@@ -485,7 +608,7 @@ test("incompatible drafts fail closed without overwriting saved data", async ({ 
 });
 
 for (const [slug, field, value, result] of [
-  ["codes", "#content", "still works", "#encoded"],
+  ["codes", "#link-url", "example.org/still-works", "#encoded"],
   ["digests", "#text", "still works", "#hex"],
 ] as const) {
   test(`${slug} works without saving over an incompatible draft`, async ({ page }) => {
@@ -499,7 +622,7 @@ for (const [slug, field, value, result] of [
     await expect(page.locator("#draft-status")).toContainText("Clear this app's session storage");
     await page.locator(field).fill(value);
     await expect(page.locator(result)).toHaveText(
-      slug === "codes" ? value : createHash("sha256").update(value).digest("hex")
+      slug === "codes" ? "https://" + value : createHash("sha256").update(value).digest("hex")
     );
     expect(await page.evaluate((slug) => sessionStorage.getItem(`tools.${slug}.draft`), slug)).toBe(
       saved
@@ -592,7 +715,7 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
     await page.screenshot({ path: `test-results/${slug}-phone.png`, fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
     if (slug === "codes") {
-      await page.locator("#content").fill("https://example.com/");
+      await page.locator("#link-url").fill("https://example.com/");
       await expect(page.locator("#preview svg")).toBeVisible();
     }
     if (slug === "digests") {

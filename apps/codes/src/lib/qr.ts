@@ -288,18 +288,3 @@ export function encodeQr(
 
 /** The clear border a QR code needs on every side, in modules (ISO/IEC 18004). */
 export const QUIET_ZONE = 4;
-
-export function qrSvg(qr: QrCode): string {
-  const margin = QUIET_ZONE;
-  const size = qr.modules.length + margin * 2;
-  const paths: string[] = [];
-  qr.modules.forEach((row, y) => {
-    for (let x = 0; x < row.length; x++)
-      if (row[x]) {
-        const start = x;
-        while (x + 1 < row.length && row[x + 1]) x++;
-        paths.push(`M${start + margin} ${y + margin}h${x - start + 1}v1H${start + margin}z`);
-      }
-  });
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${paths.join("")}" fill="#000"/></svg>`;
-}

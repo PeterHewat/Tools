@@ -20,97 +20,390 @@
         </button>
       </div>
     </header>
-    <main class="ui-workbench">
-      <div class="ui-row">
-        <h1>Codes</h1>
-        <select class="ui-input" id="examples" aria-label="Load example">
-          <option value="">Load example…</option>
-          <option value="url">QR · URL</option>
-          <option value="text">QR · Unicode text</option>
-          <option value="code128">Code 128 · reference</option>
-          <option value="ean13">EAN-13 · product</option>
-          <option value="upca">UPC-A · product</option>
-        </select>
-      </div>
-      <p class="ui-intro">
-        QR codes and barcodes, generated locally and exported at the size you choose.
-      </p>
+    <main class="ui-workbench codes">
       <p class="ui-message" id="draft-status" role="status" hidden></p>
-      <div class="ui-columns">
-        <section class="ui-card">
-          <label class="ui-field"
-            ><span>Code type</span
-            ><select class="ui-input" id="kind">
-              <option value="qr">QR code</option>
-              <option value="code128">Code 128</option>
-              <option value="ean13">EAN-13</option>
-              <option value="upca">UPC-A</option>
-            </select></label
-          ><label class="ui-field" id="preset-field"
-            ><span>QR content</span
-            ><select class="ui-input" id="preset">
-              <option value="text">Text</option>
-              <option value="url">URL</option>
-              <option value="wifi">Wi-Fi</option>
-            </select></label
-          ><label class="ui-field" id="content-field"
-            ><span id="content-label">Text to encode</span
-            ><textarea class="ui-input" id="content" spellcheck="false"></textarea>
-          </label>
-          <div id="wifi-fields" hidden>
+      <div class="codes-layout">
+        <section class="ui-card codes-build" aria-label="Make a code">
+          <input type="hidden" id="type" value="link" />
+          <div class="codes-types" role="group" aria-label="What the code holds">
+            <button type="button" class="ui-btn" data-type="link">
+              <svg data-ui-icon="link" aria-hidden="true"></svg>Link
+            </button>
+            <button type="button" class="ui-btn" data-type="text">
+              <svg data-ui-icon="text" aria-hidden="true"></svg>Text
+            </button>
+            <button type="button" class="ui-btn" data-type="email">
+              <svg data-ui-icon="mail" aria-hidden="true"></svg>Email
+            </button>
+            <button type="button" class="ui-btn" data-type="call">
+              <svg data-ui-icon="phone" aria-hidden="true"></svg>Call
+            </button>
+            <button type="button" class="ui-btn" data-type="sms">
+              <svg data-ui-icon="message" aria-hidden="true"></svg>SMS
+            </button>
+            <button type="button" class="ui-btn" data-type="whatsapp">
+              <svg data-ui-icon="chat" aria-hidden="true"></svg>WhatsApp
+            </button>
+            <button type="button" class="ui-btn" data-type="wifi">
+              <svg data-ui-icon="wifi" aria-hidden="true"></svg>Wi-Fi
+            </button>
+            <button type="button" class="ui-btn" data-type="vcard">
+              <svg data-ui-icon="contact" aria-hidden="true"></svg>Contact
+            </button>
+            <button type="button" class="ui-btn" data-type="event">
+              <svg data-ui-icon="calendar" aria-hidden="true"></svg>Event
+            </button>
+            <button type="button" class="ui-btn" data-type="barcode">
+              <svg data-ui-icon="barcode" aria-hidden="true"></svg>Barcode
+            </button>
+          </div>
+
+          <h2 class="codes-step"><span aria-hidden="true">1</span>Content</h2>
+          <div data-fields="link">
+            <label class="ui-field"
+              ><span>Website</span
+              ><input
+                class="ui-input"
+                id="link-url"
+                type="url"
+                placeholder="https://example.com/"
+                autocomplete="url"
+                spellcheck="false"
+            /></label>
+          </div>
+          <div data-fields="text">
+            <label class="ui-field"
+              ><span>Text</span
+              ><textarea class="ui-input" id="text-content" spellcheck="false"></textarea>
+            </label>
+          </div>
+          <div data-fields="email">
+            <label class="ui-field"
+              ><span>Send to</span
+              ><input
+                class="ui-input"
+                id="email-to"
+                type="email"
+                placeholder="name@example.com"
+                autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Subject · optional</span><input class="ui-input" id="email-subject"
+            /></label>
+            <label class="ui-field"
+              ><span>Message · optional</span
+              ><textarea class="ui-input codes-short" id="email-body"></textarea>
+            </label>
+          </div>
+          <div data-fields="call">
+            <label class="ui-field"
+              ><span>Phone number, with its country code</span
+              ><input
+                class="ui-input"
+                id="call-number"
+                type="tel"
+                placeholder="+44 20 7946 0000"
+                autocomplete="off"
+            /></label>
+          </div>
+          <div data-fields="sms">
+            <label class="ui-field"
+              ><span>Phone number, with its country code</span
+              ><input
+                class="ui-input"
+                id="sms-number"
+                type="tel"
+                placeholder="+44 7700 900000"
+                autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Message · optional</span
+              ><textarea class="ui-input codes-short" id="sms-message"></textarea>
+            </label>
+          </div>
+          <div data-fields="whatsapp">
+            <label class="ui-field"
+              ><span>WhatsApp number, with its country code</span
+              ><input
+                class="ui-input"
+                id="wa-number"
+                type="tel"
+                placeholder="+44 7700 900000"
+                autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Message · optional</span
+              ><textarea class="ui-input codes-short" id="wa-message"></textarea>
+            </label>
+          </div>
+          <div data-fields="wifi">
             <label class="ui-field"
               ><span>Network name (SSID)</span
-              ><input class="ui-input" id="ssid" autocomplete="off" /></label
-            ><label class="ui-field"
-              ><span>Security</span
-              ><select class="ui-input" id="security">
-                <option value="WPA">WPA / WPA2 / WPA3</option>
-                <option value="WEP">WEP</option>
-                <option value="nopass">Open network</option>
+              ><input class="ui-input" id="ssid" autocomplete="off" spellcheck="false"
+            /></label>
+            <div class="codes-pair">
+              <label class="ui-field"
+                ><span>Security</span
+                ><select class="ui-input" id="security">
+                  <option value="WPA">WPA / WPA2 / WPA3</option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass">Open network</option>
+                </select></label
+              ><label class="ui-field"
+                ><span>Password</span
+                ><input class="ui-input" id="password" type="password" autocomplete="off"
+              /></label>
+            </div>
+            <label class="codes-check"
+              ><input id="hidden-network" type="checkbox" /> Hidden network</label
+            >
+          </div>
+          <div data-fields="vcard">
+            <div class="codes-pair">
+              <label class="ui-field"
+                ><span>First name</span><input class="ui-input" id="vc-first" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Last name</span><input class="ui-input" id="vc-last" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Organization</span><input class="ui-input" id="vc-org" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Job title</span><input class="ui-input" id="vc-title" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Mobile</span
+                ><input class="ui-input" id="vc-mobile" type="tel" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Work phone</span
+                ><input class="ui-input" id="vc-phone" type="tel" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Email</span
+                ><input class="ui-input" id="vc-email" type="email" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Website</span
+                ><input class="ui-input" id="vc-website" type="url" autocomplete="off"
+              /></label>
+            </div>
+            <details class="codes-more">
+              <summary>Address and note</summary>
+              <label class="ui-field"
+                ><span>Street</span><input class="ui-input" id="vc-street" autocomplete="off"
+              /></label>
+              <div class="codes-pair">
+                <label class="ui-field"
+                  ><span>City</span><input class="ui-input" id="vc-city" autocomplete="off"
+                /></label>
+                <label class="ui-field"
+                  ><span>Region</span><input class="ui-input" id="vc-region" autocomplete="off"
+                /></label>
+                <label class="ui-field"
+                  ><span>Postcode</span><input class="ui-input" id="vc-postcode" autocomplete="off"
+                /></label>
+                <label class="ui-field"
+                  ><span>Country</span><input class="ui-input" id="vc-country" autocomplete="off"
+                /></label>
+              </div>
+              <label class="ui-field"
+                ><span>Note</span><textarea class="ui-input codes-short" id="vc-note"></textarea>
+              </label>
+            </details>
+          </div>
+          <div data-fields="event">
+            <label class="ui-field"
+              ><span>Title</span><input class="ui-input" id="ev-title" autocomplete="off"
+            /></label>
+            <div class="codes-pair">
+              <label class="ui-field"
+                ><span>Starts</span><input class="ui-input" id="ev-start" type="datetime-local"
+              /></label>
+              <label class="ui-field"
+                ><span>Ends · an hour later if empty</span
+                ><input class="ui-input" id="ev-end" type="datetime-local"
+              /></label>
+            </div>
+            <label class="ui-field"
+              ><span>Location · optional</span
+              ><input class="ui-input" id="ev-location" autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Description · optional</span
+              ><textarea class="ui-input codes-short" id="ev-description"></textarea>
+            </label>
+          </div>
+          <div data-fields="barcode">
+            <label class="ui-field"
+              ><span>Barcode</span
+              ><select class="ui-input" id="symbology">
+                <option value="code128">Code 128 · printable ASCII text</option>
+                <option value="ean13">EAN-13 · product, 12 or 13 digits</option>
+                <option value="upca">UPC-A · product, 11 or 12 digits</option>
               </select></label
             ><label class="ui-field"
-              ><span>Password</span
-              ><input class="ui-input" id="password" type="password" autocomplete="off" /></label
-            ><label><input id="hidden-network" type="checkbox" /> Hidden network</label>
+              ><span id="barcode-label">Text</span
+              ><input class="ui-input" id="barcode-value" autocomplete="off" spellcheck="false"
+            /></label>
           </div>
-          <label class="ui-field"
-            ><span>Export width · pixels (SVG and PNG)</span
-            ><input
-              class="ui-input"
-              id="resolution"
-              type="number"
-              min="64"
-              max="4096"
-              step="1"
-              value="512"
-          /></label>
-          <div id="qr-options">
-            <div class="ui-row">
-              <label
-                >Error correction
-                <select class="ui-input" id="level">
-                  <option value="L">L · 7%</option>
-                  <option value="M" selected>M · 15%</option>
-                  <option value="Q">Q · 25%</option>
-                  <option value="H">H · 30%</option>
+
+          <h2 class="codes-step"><span aria-hidden="true">2</span>Design</h2>
+          <input type="hidden" id="design-tab" value="colours" />
+          <div class="codes-tabs" role="tablist" aria-label="Design">
+            <button type="button" role="tab" id="tab-colours" aria-controls="panel-colours">
+              Colours</button
+            ><button type="button" role="tab" id="tab-shapes" aria-controls="panel-shapes">
+              Shapes</button
+            ><button type="button" role="tab" id="tab-logo" aria-controls="panel-logo">Logo</button
+            ><button type="button" role="tab" id="tab-frame" aria-controls="panel-frame">
+              Frame
+            </button>
+          </div>
+          <div class="codes-panel" role="tabpanel" id="panel-colours" aria-labelledby="tab-colours">
+            <div class="codes-colours">
+              <label class="codes-colour"
+                ><input type="color" id="fg" value="#000000" /><span>Code</span></label
+              >
+              <label class="codes-colour"
+                ><input type="color" id="bg" value="#ffffff" /><span>Background</span></label
+              >
+            </div>
+            <label class="codes-check"
+              ><input type="checkbox" id="transparent" /> Transparent background</label
+            >
+            <label class="codes-check"><input type="checkbox" id="gradient" /> Gradient</label>
+            <div class="codes-colours" id="gradient-fields">
+              <label class="codes-colour"
+                ><input type="color" id="gradient-to" value="#1f6feb" /><span>To</span></label
+              >
+              <label class="ui-field"
+                ><span>Direction</span
+                ><select class="ui-input" id="gradient-kind">
+                  <option value="diagonal">Diagonal</option>
+                  <option value="horizontal">Across</option>
+                  <option value="vertical">Down</option>
+                  <option value="radial">From the middle</option>
                 </select></label
               >
             </div>
-          </div>
-          <button class="ui-btn" id="clear">Clear</button>
-        </section>
-        <section class="ui-card">
-          <div class="ui-row">
-            <h2>Preview</h2>
-            <div class="ui-seg">
-              <button class="ui-btn" id="save-svg" disabled>SVG</button
-              ><button class="ui-btn" id="save-png" disabled>PNG</button>
+            <div data-qr-only>
+              <label class="codes-check"
+                ><input type="checkbox" id="eye-own" /> Corner squares in their own colour</label
+              >
+              <div class="codes-colours" id="eye-fields">
+                <label class="codes-colour"
+                  ><input type="color" id="eye-color" value="#1f6feb" /><span>Corners</span></label
+                >
+              </div>
             </div>
           </div>
+          <div class="codes-panel" role="tabpanel" id="panel-shapes" aria-labelledby="tab-shapes">
+            <input type="hidden" id="module-shape" value="square" />
+            <input type="hidden" id="eye-frame" value="square" />
+            <input type="hidden" id="eye-ball" value="square" />
+            <h3>Modules</h3>
+            <div class="codes-options" id="module-options" role="group" aria-label="Modules"></div>
+            <h3>Corner frames</h3>
+            <div
+              class="codes-options"
+              id="eye-frame-options"
+              role="group"
+              aria-label="Corner frames"
+            ></div>
+            <h3>Corner centres</h3>
+            <div
+              class="codes-options"
+              id="eye-ball-options"
+              role="group"
+              aria-label="Corner centres"
+            ></div>
+          </div>
+          <div class="codes-panel" role="tabpanel" id="panel-logo" aria-labelledby="tab-logo">
+            <input type="hidden" id="logo" value="none" />
+            <div class="codes-options" id="logo-options" role="group" aria-label="Logo"></div>
+            <div class="ui-row">
+              <button type="button" class="ui-btn" id="logo-upload">
+                <svg data-ui-icon="image" aria-hidden="true"></svg>Upload an image…
+              </button>
+            </div>
+            <label class="ui-field"
+              ><span>Logo size</span
+              ><input type="range" id="logo-size" min="10" max="30" step="1" value="22"
+            /></label>
+            <p class="codes-hint">
+              With a logo, error correction is H, so the code still reads with its middle covered.
+            </p>
+          </div>
+          <div class="codes-panel" role="tabpanel" id="panel-frame" aria-labelledby="tab-frame">
+            <input type="hidden" id="frame" value="none" />
+            <div
+              class="codes-options codes-frames"
+              id="frame-options"
+              role="group"
+              aria-label="Frame"
+            ></div>
+            <div class="codes-pair">
+              <label class="ui-field"
+                ><span>Caption</span
+                ><input
+                  class="ui-input"
+                  id="caption"
+                  maxlength="40"
+                  value="SCAN ME"
+                  autocomplete="off"
+              /></label>
+              <label class="codes-colour"
+                ><input type="color" id="frame-color" value="#000000" /><span>Frame</span></label
+              >
+            </div>
+          </div>
+          <div class="ui-row codes-actions">
+            <button type="button" class="ui-btn" id="clear">Clear content</button>
+            <button type="button" class="ui-btn" id="reset-design">Reset design</button>
+          </div>
+        </section>
+
+        <section class="ui-card codes-output" aria-label="Download">
+          <h2 class="codes-step"><span aria-hidden="true">3</span>Download</h2>
           <div id="preview" role="group" aria-label="Code preview"></div>
           <p class="ui-message" id="status" role="status"></p>
-          <h2>Encoded content</h2>
-          <pre class="ui-output" id="encoded"></pre>
+          <ul class="codes-warnings" id="warnings"></ul>
+          <div class="codes-pair">
+            <label class="ui-field"
+              ><span>Width · pixels</span
+              ><input
+                class="ui-input"
+                id="resolution"
+                type="number"
+                min="64"
+                max="4096"
+                step="1"
+                value="1024"
+            /></label>
+            <label class="ui-field" data-qr-only
+              ><span>Error correction</span
+              ><select class="ui-input" id="level">
+                <option value="L">L · 7%</option>
+                <option value="M" selected>M · 15%</option>
+                <option value="Q">Q · 25%</option>
+                <option value="H">H · 30%</option>
+              </select></label
+            >
+          </div>
+          <div class="codes-downloads">
+            <button type="button" class="ui-btn ui-btn--primary" id="save-png" disabled>
+              <svg data-ui-icon="export" aria-hidden="true"></svg>PNG
+            </button>
+            <button type="button" class="ui-btn" id="save-svg" disabled>
+              <svg data-ui-icon="export" aria-hidden="true"></svg>SVG
+            </button>
+          </div>
+          <details class="codes-more">
+            <summary>Encoded content</summary>
+            <pre class="ui-output" id="encoded"></pre>
+          </details>
         </section>
       </div>
     </main>
@@ -122,44 +415,60 @@
         <div data-tools-about></div>
         <ul>
           <li>
+            Codes are made here, in your browser: what they hold is never sent anywhere. They are
+            static, so they keep working without this site, but what they hold cannot change once
+            printed.
+          </li>
+          <li>
             The draft is kept only for this tab, up to 2 MB. Reloading restores it; a new tab starts
             fresh. Light / dark applies to every tool.
           </li>
         </ul>
-        <h3>Code types</h3>
+        <h3>What a code holds</h3>
         <ul>
           <li>
-            QR encodes Unicode text, a URL, or Wi-Fi. Code 128 encodes printable ASCII (up to 80
-            characters), with compact pairs for even-length all-digit input.
+            <b>Link</b> opens a website; one typed without https:// gets it. <b>Email</b>,
+            <b>Call</b> and <b>SMS</b> start a message or a call, written and ready to send.
+            <b>WhatsApp</b> opens a chat through wa.me.
           </li>
           <li>
-            EAN-13 and UPC-A encode product identifiers. Enter 12/11 digits to calculate the check
-            digit, or 13/12 digits to validate it. These are encoders, not a source of assigned
-            product identifiers.
+            <b>Wi-Fi</b> joins a network. The password is readable by anyone who scans the code.
+          </li>
+          <li>
+            <b>Contact</b> is a vCard the phone offers to save. <b>Event</b> is a calendar entry,
+            its times in your time zone.
+          </li>
+          <li>
+            <b>Barcode</b>: Code 128 for printable ASCII, up to 80 characters; EAN-13 and UPC-A for
+            product numbers. Enter one digit less to have the check digit calculated, or all of them
+            to have it checked.
           </li>
         </ul>
-        <h3>Export and scanning</h3>
+        <h3>Design</h3>
         <ul>
           <li>
-            Export width sets the actual SVG/PNG dimensions. QR exports are square; barcode height
-            follows its width. SVG is a scalable vector image. PNG uses integer module widths and
-            centers spare pixels in the quiet zone.
+            Colours, shapes, a logo and a frame change how a QR code looks, not what it holds. A
+            barcode takes the colours only.
           </li>
           <li>
-            Every code is exported with the clear border scanners need: four modules around a QR
-            code, and the standard space before and after a barcode's bars. Keep the output high
-            contrast and test with the intended scanner.
+            Scanners need contrast: a dark code on a light background reads best. A warning under
+            the preview says when the colours may not scan.
           </li>
           <li>
-            The preview stays in place while editing. It dims and export buttons disable when the
-            current content is invalid or being updated.
+            A logo covers the middle of the code, so error correction goes up to H, which recovers
+            up to 30% of it. Keep the logo small and test the printed code.
           </li>
         </ul>
-        <h3>Wi-Fi</h3>
+        <h3>Download</h3>
         <ul>
           <li>
-            The password is readable by anyone who scans the code. Wi-Fi inputs are remembered only
-            in this tab's session draft.
+            The width sets the image's size in pixels; its height follows. SVG scales to any size
+            for print. PNG uses whole pixels per module, so the code stays sharp; spare pixels go
+            around it.
+          </li>
+          <li>
+            Every code keeps the clear border scanners need: four modules around a QR code, and the
+            standard space before and after a barcode's bars.
           </li>
         </ul>
       </div>

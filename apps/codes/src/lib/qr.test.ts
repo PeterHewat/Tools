@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test";
 import jsQR from "jsqr";
-import { capacity, encodeQr, qrSvg } from "./qr.js";
-import { urlContent, wifiContent } from "./presets.js";
+import { capacity, encodeQr } from "./qr.js";
+import { wifiContent } from "./content.js";
+import { DEFAULT_DESIGN, qrScene } from "./design.js";
+import { sceneSvg } from "./render.js";
 
 /** Independent decoder used only by tests; never imported by the app entry. */
 function decode(text: string, level: "L" | "M" | "Q" | "H", version = 1, mask?: number): void {
@@ -42,17 +44,15 @@ test("capacity boundaries and SVG quiet zone", () => {
   expect(() => encodeQr("\ud800")).toThrow();
   expect(() => encodeQr("x", "M", 0)).toThrow();
   expect(() => encodeQr("x", "M", 1, 8)).toThrow();
-  const svg = qrSvg(encodeQr("<script>"));
+  const svg = sceneSvg(qrScene(encodeQr("<script>"), DEFAULT_DESIGN), 290);
   expect(svg).toContain('viewBox="0 0 29 29"');
   expect(svg).not.toContain("script");
 });
-test("Wi-Fi escaping, open networks and URL validation", () => {
+test("Wi-Fi escaping and open networks", () => {
   const content = wifiContent('office;:"\\', "p,;\\", "WPA", true);
   expect(content).toBe('WIFI:T:WPA;S:office\\;\\:\\"\\\\;P:p\\,\\;\\\\;H:true;;');
   decode(content, "M");
   expect(wifiContent("guest", "ignored", "nopass", false)).toBe("WIFI:T:nopass;S:guest;H:false;;");
   expect(() => wifiContent("", "x", "WPA", false)).toThrow();
   expect(() => wifiContent("guest", "", "WPA", false)).toThrow();
-  expect(urlContent(" https://example.com/a?b=1 ")).toBe("https://example.com/a?b=1");
-  expect(() => urlContent("javascript:alert(1)")).toThrow();
 });
