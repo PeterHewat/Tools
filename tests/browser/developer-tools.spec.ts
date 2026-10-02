@@ -63,7 +63,10 @@ test("JWT decodes, verifies live, reads claims and decodes broken segments indep
   );
   await expect(page.locator("#payload-status")).toHaveAttribute("data-error", "true");
   // An empty token shows its placeholder, which is all the text box then holds.
-  await page.locator("#token-clear").click();
+  await expect(page.getByRole("button", { name: "Clear token" })).toHaveCount(0);
+  await token.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("Backspace");
   await expect(page.locator("#token .cm-placeholder")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Decoded JWT header" })).toBeEmpty();
   await page.reload();
@@ -482,7 +485,7 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
       );
     }
     if (compactHeader === false) {
-      for (const width of [274, 240]) {
+      for (const width of [274, 240, 217]) {
         await page.setViewportSize({ width, height: 900 });
         await expect(page.locator(".ui-app-name")).not.toHaveCSS("position", "absolute");
         await expect(page.locator(".ui-app-title")).not.toHaveCSS("position", "absolute");

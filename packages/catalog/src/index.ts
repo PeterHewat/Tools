@@ -85,7 +85,7 @@ export const APPS: readonly ToolsApp[] = [
     icon: "M4 7h16v10H4zM8 7v10m8-10v10M6 4h12M6 20h12",
     tags: ["jwt", "token", "decode", "encode", "verify", "developer"],
     art: true,
-    compactHeader: 217,
+    compactHeader: false,
     compactHome: 389,
     jsBudget: { entryGzip: 140, totalGzip: 140 },
     status: "stable",

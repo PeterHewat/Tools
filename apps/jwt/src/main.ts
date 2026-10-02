@@ -615,11 +615,6 @@ async function loadSample(): Promise<void> {
   }
 }
 
-byId("token-clear").addEventListener("click", () => {
-  token.setText("", "edit");
-  fromToken();
-  token.focus();
-});
 for (const [id, text] of [
   ["token-copy", () => token.text.trim()],
   ["header-copy", () => header.text],
