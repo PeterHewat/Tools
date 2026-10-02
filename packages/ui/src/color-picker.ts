@@ -1,13 +1,10 @@
 /**
- * A small popover color picker with a saturation/value square, hue slider,
- * alpha slider and hex field. One instance is shared by the whole app.
+ * A small popover color picker with a saturation/value square, hue slider, alpha slider and hex
+ * field, opened from a colour swatch. One instance is shared by the whole page.
  */
-
-interface Rgb {
-  r: number;
-  g: number;
-  b: number;
-}
+import { parseHex, toHex } from "./color.js";
+import type { Rgb } from "./color.js";
+import { iconSvg } from "./icons.js";
 
 interface PickerState {
   anchor: HTMLElement;
@@ -53,14 +50,11 @@ function clamp01(n: number): number {
 }
 
 function hexToRgb(hex: string): Rgb {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
-  if (!m) return { r: 0, g: 0, b: 0 };
-  const n = parseInt(m[1]!, 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  return parseHex(hex) ?? { r: 0, g: 0, b: 0 };
 }
 
-function rgbToHex({ r, g, b }: Rgb): string {
-  return "#" + [r, g, b].map((c) => Math.round(c).toString(16).padStart(2, "0")).join("");
+function rgbToHex(rgb: Rgb): string {
+  return toHex(rgb);
 }
 
 function rgbToHsv({ r, g, b }: Rgb): { h: number; s: number; v: number } {
@@ -106,15 +100,14 @@ function q<T extends HTMLElement>(parent: HTMLElement, sel: string): T {
 
 function build(): HTMLDivElement {
   const el = document.createElement("div");
-  el.className = "color-popover hidden";
+  el.className = "color-popover";
+  el.hidden = true;
   el.innerHTML = `
     <div class="cp-sv"><div class="cp-sv-thumb"></div></div>
     <div class="cp-slider cp-hue"><div class="cp-thumb"></div></div>
     <div class="cp-slider cp-alpha"><div class="cp-alpha-fill"></div><div class="cp-thumb"></div></div>
     <div class="cp-row">
-      <button type="button" class="ui-btn ui-icon-btn cp-dropper" title="Pick a colour from the reference image" aria-label="Pick a colour from the reference image">
-        <svg class="glyph" aria-hidden="true"><use href="#icon-dropper" /></svg>
-      </button>
+      <button type="button" class="ui-btn ui-icon-btn cp-dropper" title="Pick a colour from the reference image" aria-label="Pick a colour from the reference image"></button>
       <input type="text" class="cp-hex" aria-label="Colour (hex)" maxlength="7" spellcheck="false" />
       <input type="number" class="cp-alpha-num" aria-label="Opacity (%)" min="0" max="100" step="1" />
       <span class="cp-pct">%</span>
@@ -133,16 +126,17 @@ function build(): HTMLDivElement {
     alphaNum: q<HTMLInputElement>(el, ".cp-alpha-num"),
     dropper: q<HTMLButtonElement>(el, ".cp-dropper"),
   };
+  els.dropper.append(iconSvg("dropper"));
 
   // The popover steps aside while the pick is on, so the image under it can be reached, and
   // comes back with the colour picked - its opacity is left as it was.
   els.dropper.addEventListener("click", () => {
     const picking = current;
     if (!picking || !sampler) return;
-    el.classList.add("hidden");
+    el.hidden = true;
     void sampler.pick().then((hex) => {
       if (current !== picking) return;
-      el.classList.remove("hidden");
+      el.hidden = false;
       if (!hex) return;
       const hsv = rgbToHsv(hexToRgb(hex));
       picking.h = hsv.s && hsv.v ? hsv.h : picking.h;
@@ -193,7 +187,7 @@ function build(): HTMLDivElement {
   document.addEventListener(
     "pointerdown",
     (e) => {
-      if (!current || !root || root.classList.contains("hidden")) return;
+      if (!current || !root || root.hidden) return;
       const target = e.target as Node;
       if (root.contains(target) || current.anchor.contains(target)) return;
       closeColorPicker();
@@ -296,19 +290,57 @@ export function openColorPicker({
     onChange,
     onClose,
   };
-  root.classList.remove("hidden");
+  root.hidden = false;
   els.dropper.hidden = !sampler?.available();
   sync();
   position(anchor);
 }
 
 export function closeColorPicker(): void {
-  if (root) root.classList.add("hidden");
+  if (root) root.hidden = true;
   const onClose = current?.onClose;
   current = null;
   onClose?.();
 }
 
 export function isColorPickerOpenFor(anchor: HTMLElement): boolean {
-  return !!current && current.anchor === anchor && !!root && !root.classList.contains("hidden");
+  return !!current && current.anchor === anchor && !!root && !root.hidden;
+}
+
+/** A swatch shows its colour over a checkerboard, at its opacity. */
+export function paintSwatch(swatch: HTMLElement, color: string, alpha = 1): void {
+  if (!swatch.querySelector(".color-swatch-fill")) {
+    const fill = document.createElement("span");
+    fill.className = "color-swatch-fill";
+    swatch.append(fill);
+  }
+  swatch.style.setProperty("--c", color);
+  swatch.style.setProperty("--a", String(alpha));
+}
+
+export interface SwatchOptions {
+  /** The colour and alpha the picker opens on. */
+  read: () => { color: string; alpha: number };
+  onChange: (hex: string, alpha: number) => void;
+}
+/** A swatch button that opens the picker on its colour, and closes it when pressed again. */
+export function bindColorSwatch(
+  swatch: HTMLButtonElement,
+  { read, onChange }: SwatchOptions
+): void {
+  const { color, alpha } = read();
+  paintSwatch(swatch, color, alpha);
+  swatch.addEventListener("click", () => {
+    if (isColorPickerOpenFor(swatch)) return closeColorPicker();
+    const start = read();
+    openColorPicker({
+      anchor: swatch,
+      color: start.color,
+      alpha: start.alpha,
+      onChange: (hex, next) => {
+        paintSwatch(swatch, hex, next);
+        onChange(hex, next);
+      },
+    });
+  });
 }

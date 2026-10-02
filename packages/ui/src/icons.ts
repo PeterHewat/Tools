@@ -72,6 +72,10 @@ export const ICONS = {
     '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'
   ),
   barcode: line('<path d="M3 5v14M6.5 5v14M10 5v14M13 5v14M17 5v14M21 5v14"/>'),
+  /** Pick a colour from what is on screen (the colour picker). */
+  dropper: line(
+    '<path d="M14 6l4 4M16.5 3.5a2.1 2.1 0 013 3L18 8l-2-2 .5-2.5zM15 7l-9 9-1.5 4.5L9 19l9-9"/>'
+  ),
   image: line(
     '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>'
   ),

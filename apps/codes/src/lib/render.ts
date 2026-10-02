@@ -1,4 +1,7 @@
-/** A scene (`design.ts`) as SVG, or drawn on a canvas for PNG: the same picture either way. */
+/**
+ * A scene (`design.ts`) as SVG. The PNG is this SVG drawn at its size (@tools/ui's `renderPng`):
+ * each module a whole number of pixels, on whole-unit coordinates, so square edges stay sharp.
+ */
 import { escapeAttr, escapeXml } from "@tools/ui";
 import type { Paint, Scene } from "./design.js";
 
@@ -72,49 +75,4 @@ export function sceneSvg(scene: Scene, size: Size): string {
     body.join("") +
     "</svg>"
   );
-}
-
-/** Draws the scene at its export size, each module a whole number of pixels. */
-export function drawScene(
-  context: CanvasRenderingContext2D,
-  scene: Scene,
-  size: Size,
-  image?: CanvasImageSource
-): void {
-  const scale = size.perModule / scene.unit;
-  context.setTransform(1, 0, 0, 1, 0, 0);
-  context.clearRect(0, 0, size.width, size.height);
-  if (scene.background) {
-    context.fillStyle = scene.background;
-    context.fillRect(0, 0, size.width, size.height);
-  }
-  context.setTransform(scale, 0, 0, scale, 0, 0);
-  const paint = (value: Paint): string | CanvasGradient => {
-    if (typeof value === "string") return value;
-    const gradient =
-      value.kind === "linear"
-        ? context.createLinearGradient(value.x1, value.y1, value.x2, value.y2)
-        : context.createRadialGradient(value.x1, value.y1, 0, value.x1, value.y1, value.r);
-    gradient.addColorStop(0, value.from);
-    gradient.addColorStop(1, value.to);
-    return gradient;
-  };
-  for (const layer of scene.layers) {
-    if (!layer.d) continue;
-    context.fillStyle = paint(layer.paint);
-    context.fill(new Path2D(layer.d), layer.evenOdd ? "evenodd" : "nonzero");
-  }
-  if (scene.image && image) {
-    const { x, y, width, height } = scene.image;
-    context.drawImage(image, x, y, width, height);
-  }
-  if (scene.caption) {
-    const c = scene.caption;
-    context.font = `${c.weight} ${c.size}px ${c.font}`;
-    context.textAlign = "center";
-    context.textBaseline = "alphabetic";
-    context.fillStyle = c.color;
-    context.fillText(c.text, c.x, c.y);
-  }
-  context.setTransform(1, 0, 0, 1, 0, 0);
 }

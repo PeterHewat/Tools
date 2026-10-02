@@ -13,7 +13,7 @@ import type { Paint } from "../apps/codes/src/lib/design.ts";
 const BLUE = "#4f86e8",
   VIOLET = "#8a5cf0";
 // The logo is drawn here as vector paths rather than the app's image, so the art stays small.
-const scene = qrScene(encodeQr("Tools", "H", 2), {
+const scene = qrScene(encodeQr("https://peterhewat.github.io/Tools/", "H"), {
   ...DEFAULT_DESIGN,
   foreground: BLUE,
   gradient: { to: VIOLET, kind: "diagonal" },
@@ -26,8 +26,8 @@ const scene = qrScene(encodeQr("Tools", "H", 2), {
   logo: { href: "", width: 1, height: 1 },
 });
 
-// The code, 176 wide, in the middle of the 320 × 320 card.
-const width = 176,
+// The code, 232 wide, in the middle of the 320 × 320 card.
+const width = 232,
   height = Math.round((width * scene.height) / scene.width);
 const x = (320 - width) / 2,
   y = (320 - height) / 2;

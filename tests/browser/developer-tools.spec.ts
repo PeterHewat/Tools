@@ -379,6 +379,21 @@ test("Digests computes live text/file/HMAC and compares exact outputs", async ({
   await expect(page.locator("#hex")).toHaveText(createHash("sha256").update("").digest("hex"));
 });
 
+/** Sets a colour through its swatch and the shared picker: hex, then opacity in percent. */
+async function pickColour(page: Page, id: string, hex: string, opacity?: number) {
+  await page.locator(`#${id}-swatch`).click();
+  const picker = page.locator(".color-popover");
+  await expect(picker).toBeVisible();
+  await picker.locator(".cp-hex").fill(hex);
+  await picker.locator(".cp-hex").press("Enter");
+  if (opacity !== undefined) {
+    await picker.locator(".cp-alpha-num").fill(String(opacity));
+    await picker.locator(".cp-alpha-num").press("Enter");
+  }
+  await page.keyboard.press("Escape");
+  await expect(picker).toBeHidden();
+}
+
 /** Reads the pixels of a downloaded PNG in the page. */
 async function downloadedPixels(page: Page, button = "#save-png") {
   const downloaded = page.waitForEvent("download");
@@ -568,12 +583,12 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   await page.locator("#tab-colours").click();
   const settled = await height();
   expect(settled).toBeLessThan(shapes);
-  await page.locator("#fg").fill("#3a1c71");
+  await pickColour(page, "fg", "#3a1c71");
   await page.locator("#gradient").check();
   await page.locator("#eye-own").check();
-  await expect(page.locator("#gradient-to")).toBeVisible();
+  await expect(page.locator("#gradient-to-swatch")).toBeVisible();
   expect(await height()).toBe(settled);
-  await page.locator("#eye-color").fill("#b3122e");
+  await pickColour(page, "eye-color", "#b3122e");
   await expect(page.locator("#warnings")).toBeEmpty();
   await page.locator("#tab-logo").click();
   await page.locator('#logo-options [data-value="wifi"]').click();
@@ -584,8 +599,8 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   const lineOf = async (id: string) => (await page.locator(id).boundingBox())!;
   const [caption, text, frame] = [
     await lineOf("#caption"),
-    await lineOf("#caption-color"),
-    await lineOf("#frame-color"),
+    await lineOf("#caption-color-swatch"),
+    await lineOf("#frame-color-swatch"),
   ];
   expect([text.y, frame.y, text.height, frame.height]).toEqual([
     caption.y,
@@ -622,11 +637,19 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   // Poor colours are flagged, and reset brings back the plain code.
   await page.locator("#tab-colours").click();
   await page.locator("#gradient").uncheck();
-  await page.locator("#fg").fill("#bbbbbb");
+  await pickColour(page, "fg", "#bbbbbb");
   await expect(page.locator("#warnings")).toContainText("Low contrast");
   await page.locator("#reset-design").click();
   await expect(page.locator("#warnings")).toBeEmpty();
   await expect(page.locator("#status")).toContainText(/ (\d+) × \1 px/);
+  // A background at 0% opacity is transparent: no background drawn, clear pixels in the PNG.
+  await pickColour(page, "bg", "#ffffff", 0);
+  await expect(page.locator("#bg")).toHaveValue("#ffffff00");
+  await expect(page.locator("#warnings")).toContainText("Transparent");
+  await expect(page.locator("#preview svg > rect")).toHaveCount(0);
+  const clear = await downloadedPixels(page);
+  expect(clear.data[3]).toBe(0);
+  expect(scanQr(clear)).toBe("https://example.com/");
 });
 
 for (const [slug, field, value] of [

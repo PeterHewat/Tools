@@ -10,6 +10,7 @@
 import { QUIET_ZONE } from "./qr.js";
 import type { QrCode } from "./qr.js";
 import type { Barcode, BarcodeKind } from "./barcode.js";
+import { contrast, flatten, luminance, parseHex } from "@tools/ui";
 
 export const MODULE_SHAPES = [
   "square",
@@ -37,10 +38,11 @@ export interface Logo {
   width: number;
   height: number;
 }
+/** Every colour is "#rrggbb", or "#rrggbbaa" when not fully opaque. */
 export interface Design {
   foreground: string;
+  /** Transparent at alpha 0. */
   background: string;
-  transparent: boolean;
   /** The code's colour runs from `foreground` to `to`. */
   gradient?: { to: string; kind: GradientKind };
   /** The three corner squares in a colour of their own. */
@@ -57,7 +59,6 @@ export interface Design {
 export const DEFAULT_DESIGN: Design = {
   foreground: "#000000",
   background: "#ffffff",
-  transparent: false,
   modules: "square",
   eyeFrame: "square",
   eyeBall: "square",
@@ -107,7 +108,7 @@ export interface Scene {
   /** In units: always a whole number of modules. */
   width: number;
   height: number;
-  /** Fills everything behind the code; none for a transparent background. */
+  /** Fills everything behind an unframed code; none for a fully transparent background. */
   background?: string;
   layers: Layer[];
   image?: { href: string; x: number; y: number; width: number; height: number };
@@ -434,7 +435,9 @@ export function qrScene(qr: QrCode, design: Design, measure: Measure = estimateT
   const squareEyes = design.eyeFrame === "square" && design.eyeBall === "square";
   const layers: Layer[] = [
     ...frame.layers,
-    ...(design.transparent || design.frame === "none"
+    // A frame's panel takes the background, the frame around it the frame's colour: what is
+    // outside the frame's rounded corners stays clear.
+    ...(design.frame === "none" || !visible(design.background)
       ? []
       : [
           {
@@ -470,7 +473,9 @@ export function qrScene(qr: QrCode, design: Design, measure: Measure = estimateT
     unit,
     width: frame.width * unit,
     height: frame.height * unit,
-    ...(design.transparent ? {} : { background: design.background }),
+    ...(design.frame === "none" && visible(design.background)
+      ? { background: design.background }
+      : {}),
     layers,
     ...(image ? { image } : {}),
     ...(frame.caption ? { caption: frame.caption } : {}),
@@ -507,7 +512,7 @@ export function barcodeScene(code: Barcode, design: Design): Scene {
     unit: 1,
     width,
     height: 80,
-    ...(design.transparent ? {} : { background: design.background }),
+    ...(visible(design.background) ? { background: design.background } : {}),
     layers: [
       {
         d: String(bars),
@@ -527,26 +532,18 @@ export function barcodeScene(code: Barcode, design: Design): Scene {
   };
 }
 
-/** WCAG relative luminance of a #rrggbb colour. */
-function luminance(hex: string): number {
-  const channel = (i: number) => {
-    const c = parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
-}
-export function contrast(a: string, b: string): number {
-  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (light + 0.05) / (dark + 0.05);
-}
+/** Whether a colour shows at all: not at alpha 0. */
+export const visible = (color: string) => (parseHex(color)?.a ?? 1) > 0;
+
 /** What about the colours may stop a code from scanning, worst first. */
 export function colourWarnings(design: Design, qr: boolean): string[] {
-  const background = design.transparent ? "#ffffff" : design.background;
+  // A translucent background is seen over whatever is under it: white, at best.
+  const background = flatten(design.background, "#ffffff");
   const inks = [
     design.foreground,
     ...(design.gradient ? [design.gradient.to] : []),
     ...(qr && design.eyeColor ? [design.eyeColor] : []),
-  ];
+  ].map((ink) => flatten(ink, design.background));
   const warnings: string[] = [];
   if (inks.some((ink) => contrast(ink, background) < 4))
     warnings.push(
@@ -554,7 +551,7 @@ export function colourWarnings(design: Design, qr: boolean): string[] {
     );
   if (inks.some((ink) => luminance(ink) > luminance(background)))
     warnings.push("Light on dark: some scanners read only dark codes on a light background.");
-  if (design.transparent)
+  if ((parseHex(design.background)?.a ?? 1) < 1)
     warnings.push("Transparent: place the code on a light, plain background.");
   return warnings;
 }

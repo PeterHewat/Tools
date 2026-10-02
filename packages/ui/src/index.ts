@@ -8,6 +8,9 @@ export * from "./storage.js";
 export * from "./theme.js";
 export * from "./tool.js";
 export * from "./draft.js";
+export * from "./color.js";
+export * from "./color-picker.js";
+export * from "./png.js";
 
 declare global {
   interface ImportMetaEnv {

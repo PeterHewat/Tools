@@ -165,15 +165,6 @@
   align-items: center;
   gap: 8px;
 }
-.codes-extra input[type="color"] {
-  width: 36px;
-  height: 30px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  cursor: pointer;
-}
 .codes-off {
   visibility: hidden;
 }
@@ -191,16 +182,15 @@
   margin-bottom: 8px;
   font-size: 13px;
 }
-.codes-colour input {
+/* The shared colour swatch (@tools/ui), sized as a control here. */
+.codes .color-swatch {
+  flex: 0 0 auto;
   width: 36px;
+  max-width: none;
   height: 30px;
-  padding: 2px;
-  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg);
-  cursor: pointer;
 }
-.codes-colour input:disabled {
+.codes .color-swatch:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -245,18 +235,9 @@
   row-gap: 4px;
   margin-bottom: 0;
 }
-.codes-caption input[type="color"] {
+.codes-caption .color-swatch {
   width: 44px;
   height: 100%;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  cursor: pointer;
-}
-.codes-caption input[type="color"]:disabled {
-  opacity: 0.45;
-  cursor: default;
 }
 
 #preview {

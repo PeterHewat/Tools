@@ -12,7 +12,6 @@ import {
   PathData,
   barcodeScene,
   colourWarnings,
-  contrast,
   logoBox,
   qrScene,
 } from "./design.js";
@@ -142,7 +141,7 @@ test("barcodes take the colours, and keep their quiet zones", () => {
   const scene = barcodeScene(encodeBarcode("400638133393", "ean13"), {
     ...DEFAULT_DESIGN,
     foreground: "#123456",
-    transparent: true,
+    background: "#ffffff00",
   });
   expect(scene.background).toBeUndefined();
   expect(scene.layers[0].paint).toBe("#123456");
@@ -151,7 +150,6 @@ test("barcodes take the colours, and keep their quiet zones", () => {
 });
 
 test("colour warnings for contrast, light on dark and transparency", () => {
-  expect(contrast("#000000", "#ffffff")).toBeCloseTo(21);
   expect(colourWarnings(DEFAULT_DESIGN, true)).toEqual([]);
   expect(colourWarnings({ ...DEFAULT_DESIGN, foreground: "#999999" }, true)[0]).toContain(
     "Low contrast"
@@ -163,7 +161,23 @@ test("colour warnings for contrast, light on dark and transparency", () => {
     colourWarnings({ ...DEFAULT_DESIGN, gradient: { to: "#eeeeee", kind: "diagonal" } }, true)
   ).toHaveLength(1);
   expect(colourWarnings({ ...DEFAULT_DESIGN, eyeColor: "#eeeeee" }, false)).toEqual([]);
-  expect(colourWarnings({ ...DEFAULT_DESIGN, transparent: true }, true)[0]).toContain(
+  expect(colourWarnings({ ...DEFAULT_DESIGN, background: "#ffffff00" }, true)[0]).toContain(
     "Transparent"
+  );
+});
+
+test("translucent colours are written as 8-digit hex, a clear background as none", () => {
+  const glass = { ...DEFAULT_DESIGN, foreground: "#00000099", background: "#ffffff80" };
+  const plain = qrScene(qr, glass);
+  expect(plain.background).toBe("#ffffff80");
+  expect(svg(plain)).toContain('fill="#00000099"');
+  expect(svg(plain)).not.toMatch(/\d\.\d/);
+  expect(qrScene(qr, { ...glass, background: "#ffffff00" }).background).toBeUndefined();
+  // Framed, the panel takes the background and the corners outside the frame stay clear.
+  const framed = qrScene(qr, { ...glass, frame: "below" });
+  expect(framed.background).toBeUndefined();
+  expect(framed.layers[1].paint).toBe("#ffffff80");
+  expect(colourWarnings(glass, true)).toContain(
+    "Transparent: place the code on a light, plain background."
   );
 });

@@ -15,8 +15,8 @@ import {
   keepsRotation,
   parseDash,
 } from "./model.js";
+import { closeColorPicker, isColorPickerOpenFor, openColorPicker } from "@tools/ui";
 import { escapeAttr } from "./utils.js";
-import { openColorPicker, closeColorPicker, isColorPickerOpenFor } from "./colorpicker.js";
 import { membersOf } from "./groups.js";
 import type { BBox, SceneElement } from "./types.js";
 import { rotateAll, setBoxField, unionBox, type BoxField } from "./selection-transform.js";

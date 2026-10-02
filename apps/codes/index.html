@@ -298,22 +298,32 @@
             >
               <div class="codes-row">
                 <label class="codes-colour"
-                  ><input type="color" id="fg" value="#000000" /><span>Code</span></label
+                  ><input type="hidden" id="fg" value="#000000" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="fg-swatch"
+                  ></button
+                  ><span>Code</span></label
                 >
                 <label class="codes-colour"
-                  ><input type="color" id="bg" value="#ffffff" /><span>Background</span></label
-                >
-              </div>
-              <div class="codes-row">
-                <label class="codes-check"
-                  ><input type="checkbox" id="transparent" /> Transparent background</label
+                  ><input type="hidden" id="bg" value="#ffffff" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="bg-swatch"
+                  ></button
+                  ><span>Background</span></label
                 >
               </div>
               <div class="codes-row">
                 <label class="codes-check"><input type="checkbox" id="gradient" /> Gradient</label>
                 <span class="codes-extra" id="gradient-fields">
                   <label class="codes-colour"
-                    ><input type="color" id="gradient-to" value="#1f6feb" /><span>to</span></label
+                    ><input type="hidden" id="gradient-to" value="#1f6feb" /><button
+                      type="button"
+                      class="color-swatch"
+                      id="gradient-to-swatch"
+                    ></button
+                    ><span>to</span></label
                   >
                   <select class="ui-input" id="gradient-kind" aria-label="Gradient direction">
                     <option value="diagonal">Diagonal</option>
@@ -328,7 +338,12 @@
                   ><input type="checkbox" id="eye-own" /> Corner squares in their own colour</label
                 >
                 <span class="codes-extra" id="eye-fields">
-                  <input type="color" id="eye-color" value="#1f6feb" aria-label="Corner colour" />
+                  <input type="hidden" id="eye-color" value="#1f6feb" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="eye-color-swatch"
+                    aria-label="Corner colour"
+                  ></button>
                 </span>
               </div>
             </div>
@@ -389,11 +404,20 @@
                     autocomplete="off"
                 /></label>
                 <label class="ui-field"
-                  ><span>Text</span><input type="color" id="caption-color" value="#ffffff"
-                /></label>
+                  ><span>Text</span
+                  ><input type="hidden" id="caption-color" value="#ffffff" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="caption-color-swatch"
+                  ></button
+                ></label>
                 <label class="ui-field"
-                  ><span>Frame</span><input type="color" id="frame-color" value="#000000"
-                /></label>
+                  ><span>Frame</span><input type="hidden" id="frame-color" value="#000000" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="frame-color-swatch"
+                  ></button
+                ></label>
               </div>
             </div>
           </div>
@@ -480,8 +504,9 @@
             barcode takes the colours only.
           </li>
           <li>
-            Scanners need contrast: a dark code on a light background reads best. A warning under
-            the preview says when the colours may not scan.
+            Every colour has an opacity; a background at 0% is transparent. Scanners need contrast:
+            a dark code on a light background reads best. A warning under the preview says when the
+            colours may not scan.
           </li>
           <li>
             A logo covers the middle of the code, as large as it can be and still scan: error

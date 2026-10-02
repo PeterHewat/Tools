@@ -12,6 +12,7 @@
 @import "./controls.css";
 /* Docked panels and menus: Help, Settings, "⋯". */
 @import "./panels.css";
+@import "./color-picker.css";
 
 *,
 *::before,

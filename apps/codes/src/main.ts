@@ -1,19 +1,27 @@
 import {
   ICONS,
+  bindColorSwatch,
   bindToolHelp,
   byId,
+  contrast,
   downloadBlob,
   downloadText,
   escapeAttr,
   fieldValues,
+  flatten,
   iconSvg,
   onFileDrop,
+  paintSwatch,
+  parseHex,
   pickFiles,
   readDraft,
   registerServiceWorker,
+  renderPng,
   restoreFields,
   setPressed,
   showMessage,
+  splitAlpha,
+  toHex,
   writeDraft,
 } from "@tools/ui";
 import type { IconName } from "@tools/ui";
@@ -38,7 +46,6 @@ import {
   EYE_FRAMES,
   FRAMES,
   GRADIENTS,
-  contrast,
   MODULE_SHAPES,
   PathData,
   barcodeScene,
@@ -49,7 +56,7 @@ import {
   qrScene,
 } from "./lib/design.js";
 import type { Design, Logo, Measure, Scene } from "./lib/design.js";
-import { SIZES, drawScene, exportSize, sceneSvg } from "./lib/render.js";
+import { SIZES, exportSize, sceneSvg } from "./lib/render.js";
 import type { Size, SizeName } from "./lib/render.js";
 
 bindToolHelp("codes");
@@ -124,7 +131,6 @@ const ids = [
   "design-tab",
   "fg",
   "bg",
-  "transparent",
   "gradient",
   "gradient-to",
   "gradient-kind",
@@ -144,7 +150,6 @@ const ids = [
 const DESIGN_DEFAULTS: Record<string, string | boolean> = {
   fg: "#000000",
   bg: "#ffffff",
-  transparent: false,
   gradient: false,
   "gradient-to": "#1f6feb",
   "gradient-kind": "diagonal",
@@ -165,8 +170,9 @@ const value = (id: string) => input(id).value;
 const checked = (id: string) => input(id).checked;
 const oneOf = <T extends string>(options: readonly T[], candidate: string, fallback: T): T =>
   options.includes(candidate as T) ? (candidate as T) : fallback;
+/** A colour field's value, "#rrggbb" or "#rrggbbaa", or the fallback when it holds neither. */
 const colour = (id: string, fallback: string) =>
-  /^#[\da-f]{6}$/i.test(value(id)) ? value(id).toLowerCase() : fallback;
+  /^#(?:[\da-f]{6}|[\da-f]{8})$/i.test(value(id)) ? value(id).toLowerCase() : fallback;
 
 const draft = readDraft("codes", 1);
 /** An image the person chose for the logo, downscaled, as a data: URL. */
@@ -214,7 +220,6 @@ function design(): Design {
   return {
     foreground,
     background: colour("bg", "#ffffff"),
-    transparent: checked("transparent"),
     ...(checked("gradient")
       ? {
           gradient: {
@@ -427,10 +432,13 @@ choices(
     // colour that would vanish there takes the other one.
     const text = colour("caption-color", "#ffffff"),
       band = colour("frame-color", "#000000"),
-      background = checked("transparent") ? "#ffffff" : colour("bg", "#ffffff");
+      background = colour("bg", "#ffffff");
     const under = frame === "outline" ? background : band;
-    if (frame !== "none" && contrast(text, under) < 2)
-      input("caption-color").value = frame === "outline" ? band : background;
+    const seen = (color: string) => flatten(color, "#ffffff");
+    if (frame !== "none" && contrast(flatten(text, under), seen(under)) < 2)
+      input("caption-color").value =
+        frame === "outline" ? band : (parseHex(background)?.a ?? 1) === 1 ? background : "#ffffff";
+    paintSwatches();
   }
 );
 
@@ -462,7 +470,6 @@ function fields(): void {
   // Shown beside the box that turns it on, its room kept while off, so nothing moves.
   byId("gradient-fields").classList.toggle("codes-off", !checked("gradient"));
   byId("eye-fields").classList.toggle("codes-off", !checked("eye-own"));
-  input("bg").disabled = checked("transparent");
   input("password").disabled = value("security") === "nopass";
   const symbology = oneOf(SYMBOLOGIES, value("symbology"), "code128");
   byId("barcode-label").textContent =
@@ -477,8 +484,8 @@ function fields(): void {
   if (logo) level.value = "H";
   const framed = value("frame") !== "none";
   input("caption").disabled = !framed;
-  input("frame-color").disabled = !framed;
-  input("caption-color").disabled = !framed;
+  byId<HTMLButtonElement>("frame-color-swatch").disabled = !framed;
+  byId<HTMLButtonElement>("caption-color-swatch").disabled = !framed;
   for (const [container, field] of [
     ["module-options", "module-shape"],
     ["eye-frame-options", "eye-frame"],
@@ -641,12 +648,31 @@ for (const id of ids) {
     element.addEventListener("input", update);
 }
 // Preset logos are drawn in the code's colour: each picture follows it in place, without a blink.
-input("fg").addEventListener("input", () => {
+function tintLogos(): void {
   for (const picture of byId("logo-options").querySelectorAll<HTMLImageElement>("img")) {
     const name = picture.closest<HTMLElement>("[data-value]")?.dataset.value as IconName;
     if (LOGOS.includes(name)) picture.src = presetLogo(name, colour("fg", "#000000")).href;
   }
-});
+}
+
+/** The colours, each a hidden field (for the draft) shown and picked by its swatch. */
+const COLOURS = ["fg", "bg", "gradient-to", "eye-color", "caption-color", "frame-color"];
+const swatchOf = (id: string) => byId<HTMLButtonElement>(id + "-swatch");
+function paintSwatches(): void {
+  for (const id of COLOURS) {
+    const { color, alpha } = splitAlpha(value(id));
+    paintSwatch(swatchOf(id), color, alpha);
+  }
+}
+for (const id of COLOURS)
+  bindColorSwatch(swatchOf(id), {
+    read: () => splitAlpha(colour(id, String(DESIGN_DEFAULTS[id]))),
+    onChange: (hex, alpha) => {
+      input(id).value = toHex({ ...parseHex(hex)!, a: alpha });
+      if (id === "fg") tintLogos();
+      update();
+    },
+  });
 
 for (const button of document.querySelectorAll<HTMLElement>("[data-type]"))
   button.addEventListener("click", () => {
@@ -724,16 +750,10 @@ byId("reset-design").addEventListener("click", () => {
     if (typeof fallback === "boolean") input(id).checked = fallback;
     else input(id).value = fallback;
   drawLogos();
+  paintSwatches();
   update();
 });
 
-/** Loads an image the scene draws, for the canvas. */
-async function loadImage(href: string): Promise<HTMLImageElement> {
-  const element = new Image();
-  element.src = href;
-  await element.decode();
-  return element;
-}
 byId("save-svg").addEventListener("click", () => {
   flush();
   if (current) downloadText(current.name + ".svg", current.svg, "image/svg+xml");
@@ -742,26 +762,13 @@ byId("save-png").addEventListener("click", async () => {
   flush();
   if (!current) return;
   const version = revision,
-    { scene, size, name } = current;
-  const canvas = document.createElement("canvas");
-  canvas.width = size.width;
-  canvas.height = size.height;
-  const context = canvas.getContext("2d");
-  if (!context) {
-    showMessage(byId("status"), "This browser cannot export PNG. Use SVG instead.", true);
-    return;
-  }
+    { svg, size, name } = current;
   try {
-    drawScene(context, scene, size, scene.image ? await loadImage(scene.image.href) : undefined);
-  } catch {
-    showMessage(byId("status"), "The logo could not be drawn. Use SVG instead.", true);
-    return;
+    const png = await renderPng(svg, size.width, size.height);
+    if (version === revision) downloadBlob(name + ".png", png);
+  } catch (error) {
+    showMessage(byId("status"), (error as Error).message + " Use SVG instead.", true);
   }
-  canvas.toBlob((blob) => {
-    if (version !== revision) return;
-    if (blob) downloadBlob(name + ".png", blob);
-    else showMessage(byId("status"), "PNG export failed. Use SVG instead.", true);
-  }, "image/png");
 });
 
 fields();

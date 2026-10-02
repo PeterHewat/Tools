@@ -15,7 +15,8 @@
     "./panels.css": "./panels.css",
     "./tokens.css": "./tokens.css",
     "./controls.css": "./controls.css",
-    "./tool.css": "./tool.css"
+    "./tool.css": "./tool.css",
+    "./color-picker.css": "./color-picker.css"
   },
   "files": [
     "src",
@@ -25,7 +26,8 @@
     "panels.css",
     "tokens.css",
     "controls.css",
-    "tool.css"
+    "tool.css",
+    "color-picker.css"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
