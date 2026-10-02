@@ -589,12 +589,15 @@ algorithm.addEventListener("change", async () => {
 const keyButton = byId<HTMLButtonElement>("generate-key");
 keyButton.addEventListener("click", async () => {
   const alg = selected() ?? "HS256";
+  const version = ++revision;
   keyButton.disabled = true;
   try {
-    useKey(await generateKey(alg), alg);
+    const key = await generateKey(alg);
+    if (version !== revision) return;
+    useKey(key, alg);
     fromJson();
   } catch (error) {
-    note("key-status", (error as Error).message, true);
+    if (version === revision) note("key-status", (error as Error).message, true);
   } finally {
     keyButton.disabled = false;
   }

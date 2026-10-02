@@ -208,6 +208,47 @@ test("JWT cleans pasted tokens, keeps unreadable headers, and guards keys and en
   await expect(page.locator("#signature-state")).toHaveText("Signature verified");
 });
 
+for (const edit of ["key", "algorithm"] as const) {
+  test(`JWT discards pending key generation after editing the ${edit}`, async ({ page }) => {
+    await page.goto("/Tools/jwt/");
+    await page.locator("#algorithm").selectOption("RS256");
+    await expect(page.locator("#private-key")).toHaveValue(/BEGIN PRIVATE KEY/);
+    await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+    await page.evaluate(() => {
+      const original = crypto.subtle.generateKey.bind(crypto.subtle);
+      crypto.subtle.generateKey = (async (...args: Parameters<SubtleCrypto["generateKey"]>) => {
+        crypto.subtle.generateKey = original;
+        document.documentElement.dataset.generating = "true";
+        await new Promise<void>((resolve) => {
+          document.addEventListener("test-release-generation", () => resolve(), { once: true });
+        });
+        return original(...args);
+      }) as SubtleCrypto["generateKey"];
+    });
+    await page.locator("#generate-key").click();
+    await expect(page.locator("html")).toHaveAttribute("data-generating", "true");
+    if (edit === "key") await page.locator("#private-key").fill("newly pasted key");
+    else {
+      await page.locator("#algorithm").selectOption("ES256");
+      await expect(
+        page.getByRole("textbox", { name: "JSON Web Token", exact: true })
+      ).toContainText(Buffer.from('{"alg":"ES256","typ":"JWT"}').toString("base64url"));
+      await expect(page.locator("#private-check")).toHaveText("Valid private key");
+      await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+    }
+    const key = await page.locator("#private-key").inputValue();
+    const token = await page
+      .getByRole("textbox", { name: "JSON Web Token", exact: true })
+      .innerText();
+    await page.evaluate(() => document.dispatchEvent(new Event("test-release-generation")));
+    await expect(page.locator("#generate-key")).toBeEnabled();
+    await expect(page.locator("#private-key")).toHaveValue(key);
+    await expect(page.getByRole("textbox", { name: "JSON Web Token", exact: true })).toHaveText(
+      token
+    );
+  });
+}
+
 test("Codec rewrites every format live from whichever field is edited", async ({
   page,
   context,

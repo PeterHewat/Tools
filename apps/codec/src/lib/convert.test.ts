@@ -41,3 +41,8 @@ test("reads each format strictly", () => {
   expect(() => readValue("SGVsbG8=", "base64url")).toThrow("Base64url");
   expect(() => readValue("\ud800", "text")).toThrow("surrogate");
 });
+
+test("decodes large URL components without an argument limit", () => {
+  const text = "a".repeat(1_000_000) + "🌍";
+  expect(writeValue(fromUrl(text + "%00" + text), "text")).toBe(text + "\u0000" + text);
+});

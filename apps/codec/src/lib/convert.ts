@@ -39,7 +39,7 @@ export function fromUrl(value: string): Uint8Array<ArrayBuffer> {
     }
     const next = value.indexOf("%", i);
     const end = next < 0 ? value.length : next;
-    bytes.push(...utf8(value.slice(i, end)));
+    for (const byte of utf8(value.slice(i, end))) bytes.push(byte);
     i = end;
   }
   return Uint8Array.from(bytes);
