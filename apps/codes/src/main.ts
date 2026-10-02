@@ -28,14 +28,13 @@ const ids = [
   "security",
   "hidden-network",
   "level",
-  "margin",
   "resolution",
 ];
 const draft = readDraft("codes", 1);
 const input = (id: string) => byId<HTMLInputElement>(id);
 const select = (id: string) => byId<HTMLSelectElement>(id);
-if (!draft.error && draft.found) restoreFields(draft.value, ids);
-else if (!draft.error) byId<HTMLTextAreaElement>("content").value = "https://example.com/";
+if (draft.found && !draft.error) restoreFields(draft.value, ids);
+else byId<HTMLTextAreaElement>("content").value = "https://example.com/";
 let image: Graphic | undefined,
   revision = 0,
   timer: ReturnType<typeof setTimeout> | undefined;
@@ -86,7 +85,7 @@ function render(): void {
       kind === "qr"
         ? encodeQr(encoded, select("level").value as Level)
         : encodeBarcode(encoded, kind as BarcodeKind);
-    image = graphic(code, Number(input("resolution").value), Number(input("margin").value));
+    image = graphic(code, Number(input("resolution").value));
     const parsed = new DOMParser().parseFromString(image.svg, "image/svg+xml").documentElement;
     parsed.setAttribute("role", "img");
     parsed.setAttribute("aria-label", kind === "qr" ? "Generated QR code" : "Generated barcode");
@@ -113,14 +112,14 @@ function render(): void {
   }
 }
 function update(): void {
-  if (draft.error) return;
   revision++;
   clearTimeout(timer);
   fields();
   exportsEnabled(false);
   byId("preview").classList.add("pending");
   showMessage(byId("status"), "Updating…");
-  if (!writeDraft("codes", 1, fieldValues(ids)))
+  // An incompatible draft stays as it was: this tab works without saving over it.
+  if (!draft.error && !writeDraft("codes", 1, fieldValues(ids)))
     showMessage(
       byId("status"),
       "Draft could not be remembered (storage unavailable or over 2 MB).",
@@ -174,5 +173,9 @@ byId<HTMLSelectElement>("examples").addEventListener("change", () => {
   select("examples").value = "";
 });
 fields();
-if (draft.error) showMessage(byId("status"), draft.error, true);
-else render();
+if (draft.error) {
+  const status = byId("draft-status");
+  status.hidden = false;
+  showMessage(status, draft.error, true);
+}
+render();

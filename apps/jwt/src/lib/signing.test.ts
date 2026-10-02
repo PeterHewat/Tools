@@ -240,3 +240,8 @@ test("changing the encoding rewrites the secret as the same bytes", () => {
   expect(convertSecret("-_8", "base64url", "base64")).toBe("+/8=");
   expect(() => convertSecret("-_8", "base64url", "text")).toThrow("not UTF-8");
 });
+test("a shared secret that is not valid JWK JSON says so", async () => {
+  expect(() => secretBytes('{"kty":"oct"', "jwk")).toThrow("The JWK is not valid JSON.");
+  expect(() => convertSecret("{", "jwk", "hex")).toThrow("The JWK is not valid JSON.");
+  await expect(signInput("x", "{", "jwk", "HS256")).rejects.toThrow("The JWK is not valid JSON.");
+});

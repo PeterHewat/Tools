@@ -77,3 +77,15 @@ test("Code 128 B and C symbol/checksum vectors", () => {
   expect(() => encodeBarcode("", "code128")).toThrow();
   expect(() => encodeBarcode("x".repeat(81), "code128")).toThrow();
 });
+test("each barcode keeps its standard quiet zones", () => {
+  for (const [value, kind, left, right] of [
+    ["400638133393", "ean13", 11, 7],
+    ["03600029145", "upca", 9, 9],
+    ["TOOLS", "code128", 10, 10],
+  ] as const) {
+    const code = encodeBarcode(value, kind);
+    const { svg } = graphic(code, 512);
+    expect(svg).toContain(`viewBox="0 0 ${code.modules.length + left + right} 80"`);
+    expect(svg).toContain(`d="M${left} 4h1`);
+  }
+});

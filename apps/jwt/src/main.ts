@@ -74,6 +74,8 @@ let timer: ReturnType<typeof setTimeout> | undefined;
  * reload in between still rebuilds the token.
  */
 let pendingResign = false;
+/** Why the last key could not be generated; cleared by the next edit. */
+let keyError = "";
 
 const token = createEditor(byId("token"), {
   label: "JSON Web Token",
@@ -363,6 +365,7 @@ function settle(resign: boolean): void {
   if (resign) pendingResign = true;
   clearTimeout(timer);
   checkSecret();
+  keyError = "";
   note("key-status", "");
   save();
   timer = setTimeout(() => void run(version), 120);
@@ -379,7 +382,8 @@ async function run(version: number): Promise<void> {
   if (version !== revision) return;
   state("signature-state", result.text, result.state);
   for (const [id, text, kind] of checks) state(id, text, kind);
-  if (signNote || result.note)
+  if (keyError) note("key-status", keyError, true);
+  else if (signNote || result.note)
     note("key-status", signNote || result.note!, Boolean(signNote) || result.state === "error");
   save();
 }
@@ -570,37 +574,66 @@ async function signs(alg: SigningAlgorithm): Promise<boolean> {
     return false;
   }
 }
+/**
+ * Starts a key request. It stays current until an edit (any `settle`) or a newer request, so a
+ * key that arrives late never replaces what was done meanwhile. It does not cancel the pending
+ * run of an earlier edit: that still rebuilds and verifies the token.
+ */
+let keyRequest = 0;
+function claimKey(): () => boolean {
+  const request = ++keyRequest,
+    version = revision;
+  return () => request === keyRequest && version === revision;
+}
+const keyButton = byId<HTMLButtonElement>("generate-key");
+let generating = 0;
+/** A fresh key, or why it could not be made; undefined when it was superseded meanwhile. */
+async function freshKey(
+  alg: SigningAlgorithm,
+  current: () => boolean
+): Promise<{ key: GeneratedKey } | { error: string } | undefined> {
+  generating++;
+  keyButton.disabled = true;
+  try {
+    const key = await generateKey(alg);
+    return current() ? { key } : undefined;
+  } catch (error) {
+    return current() ? { error: (error as Error).message } : undefined;
+  } finally {
+    if (--generating === 0) keyButton.disabled = false;
+  }
+}
+/** Says why a key could not be made, over the run's own notes until the next edit. */
+function showKeyError(message: string): void {
+  keyError = message;
+  note("key-status", message, true);
+}
+
 algorithm.addEventListener("change", async () => {
   const alg = selected();
   if (!alg) return;
-  const version = ++revision;
+  const current = claimKey();
   header.setText(withAlg(header.text, alg), "edit");
   showAlg(alg);
   const hmac = isHmac(alg);
   const missing = hmac ? secret.value === "" : !publicKey.value.trim() && !privateKey.value.trim();
-  if (missing || ((hmac ? generated.secret : generated.pair) && !(await signs(alg)))) {
-    const key = await generateKey(alg);
-    if (version !== revision) return;
-    useKey(key, alg);
-  }
+  const replace = missing || ((hmac ? generated.secret : generated.pair) && !(await signs(alg)));
+  if (!current()) return;
+  const result = replace ? await freshKey(alg, current) : { key: undefined };
+  if (!result) return;
+  if ("key" in result && result.key) useKey(result.key, alg);
+  // The header changed either way: the token follows it, signed if the key allows.
   fromJson();
+  if ("error" in result) showKeyError(result.error);
 });
 
-const keyButton = byId<HTMLButtonElement>("generate-key");
 keyButton.addEventListener("click", async () => {
   const alg = selected() ?? "HS256";
-  const version = ++revision;
-  keyButton.disabled = true;
-  try {
-    const key = await generateKey(alg);
-    if (version !== revision) return;
-    useKey(key, alg);
-    fromJson();
-  } catch (error) {
-    if (version === revision) note("key-status", (error as Error).message, true);
-  } finally {
-    keyButton.disabled = false;
-  }
+  const result = await freshKey(alg, claimKey());
+  if (!result) return;
+  if ("error" in result) return showKeyError(result.error);
+  useKey(result.key, alg);
+  fromJson();
 });
 byId("sign").addEventListener("click", fromJson);
 

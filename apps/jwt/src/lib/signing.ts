@@ -1,4 +1,12 @@
-import { decodeBytes, encodeBytes, fromBase64, toBase64, utf8, webCrypto } from "@tools/bytes";
+import {
+  decodeBytes,
+  encodeBytes,
+  fromBase64,
+  toBase64,
+  toHex,
+  utf8,
+  webCrypto,
+} from "@tools/bytes";
 import type { ByteFormat } from "@tools/bytes";
 import { REPAIRS, parse, printJson } from "@tools/json-core";
 
@@ -60,7 +68,12 @@ export function pairFormat(value: string): "pem" | "jwk" {
 export function secretBytes(value: string, format: KeyFormat): Uint8Array<ArrayBuffer> {
   if (format === "pem") throw new Error("HMAC needs a shared secret, not a PEM key.");
   if (format === "jwk") {
-    const jwk: JsonWebKey = JSON.parse(value);
+    let jwk: JsonWebKey;
+    try {
+      jwk = JSON.parse(value) as JsonWebKey;
+    } catch (error) {
+      throw new Error("The JWK is not valid JSON.", { cause: error });
+    }
     if (jwk.kty !== "oct" || !jwk.k) throw new Error("HMAC needs an oct JWK with a k value.");
     return fromBase64(jwk.k, true);
   }
@@ -116,7 +129,7 @@ export function describeKey(value: string): string | undefined {
     }
     const body = /-----BEGIN [A-Z ]+-----([A-Za-z0-9+/=\s]+)-----END/.exec(value)?.[1];
     if (!body) return undefined;
-    const der = [...fromBase64(body)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    const der = toHex(fromBase64(body));
     // The key's own type comes first; an EC key's curve follows it.
     const ec = der.includes("06072a8648ce3d0201");
     return KEY_OIDS.find(([kind, oid]) => der.includes(oid) && (ec || !kind.endsWith(" EC")))?.[0];

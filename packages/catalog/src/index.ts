@@ -94,14 +94,14 @@ export const APPS: readonly ToolsApp[] = [
   {
     slug: "codec",
     name: "Codec",
-    title: "Base64, URL and Hex Converter",
+    title: "UTF-8, Base64, URL and Hex Converter",
     blurb:
       "Convert UTF-8 text, Base64, Base64url, URL components and hex, with every byte visible.",
     icon: "M3 8h16l-4-4m4 4-4 4M21 16H5l4-4m-4 4 4 4",
     tags: ["base64", "hex", "url", "utf-8", "encoding", "developer"],
     art: true,
     compactHeader: false,
-    compactHome: 424,
+    compactHome: 467,
     jsBudget: { entryGzip: 135, totalGzip: 135 },
     status: "stable",
     listed: true,
@@ -116,7 +116,7 @@ export const APPS: readonly ToolsApp[] = [
     art: true,
     compactHeader: 268,
     jsBudget: { entryGzip: 9, totalGzip: 9 },
-    status: "beta",
+    status: "stable",
     listed: true,
   },
   {
@@ -128,7 +128,7 @@ export const APPS: readonly ToolsApp[] = [
     art: true,
     compactHeader: 276,
     jsBudget: { entryGzip: 7, totalGzip: 7 },
-    status: "beta",
+    status: "stable",
     listed: true,
   },
 ];

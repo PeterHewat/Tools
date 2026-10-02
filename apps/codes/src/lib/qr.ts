@@ -286,9 +286,11 @@ export function encodeQr(
   return { version, level, mask: bestMask, modules };
 }
 
-export function qrSvg(qr: QrCode, margin = 4): string {
-  if (!Number.isInteger(margin) || margin < 4 || margin > 16)
-    throw new Error("Margin must be an integer from 4 to 16 modules.");
+/** The clear border a QR code needs on every side, in modules (ISO/IEC 18004). */
+export const QUIET_ZONE = 4;
+
+export function qrSvg(qr: QrCode): string {
+  const margin = QUIET_ZONE;
   const size = qr.modules.length + margin * 2;
   const paths: string[] = [];
   qr.modules.forEach((row, y) => {

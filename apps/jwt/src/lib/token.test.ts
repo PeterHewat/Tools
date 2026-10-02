@@ -110,3 +110,12 @@ test("notes explain known members at the end of their line, with times read as d
   expect(claimTimes({ exp: 0 }, 3 * 365.25 * 86400)[0].description).toBe("Expired 3 years ago");
   expect(claimTimes({ exp: 0 }, 10 * 86400)[0].description).toBe("Expired 10 days ago");
 });
+test("member notes stay linear on a large payload", () => {
+  const members = Array.from({ length: 20_000 }, (_, i) => `  "x${i}": ${i}`);
+  const text = "{\n" + members.join(",\n") + ',\n  "exp": 0\n}';
+  const started = performance.now();
+  const notes = memberNotes(text, "payload", () => "date", 0);
+  expect(notes).toHaveLength(1);
+  expect(notes[0].at).toBe(text.lastIndexOf("\n"));
+  expect(performance.now() - started).toBeLessThan(500);
+});

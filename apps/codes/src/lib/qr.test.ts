@@ -45,7 +45,6 @@ test("capacity boundaries and SVG quiet zone", () => {
   const svg = qrSvg(encodeQr("<script>"));
   expect(svg).toContain('viewBox="0 0 29 29"');
   expect(svg).not.toContain("script");
-  expect(() => qrSvg(encodeQr("x"), 3)).toThrow();
 });
 test("Wi-Fi escaping, open networks and URL validation", () => {
   const content = wifiContent('office;:"\\', "p,;\\", "WPA", true);

@@ -249,6 +249,30 @@ for (const edit of ["key", "algorithm"] as const) {
   });
 }
 
+test("JWT says why a key could not be made, and the token still follows its edits", async ({
+  page,
+}) => {
+  await page.goto("/Tools/jwt/");
+  await expect(page.locator("#signature-state")).toHaveText("Signature verified");
+  await page.evaluate(() => {
+    crypto.subtle.generateKey = (() =>
+      Promise.reject(new Error("No keys here."))) as SubtleCrypto["generateKey"];
+  });
+  const token = page.getByRole("textbox", { name: "JSON Web Token", exact: true });
+  // An algorithm with no key: the key fails, the header and token follow the algorithm anyway.
+  await page.locator("#algorithm").selectOption("EdDSA");
+  await expect(page.locator("#key-status")).toHaveText("No keys here.");
+  await expect(token).toContainText(
+    Buffer.from('{"alg":"EdDSA","typ":"JWT"}').toString("base64url")
+  );
+  await expect(page.locator("#generate-key")).toBeEnabled();
+  // A key that fails right after an edit leaves that edit's rebuild in place.
+  await page.getByRole("textbox", { name: "Decoded JWT payload" }).fill('{"sub":"edited"}');
+  await page.locator("#generate-key").click();
+  await expect(token).toContainText(Buffer.from('{"sub":"edited"}').toString("base64url"));
+  await expect(page.locator("#key-status")).toHaveText("No keys here.");
+});
+
 test("Codec rewrites every format live from whichever field is edited", async ({
   page,
   context,
@@ -396,9 +420,8 @@ test("Codes keeps preview geometry stable and exports exact-size independently s
   const qr = await pixels();
   expect(qr.width).toBe(768);
   expect(jsQR(new Uint8ClampedArray(qr.data), qr.width, qr.height)?.data).toBe(wifi);
-  await page.locator("#qr-options summary").click();
-  await page.locator("#margin").fill("3");
-  await expect(page.locator("#status")).toContainText("Margin must");
+  await page.locator("#ssid").fill("");
+  await expect(page.locator("#status")).toContainText("Enter the network name");
   await expect(page.locator("#save-svg")).toBeDisabled();
   expect(await page.locator("#preview").boundingBox()).toEqual(before);
   for (const [kind, content, expected, format] of [
@@ -460,6 +483,29 @@ test("incompatible drafts fail closed without overwriting saved data", async ({ 
   );
   expect(await page.evaluate(() => sessionStorage.getItem("tools.codec.draft"))).toBe(saved);
 });
+
+for (const [slug, field, value, result] of [
+  ["codes", "#content", "still works", "#encoded"],
+  ["digests", "#text", "still works", "#hex"],
+] as const) {
+  test(`${slug} works without saving over an incompatible draft`, async ({ page }) => {
+    await page.goto(`/Tools/${slug}/`);
+    const saved = JSON.stringify({ version: 999, value: {} });
+    await page.evaluate(
+      ([slug, value]) => sessionStorage.setItem(`tools.${slug}.draft`, value),
+      [slug, saved]
+    );
+    await page.reload();
+    await expect(page.locator("#draft-status")).toContainText("Clear this app's session storage");
+    await page.locator(field).fill(value);
+    await expect(page.locator(result)).toHaveText(
+      slug === "codes" ? value : createHash("sha256").update(value).digest("hex")
+    );
+    expect(await page.evaluate((slug) => sessionStorage.getItem(`tools.${slug}.draft`), slug)).toBe(
+      saved
+    );
+  });
+}
 
 for (const slug of ["jwt", "codec", "codes", "digests"]) {
   test(`${slug} fits narrow headers, shares theme and has accessible controls`, async ({

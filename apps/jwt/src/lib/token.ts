@@ -134,15 +134,22 @@ export function memberNotes(
 ): MemberNote[] {
   const parsed = parse(text);
   if (!parsed.ok || parsed.root.kind !== "object") return [];
-  const lineOf = (offset: number) => text.slice(0, offset).split("\n").length;
+  // Each member's line, in one pass: the members come in the order of the text.
+  let line = 0,
+    from = 0;
+  const lines = parsed.root.members.map((member) => {
+    for (let next = text.indexOf("\n", from); next >= 0 && next < member.keyStart;) {
+      line++;
+      from = next + 1;
+      next = text.indexOf("\n", from);
+    }
+    return line;
+  });
   const perLine = new Map<number, number>();
-  for (const member of parsed.root.members) {
-    const line = lineOf(member.keyStart);
-    perLine.set(line, (perLine.get(line) ?? 0) + 1);
-  }
+  for (const at of lines) perLine.set(at, (perLine.get(at) ?? 0) + 1);
   const notes: MemberNote[] = [];
-  for (const member of parsed.root.members) {
-    if (perLine.get(lineOf(member.keyStart)) !== 1) continue;
+  for (const [index, member] of parsed.root.members.entries()) {
+    if (perLine.get(lines[index]) !== 1) continue;
     const names = part === "header" ? HEADER_NAMES : CLAIM_NAMES;
     if (!Object.hasOwn(names, member.key)) continue;
     let note = names[member.key],

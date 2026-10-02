@@ -65,8 +65,13 @@ function update(): void {
     bytes = readValue(editors[source].text, source);
   } catch (error) {
     note(source, (error as Error).message, true);
-    for (const format of FORMATS)
-      byId(format + "-card").toggleAttribute("data-stale", format !== source);
+    // The other fields still hold the last bytes that read: shown, but not copied as current.
+    for (const format of FORMATS) {
+      const stale = format !== source;
+      byId(format + "-card").toggleAttribute("data-stale", stale);
+      byId<HTMLButtonElement>(format + "-copy").disabled = stale;
+      if (stale) note(format, "");
+    }
     save();
     return;
   }

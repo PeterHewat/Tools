@@ -35,6 +35,7 @@
       <p class="ui-intro">
         QR codes and barcodes, generated locally and exported at the size you choose.
       </p>
+      <p class="ui-message" id="draft-status" role="status" hidden></p>
       <div class="ui-columns">
         <section class="ui-card">
           <label class="ui-field"
@@ -95,13 +96,6 @@
                 </select></label
               >
             </div>
-            <details>
-              <summary>Quiet zone</summary>
-              <label class="ui-field"
-                ><span>Margin in modules · at least 4 for scanning</span
-                ><input class="ui-input" id="margin" type="number" min="4" max="16" value="4"
-              /></label>
-            </details>
           </div>
           <button class="ui-btn" id="clear">Clear</button>
         </section>
@@ -152,9 +146,9 @@
             centers spare pixels in the quiet zone.
           </li>
           <li>
-            QR needs a clear border of four modules on every side. Quiet zone allows a larger
-            border. Barcode borders are included automatically. Keep the output high contrast and
-            test with the intended scanner.
+            Every code is exported with the clear border scanners need: four modules around a QR
+            code, and the standard space before and after a barcode's bars. Keep the output high
+            contrast and test with the intended scanner.
           </li>
           <li>
             The preview stays in place while editing. It dims and export buttons disable when the

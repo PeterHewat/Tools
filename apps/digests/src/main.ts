@@ -42,6 +42,8 @@ function fields(): void {
       : "Choose or drop a file.";
 }
 function save(): void {
+  // An incompatible draft stays as it was: this tab works without saving over it.
+  if (draft.error) return;
   if (!writeDraft("digests", 1, { ...fieldValues(ids), fileName }))
     showMessage(
       byId("status"),
@@ -54,6 +56,25 @@ function clearOutputs(): void {
   byId("base64").textContent = "";
   showMessage(byId("compare-status"), "");
   for (const id of ["copy-hex", "copy-base64"]) byId<HTMLButtonElement>(id).disabled = true;
+}
+/**
+ * The last file digest and what it was made from. Every field change computes again, and a file
+ * of up to 64 MiB is read whole to hash it: typing a digest to compare must not read it again.
+ */
+let cached:
+  | { file: File; hash: HashAlgorithm; key: string | null; result: Uint8Array<ArrayBuffer> }
+  | undefined;
+async function fileDigest(
+  file: File,
+  hash: HashAlgorithm,
+  key: Uint8Array<ArrayBuffer> | undefined
+): Promise<Uint8Array<ArrayBuffer>> {
+  const keyId = key === undefined ? null : toHex(key);
+  if (cached && cached.file === file && cached.hash === hash && cached.key === keyId)
+    return cached.result;
+  const result = await hashFile(file, hash, key);
+  cached = { file, hash, key: keyId, result };
+  return result;
 }
 async function compute(version: number): Promise<void> {
   try {
@@ -71,7 +92,7 @@ async function compute(version: number): Promise<void> {
       : file!.name + " · " + formatBytes(file!.size);
     const result = bytes
       ? await hashBytes(bytes, hash, hmacKey)
-      : await hashFile(file!, hash, hmacKey);
+      : await fileDigest(file!, hash, hmacKey);
     if (version !== revision) return;
     byId("hex").textContent = toHex(result);
     byId("base64").textContent = toBase64(result);
@@ -95,7 +116,6 @@ async function compute(version: number): Promise<void> {
   }
 }
 function update(): void {
-  if (draft.error) return;
   const version = ++revision;
   clearTimeout(timer);
   fields();
@@ -137,5 +157,9 @@ byId("clear").addEventListener("click", () => {
   update();
   text.focus();
 });
-if (draft.error) showMessage(byId("status"), draft.error, true);
-else update();
+if (draft.error) {
+  const status = byId("draft-status");
+  status.hidden = false;
+  showMessage(status, draft.error, true);
+}
+update();
