@@ -99,6 +99,7 @@ test("gradients and corner colours paint the modules and the eyes", () => {
     const out = svg(qrScene(qr, design));
     expect(out).toContain(kind === "radial" ? "<radialGradient" : "<linearGradient");
     expect(out).toContain('fill="url(#g0)"');
+    expect(out.match(/Gradient id=/g)).toHaveLength(1);
   }
   const eyes = qrScene(qr, { ...DEFAULT_DESIGN, eyeColor: "#ff0000" });
   expect(eyes.layers[1].paint).toBe("#ff0000");

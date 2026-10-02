@@ -503,6 +503,39 @@ test("Codes makes each kind of content, keeps the preview in place and exports s
   }
 });
 
+test("Codes redraws the code in place as it changes, without blinking", async ({ page }) => {
+  await page.goto("/Tools/codes/");
+  await page.locator("#tab-logo").click();
+  await page.locator('#logo-options [data-value="link"]').click();
+  await expect(page.locator("#status")).toContainText("H correction");
+  // Watch the preview: it is never dimmed or emptied, and the logo image is never replaced.
+  await page.evaluate(() => {
+    const preview = document.querySelector("#preview")!;
+    const marked = window as unknown as { blinks: number };
+    marked.blinks = 0;
+    new MutationObserver((changes) => {
+      for (const change of changes)
+        if (change.type === "attributes" || change.removedNodes.length) marked.blinks++;
+    }).observe(preview, { attributes: true, attributeFilter: ["class"], childList: true });
+    Object.assign(preview.querySelector("image")!, { kept: true });
+  });
+  await page.locator("#tab-shapes").click();
+  await page.locator('#module-options [data-value="dots"]').click();
+  await page.locator('#eye-frame-options [data-value="circle"]').click();
+  await page.locator("#tab-colours").click();
+  await page.locator("#gradient").check();
+  await page.locator("#link-url").fill("https://example.org/");
+  await expect(page.locator("#encoded")).toHaveText("https://example.org/");
+  await expect(page.locator("#preview svg path").nth(1)).toHaveAttribute("fill", "url(#g0)");
+  expect(
+    await page.evaluate(() => ({
+      blinks: (window as unknown as { blinks: number }).blinks,
+      kept: (document.querySelector("#preview image") as unknown as { kept?: boolean }).kept,
+    }))
+  ).toEqual({ blinks: 0, kept: true });
+  await expect(page.locator("#save-png")).toBeEnabled();
+});
+
 test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/Tools/codes/");

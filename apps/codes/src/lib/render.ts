@@ -26,9 +26,13 @@ export function exportSize(scene: Scene, name: SizeName): Size {
 /** The scene as SVG, its width and height those of the export: integers throughout. */
 export function sceneSvg(scene: Scene, size: Size): string {
   const defs: string[] = [];
+  // Layers that share a gradient (the modules and the corners) share its definition.
+  const ids = new Map<Paint, string>();
   const fill = (paint: Paint) => {
     if (typeof paint === "string") return escapeAttr(paint);
+    if (ids.has(paint)) return `url(#${ids.get(paint)})`;
     const id = "g" + defs.length;
+    ids.set(paint, id);
     const stops = `<stop stop-color="${escapeAttr(paint.from)}"/><stop offset="1" stop-color="${escapeAttr(paint.to)}"/>`;
     defs.push(
       paint.kind === "linear"

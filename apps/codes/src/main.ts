@@ -552,7 +552,9 @@ function render(): void {
       "aria-label",
       kind === "barcode" ? "Generated barcode" : "Generated QR code"
     );
-    byId("preview").replaceChildren(document.importNode(parsed, true));
+    const shown = byId("preview").firstElementChild;
+    if (shown?.localName === "svg") morph(shown, parsed);
+    else byId("preview").replaceChildren(document.importNode(parsed, true));
     byId("preview").classList.remove("pending");
     byId("encoded").textContent = encoded;
     current = { scene, size, svg, name };
@@ -578,15 +580,57 @@ function save(): void {
     );
 }
 
+/**
+ * After an edit: the code is drawn again once typing pauses. Until then the preview, the status
+ * and the buttons stay as they are, so nothing flickers; a download first draws what is pending.
+ */
 function update(): void {
   revision++;
   clearTimeout(timer);
   fields();
-  exportsEnabled(false);
-  byId("preview").classList.add("pending");
-  showMessage(byId("status"), "Updating…");
   save();
-  timer = setTimeout(render, 100);
+  timer = setTimeout(() => {
+    timer = undefined;
+    render();
+  }, 100);
+}
+function flush(): void {
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  timer = undefined;
+  render();
+}
+
+/**
+ * Makes the shown SVG match a new one, changing only what differs: an element left as it was is
+ * not drawn again, and an image in it (a logo) is not decoded again, so the preview never blinks.
+ */
+function morph(shown: Element, next: Element): void {
+  for (const attribute of [...shown.attributes])
+    if (!next.hasAttributeNS(attribute.namespaceURI, attribute.localName))
+      shown.removeAttributeNS(attribute.namespaceURI, attribute.localName);
+  for (const attribute of next.attributes)
+    if (shown.getAttributeNS(attribute.namespaceURI, attribute.localName) !== attribute.value)
+      shown.setAttributeNS(attribute.namespaceURI, attribute.name, attribute.value);
+  const before = [...shown.children],
+    after = [...next.children];
+  if (!after.length) {
+    if (shown.textContent !== next.textContent) shown.textContent = next.textContent;
+    for (const child of before) child.remove();
+    return;
+  }
+  // Children pair up by kind, in order (the first path with the first path), so a gradient's
+  // <defs> appearing at the start does not shift every other element onto the wrong partner.
+  const unused = new Map<string, Element[]>();
+  for (const child of before)
+    unused.set(child.localName, [...(unused.get(child.localName) ?? []), child]);
+  after.forEach((child, i) => {
+    const old = unused.get(child.localName)?.shift();
+    if (old) morph(old, child);
+    const node = old ?? document.importNode(child, true);
+    if (shown.children[i] !== node) shown.insertBefore(node, shown.children[i] ?? null);
+  });
+  for (const extra of [...unused.values()].flat()) extra.remove();
 }
 
 // ---------- Controls ----------
@@ -596,8 +640,13 @@ for (const id of ids) {
   if (!(element instanceof HTMLInputElement && element.type === "hidden"))
     element.addEventListener("input", update);
 }
-// Preset logos are drawn in the code's colour.
-input("fg").addEventListener("input", drawLogos);
+// Preset logos are drawn in the code's colour: each picture follows it in place, without a blink.
+input("fg").addEventListener("input", () => {
+  for (const picture of byId("logo-options").querySelectorAll<HTMLImageElement>("img")) {
+    const name = picture.closest<HTMLElement>("[data-value]")?.dataset.value as IconName;
+    if (LOGOS.includes(name)) picture.src = presetLogo(name, colour("fg", "#000000")).href;
+  }
+});
 
 for (const button of document.querySelectorAll<HTMLElement>("[data-type]"))
   button.addEventListener("click", () => {
@@ -686,9 +735,11 @@ async function loadImage(href: string): Promise<HTMLImageElement> {
   return element;
 }
 byId("save-svg").addEventListener("click", () => {
+  flush();
   if (current) downloadText(current.name + ".svg", current.svg, "image/svg+xml");
 });
 byId("save-png").addEventListener("click", async () => {
+  flush();
   if (!current) return;
   const version = revision,
     { scene, size, name } = current;
