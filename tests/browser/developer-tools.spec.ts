@@ -434,16 +434,18 @@ test("Codes makes each kind of content, keeps the preview in place and exports s
   const before = await page.locator("#preview").boundingBox();
   await page.locator("#link-url").fill("example.com/🌍");
   await expect(page.locator("#encoded")).toHaveText("https://example.com/🌍");
-  await expect(page.locator("#status")).toContainText("1024 × 1024");
+  await expect(page.locator("#status")).toContainText("1023 × 1023");
   expect(await page.locator("#preview").boundingBox()).toEqual(before);
-  await page.locator("#resolution").fill("768");
-  await expect(page.locator("#status")).toContainText("768 × 768");
+  await page.locator("#size").selectOption("s");
+  await expect(page.locator("#status")).toContainText("528 × 528");
+  await expect(page.locator("#size option:checked")).toHaveText("S · 528 px");
   const svgDownload = page.waitForEvent("download");
   await page.locator("#save-svg").click();
   const svg = await readFile((await (await svgDownload).path())!, "utf8");
-  expect(svg).toContain('width="768" height="768"');
+  expect(svg).toContain('width="528" height="528" viewBox="0 0 33 33"');
+  expect(svg).not.toMatch(/\d\.\d/);
   const plain = await downloadedPixels(page);
-  expect(plain.width).toBe(768);
+  expect(plain.width).toBe(528);
   expect(scanQr(plain)).toBe("https://example.com/🌍");
 
   const fill = async (type: string, values: Record<string, string>, encoded: string | RegExp) => {
@@ -506,7 +508,7 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   await page.goto("/Tools/codes/");
   await page.locator("#link-url").fill("https://example.com/");
   // Small enough to decode quickly, large enough for several pixels a module.
-  await page.locator("#resolution").fill("400");
+  await page.locator("#size").selectOption("xs");
   await page.locator("#tab-shapes").click();
   const designs: [string, string, string][] = [
     ["rounded", "rounded", "rounded"],
@@ -527,10 +529,16 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
     await expect(page.locator("#save-png")).toBeEnabled();
     expect(scanQr(await downloadedPixels(page)), modules).toBe("https://example.com/");
   }
+  // Neither another tab nor an option turned on moves what is below the Design step.
+  const below = async () => (await page.locator(".codes-actions").boundingBox())!.y;
+  const settled = await below();
   await page.locator("#tab-colours").click();
+  expect(await below()).toBe(settled);
   await page.locator("#fg").fill("#3a1c71");
   await page.locator("#gradient").check();
   await page.locator("#eye-own").check();
+  await expect(page.locator("#gradient-to")).toBeVisible();
+  expect(await below()).toBe(settled);
   await page.locator("#eye-color").fill("#b3122e");
   await expect(page.locator("#warnings")).toBeEmpty();
   await page.locator("#tab-logo").click();
@@ -539,7 +547,6 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   await expect(page.locator("#status")).toContainText("H correction");
   await page.locator("#tab-frame").click();
   await page.locator('#frame-options [data-value="below"]').click();
-  await expect(page.locator("#status")).toContainText("400 × 462");
   const framed = await downloadedPixels(page);
   expect(framed.height).toBeGreaterThan(framed.width);
   expect(scanQr(framed)).toBe("https://example.com/");
@@ -569,7 +576,7 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   await expect(page.locator("#warnings")).toContainText("Low contrast");
   await page.locator("#reset-design").click();
   await expect(page.locator("#warnings")).toBeEmpty();
-  await expect(page.locator("#status")).toContainText("400 × 400");
+  await expect(page.locator("#status")).toContainText(/ (\d+) × \1 px/);
 });
 
 for (const [slug, field, value] of [

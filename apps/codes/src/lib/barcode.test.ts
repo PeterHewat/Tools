@@ -9,7 +9,7 @@ import {
   RGBLuminanceSource,
 } from "@zxing/library";
 import { DEFAULT_DESIGN, barcodeScene } from "./design.js";
-import { sceneSvg } from "./render.js";
+import { exportSize, sceneSvg } from "./render.js";
 test("published EAN/UPC check digits and EAN symbol vector", () => {
   expect(checkDigit("400638133393")).toBe("1");
   expect(encodeBarcode("400638133393", "ean13").text).toBe("4006381333931");
@@ -62,12 +62,13 @@ for (const [kind, input, expected, format] of [
   });
 }
 test("exports have explicit dimensions, readable modules and XML-safe labels", () => {
-  const svg = sceneSvg(barcodeScene(encodeBarcode("<script>", "code128"), DEFAULT_DESIGN), 512);
-  expect(svg).toContain('width="512"');
+  const scene = barcodeScene(encodeBarcode("<script>", "code128"), DEFAULT_DESIGN);
+  const svg = sceneSvg(scene, exportSize(scene, "s"));
+  expect(svg).toContain(`width="${exportSize(scene, "s").width}"`);
   expect(svg).toContain("&lt;script&gt;");
   expect(svg).not.toContain("<script>");
   const long = barcodeScene(encodeBarcode("x".repeat(80), "code128"), DEFAULT_DESIGN);
-  expect(() => sceneSvg(long, 512)).toThrow("Increase");
+  expect(exportSize(long, "xs")).toMatchObject({ perModule: 1, width: long.width });
 });
 test("Code 128 B and C symbol/checksum vectors", () => {
   expect(encodeBarcode("AB", "code128").symbols).toEqual([104, 33, 34, 102, 106]);
@@ -86,7 +87,8 @@ test("each barcode keeps its standard quiet zones", () => {
     ["TOOLS", "code128", 10, 10],
   ] as const) {
     const code = encodeBarcode(value, kind);
-    const svg = sceneSvg(barcodeScene(code, DEFAULT_DESIGN), 512);
+    const scene = barcodeScene(code, DEFAULT_DESIGN);
+    const svg = sceneSvg(scene, exportSize(scene, "s"));
     expect(svg).toContain(`viewBox="0 0 ${code.modules.length + left + right} 80"`);
     expect(svg).toContain(`d="M${left} 4h`);
   }

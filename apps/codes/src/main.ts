@@ -40,16 +40,17 @@ import {
   GRADIENTS,
   LOGO_SIZE,
   MODULE_SHAPES,
+  PathData,
   barcodeScene,
   colourWarnings,
-  eyeBallPath,
-  eyeFramePath,
+  eyeBall,
+  eyeFrame,
   modulesPath,
   qrScene,
 } from "./lib/design.js";
 import type { Design, Logo, Measure, Scene } from "./lib/design.js";
-import { drawScene, exportSize, sceneSvg } from "./lib/render.js";
-import type { Size } from "./lib/render.js";
+import { SIZES, drawScene, exportSize, sceneSvg } from "./lib/render.js";
+import type { Size, SizeName } from "./lib/render.js";
 
 bindToolHelp("codes");
 registerServiceWorker();
@@ -80,6 +81,7 @@ const LOGOS: readonly IconName[] = [
 ];
 const SYMBOLOGIES: readonly BarcodeKind[] = ["code128", "ean13", "upca"];
 const LEVELS: readonly Level[] = ["L", "M", "Q", "H"];
+const SIZE_NAMES = Object.keys(SIZES) as SizeName[];
 
 /** What this tab keeps in its draft: every field, read back one by one. */
 const ids = [
@@ -136,7 +138,7 @@ const ids = [
   "frame",
   "caption",
   "frame-color",
-  "resolution",
+  "size",
   "level",
 ];
 const DESIGN_DEFAULTS: Record<string, string | boolean> = {
@@ -359,8 +361,8 @@ choices("module-options", "module-shape", () =>
     label: LABELS[shape],
     picture: () =>
       picture(
-        "-0.5 -0.5 6 6",
-        `<path fill="currentColor" d="${modulesPath(5, (x, y) => SAMPLE[y]?.[x] === "1", shape, 0, 0)}"/>`
+        "-5 -5 60 60",
+        `<path fill="currentColor" d="${modulesPath(new PathData(10), 5, (x, y) => SAMPLE[y]?.[x] === "1", shape, 0, 0)}"/>`
       ),
   }))
 );
@@ -368,23 +370,29 @@ choices("eye-frame-options", "eye-frame", () =>
   EYE_FRAMES.map((style) => ({
     value: style,
     label: LABELS[style],
-    picture: () =>
-      picture(
-        "-0.5 -0.5 8 8",
-        `<path fill="currentColor" fill-rule="evenodd" d="${eyeFramePath(style, "tl", 0, 0)}${eyeBallPath("square", "tl", 2, 2)}"/>`
-      ),
+    picture: () => {
+      const path = new PathData(10);
+      eyeFrame(path, style, "tl", 0, 0);
+      eyeBall(path, "square", "tl", 2, 2);
+      return picture("-5 -5 80 80", `<path fill="currentColor" fill-rule="evenodd" d="${path}"/>`);
+    },
   }))
 );
 choices("eye-ball-options", "eye-ball", () =>
   EYE_BALLS.map((style) => ({
     value: style,
     label: LABELS[style],
-    picture: () =>
-      picture(
-        "-0.5 -0.5 8 8",
-        `<path fill="currentColor" fill-rule="evenodd" opacity="0.35" d="${eyeFramePath("square", "tl", 0, 0)}"/>` +
-          `<path fill="currentColor" d="${eyeBallPath(style, "tl", 2, 2)}"/>`
-      ),
+    picture: () => {
+      const frame = new PathData(10),
+        ball = new PathData(10);
+      eyeFrame(frame, "square", "tl", 0, 0);
+      eyeBall(ball, style, "tl", 2, 2);
+      return picture(
+        "-5 -5 80 80",
+        `<path fill="currentColor" fill-rule="evenodd" opacity="0.35" d="${frame}"/>` +
+          `<path fill="currentColor" d="${ball}"/>`
+      );
+    },
   }))
 );
 const image = (href: string) => {
@@ -408,8 +416,10 @@ choices("frame-options", "frame", () =>
   FRAMES.map((frame) => ({
     value: frame,
     label: LABELS[frame],
-    picture: () =>
-      sceneSvg(qrScene(SAMPLE_QR, { ...DEFAULT_DESIGN, frame, caption: "SCAN ME" }, measure), 64),
+    picture: () => {
+      const scene = qrScene(SAMPLE_QR, { ...DEFAULT_DESIGN, frame, caption: "SCAN ME" }, measure);
+      return sceneSvg(scene, exportSize(scene, "xs"));
+    },
   }))
 );
 
@@ -438,8 +448,9 @@ function fields(): void {
     element.hidden = barcode;
   for (const tab of ["shapes", "logo", "frame"] as const) byId(`tab-${tab}`).hidden = barcode;
   selectTab(barcode ? "colours" : oneOf(TABS, value("design-tab"), "colours"));
-  byId("gradient-fields").hidden = !checked("gradient");
-  byId("eye-fields").hidden = !checked("eye-own");
+  // Shown beside the box that turns it on, its room kept while off, so nothing moves.
+  byId("gradient-fields").classList.toggle("codes-off", !checked("gradient"));
+  byId("eye-fields").classList.toggle("codes-off", !checked("eye-own"));
   input("bg").disabled = checked("transparent");
   input("password").disabled = value("security") === "nopass";
   const symbology = oneOf(SYMBOLOGIES, value("symbology"), "code128");
@@ -517,8 +528,13 @@ function render(): void {
       summary = `QR version ${qr.version} · ${qr.level} correction`;
       name = "qr-code";
     }
-    const size = exportSize(scene, Number(value("resolution")));
-    const svg = sceneSvg(scene, size.width);
+    const size = exportSize(scene, oneOf(SIZE_NAMES, value("size"), "m"));
+    const svg = sceneSvg(scene, size);
+    // Each size as it comes out for this code.
+    for (const option of byId<HTMLSelectElement>("size").options) {
+      const { width } = exportSize(scene, option.value as SizeName);
+      option.textContent = `${option.value.toUpperCase()} · ${width} px`;
+    }
     const parsed = new DOMParser().parseFromString(svg, "image/svg+xml").documentElement;
     parsed.setAttribute("role", "img");
     parsed.setAttribute(

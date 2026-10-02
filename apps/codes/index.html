@@ -25,6 +25,7 @@
       <div class="codes-layout">
         <section class="ui-card codes-build" aria-label="Make a code">
           <input type="hidden" id="type" value="link" />
+          <h2 class="codes-step"><span aria-hidden="true">1</span>Type</h2>
           <div class="codes-types" role="group" aria-label="What the code holds">
             <button type="button" class="ui-btn" data-type="link">
               <svg data-ui-icon="link" aria-hidden="true"></svg>Link
@@ -58,7 +59,7 @@
             </button>
           </div>
 
-          <h2 class="codes-step"><span aria-hidden="true">1</span>Content</h2>
+          <h2 class="codes-step"><span aria-hidden="true">2</span>Content</h2>
           <div data-fields="link">
             <label class="ui-field"
               ><span>Website</span
@@ -249,7 +250,12 @@
             /></label>
           </div>
 
-          <h2 class="codes-step"><span aria-hidden="true">2</span>Design</h2>
+          <details class="codes-more">
+            <summary>Encoded content</summary>
+            <pre class="ui-output" id="encoded"></pre>
+          </details>
+
+          <h2 class="codes-step"><span aria-hidden="true">3</span>Design</h2>
           <input type="hidden" id="design-tab" value="colours" />
           <div class="codes-tabs" role="tablist" aria-label="Design">
             <button type="button" role="tab" id="tab-colours" aria-controls="panel-colours">
@@ -261,102 +267,113 @@
               Frame
             </button>
           </div>
-          <div class="codes-panel" role="tabpanel" id="panel-colours" aria-labelledby="tab-colours">
-            <div class="codes-colours">
-              <label class="codes-colour"
-                ><input type="color" id="fg" value="#000000" /><span>Code</span></label
-              >
-              <label class="codes-colour"
-                ><input type="color" id="bg" value="#ffffff" /><span>Background</span></label
-              >
-            </div>
-            <label class="codes-check"
-              ><input type="checkbox" id="transparent" /> Transparent background</label
+          <div class="codes-panels">
+            <div
+              class="codes-panel"
+              role="tabpanel"
+              id="panel-colours"
+              aria-labelledby="tab-colours"
             >
-            <label class="codes-check"><input type="checkbox" id="gradient" /> Gradient</label>
-            <div class="codes-colours" id="gradient-fields">
-              <label class="codes-colour"
-                ><input type="color" id="gradient-to" value="#1f6feb" /><span>To</span></label
-              >
-              <label class="ui-field"
-                ><span>Direction</span
-                ><select class="ui-input" id="gradient-kind">
-                  <option value="diagonal">Diagonal</option>
-                  <option value="horizontal">Across</option>
-                  <option value="vertical">Down</option>
-                  <option value="radial">From the middle</option>
-                </select></label
-              >
-            </div>
-            <div data-qr-only>
-              <label class="codes-check"
-                ><input type="checkbox" id="eye-own" /> Corner squares in their own colour</label
-              >
-              <div class="codes-colours" id="eye-fields">
+              <div class="codes-row">
                 <label class="codes-colour"
-                  ><input type="color" id="eye-color" value="#1f6feb" /><span>Corners</span></label
+                  ><input type="color" id="fg" value="#000000" /><span>Code</span></label
+                >
+                <label class="codes-colour"
+                  ><input type="color" id="bg" value="#ffffff" /><span>Background</span></label
                 >
               </div>
+              <div class="codes-row">
+                <label class="codes-check"
+                  ><input type="checkbox" id="transparent" /> Transparent background</label
+                >
+              </div>
+              <div class="codes-row">
+                <label class="codes-check"><input type="checkbox" id="gradient" /> Gradient</label>
+                <span class="codes-extra" id="gradient-fields">
+                  <label class="codes-colour"
+                    ><input type="color" id="gradient-to" value="#1f6feb" /><span>to</span></label
+                  >
+                  <select class="ui-input" id="gradient-kind" aria-label="Gradient direction">
+                    <option value="diagonal">Diagonal</option>
+                    <option value="horizontal">Across</option>
+                    <option value="vertical">Down</option>
+                    <option value="radial">From the middle</option>
+                  </select>
+                </span>
+              </div>
+              <div class="codes-row" data-qr-only>
+                <label class="codes-check"
+                  ><input type="checkbox" id="eye-own" /> Corner squares in their own colour</label
+                >
+                <span class="codes-extra" id="eye-fields">
+                  <input type="color" id="eye-color" value="#1f6feb" aria-label="Corner colour" />
+                </span>
+              </div>
             </div>
-          </div>
-          <div class="codes-panel" role="tabpanel" id="panel-shapes" aria-labelledby="tab-shapes">
-            <input type="hidden" id="module-shape" value="square" />
-            <input type="hidden" id="eye-frame" value="square" />
-            <input type="hidden" id="eye-ball" value="square" />
-            <h3>Modules</h3>
-            <div class="codes-options" id="module-options" role="group" aria-label="Modules"></div>
-            <h3>Corner frames</h3>
-            <div
-              class="codes-options"
-              id="eye-frame-options"
-              role="group"
-              aria-label="Corner frames"
-            ></div>
-            <h3>Corner centres</h3>
-            <div
-              class="codes-options"
-              id="eye-ball-options"
-              role="group"
-              aria-label="Corner centres"
-            ></div>
-          </div>
-          <div class="codes-panel" role="tabpanel" id="panel-logo" aria-labelledby="tab-logo">
-            <input type="hidden" id="logo" value="none" />
-            <div class="codes-options" id="logo-options" role="group" aria-label="Logo"></div>
-            <div class="ui-row">
-              <button type="button" class="ui-btn" id="logo-upload">
-                <svg data-ui-icon="image" aria-hidden="true"></svg>Upload an image…
-              </button>
+            <div class="codes-panel" role="tabpanel" id="panel-shapes" aria-labelledby="tab-shapes">
+              <input type="hidden" id="module-shape" value="square" />
+              <input type="hidden" id="eye-frame" value="square" />
+              <input type="hidden" id="eye-ball" value="square" />
+              <h3>Modules</h3>
+              <div
+                class="codes-options"
+                id="module-options"
+                role="group"
+                aria-label="Modules"
+              ></div>
+              <h3>Corner frames</h3>
+              <div
+                class="codes-options"
+                id="eye-frame-options"
+                role="group"
+                aria-label="Corner frames"
+              ></div>
+              <h3>Corner centres</h3>
+              <div
+                class="codes-options"
+                id="eye-ball-options"
+                role="group"
+                aria-label="Corner centres"
+              ></div>
             </div>
-            <label class="ui-field"
-              ><span>Logo size</span
-              ><input type="range" id="logo-size" min="10" max="30" step="1" value="22"
-            /></label>
-            <p class="codes-hint">
-              With a logo, error correction is H, so the code still reads with its middle covered.
-            </p>
-          </div>
-          <div class="codes-panel" role="tabpanel" id="panel-frame" aria-labelledby="tab-frame">
-            <input type="hidden" id="frame" value="none" />
-            <div
-              class="codes-options codes-frames"
-              id="frame-options"
-              role="group"
-              aria-label="Frame"
-            ></div>
-            <div class="codes-pair">
+            <div class="codes-panel" role="tabpanel" id="panel-logo" aria-labelledby="tab-logo">
+              <input type="hidden" id="logo" value="none" />
+              <div class="codes-options" id="logo-options" role="group" aria-label="Logo"></div>
+              <div class="ui-row">
+                <button type="button" class="ui-btn" id="logo-upload">
+                  <svg data-ui-icon="image" aria-hidden="true"></svg>Upload an image…
+                </button>
+              </div>
               <label class="ui-field"
-                ><span>Caption</span
-                ><input
-                  class="ui-input"
-                  id="caption"
-                  maxlength="40"
-                  value="SCAN ME"
-                  autocomplete="off"
+                ><span>Logo size</span
+                ><input type="range" id="logo-size" min="10" max="30" step="1" value="22"
               /></label>
-              <label class="codes-colour"
-                ><input type="color" id="frame-color" value="#000000" /><span>Frame</span></label
-              >
+              <p class="codes-hint">
+                With a logo, error correction is H, so the code still reads with its middle covered.
+              </p>
+            </div>
+            <div class="codes-panel" role="tabpanel" id="panel-frame" aria-labelledby="tab-frame">
+              <input type="hidden" id="frame" value="none" />
+              <div
+                class="codes-options codes-frames"
+                id="frame-options"
+                role="group"
+                aria-label="Frame"
+              ></div>
+              <div class="codes-pair">
+                <label class="ui-field"
+                  ><span>Caption</span
+                  ><input
+                    class="ui-input"
+                    id="caption"
+                    maxlength="40"
+                    value="SCAN ME"
+                    autocomplete="off"
+                /></label>
+                <label class="codes-colour"
+                  ><input type="color" id="frame-color" value="#000000" /><span>Frame</span></label
+                >
+              </div>
             </div>
           </div>
           <div class="ui-row codes-actions">
@@ -366,22 +383,21 @@
         </section>
 
         <section class="ui-card codes-output" aria-label="Download">
-          <h2 class="codes-step"><span aria-hidden="true">3</span>Download</h2>
+          <h2 class="codes-step"><span aria-hidden="true">4</span>Download</h2>
           <div id="preview" role="group" aria-label="Code preview"></div>
           <p class="ui-message" id="status" role="status"></p>
           <ul class="codes-warnings" id="warnings"></ul>
           <div class="codes-pair">
             <label class="ui-field"
-              ><span>Width · pixels</span
-              ><input
-                class="ui-input"
-                id="resolution"
-                type="number"
-                min="64"
-                max="4096"
-                step="1"
-                value="1024"
-            /></label>
+              ><span>Size</span
+              ><select class="ui-input" id="size">
+                <option value="xs">XS</option>
+                <option value="s">S</option>
+                <option value="m" selected>M</option>
+                <option value="l">L</option>
+                <option value="xl">XL</option>
+              </select></label
+            >
             <label class="ui-field" data-qr-only
               ><span>Error correction</span
               ><select class="ui-input" id="level">
@@ -400,10 +416,6 @@
               <svg data-ui-icon="export" aria-hidden="true"></svg>SVG
             </button>
           </div>
-          <details class="codes-more">
-            <summary>Encoded content</summary>
-            <pre class="ui-output" id="encoded"></pre>
-          </details>
         </section>
       </div>
     </main>
@@ -462,9 +474,9 @@
         <h3>Download</h3>
         <ul>
           <li>
-            The width sets the image's size in pixels; its height follows. SVG scales to any size
-            for print. PNG uses whole pixels per module, so the code stays sharp; spare pixels go
-            around it.
+            Size picks the image's width, from XS (about 256 pixels) to XL (about 4096); its height
+            follows. Each module is a whole number of pixels, so the PNG has no blurred edges, and
+            the SVG uses whole numbers only. SVG scales to any size for print.
           </li>
           <li>
             Every code keeps the clear border scanners need: four modules around a QR code, and the

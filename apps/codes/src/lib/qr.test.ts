@@ -3,7 +3,7 @@ import jsQR from "jsqr";
 import { capacity, encodeQr } from "./qr.js";
 import { wifiContent } from "./content.js";
 import { DEFAULT_DESIGN, qrScene } from "./design.js";
-import { sceneSvg } from "./render.js";
+import { exportSize, sceneSvg } from "./render.js";
 
 /** Independent decoder used only by tests; never imported by the app entry. */
 function decode(text: string, level: "L" | "M" | "Q" | "H", version = 1, mask?: number): void {
@@ -44,7 +44,8 @@ test("capacity boundaries and SVG quiet zone", () => {
   expect(() => encodeQr("\ud800")).toThrow();
   expect(() => encodeQr("x", "M", 0)).toThrow();
   expect(() => encodeQr("x", "M", 1, 8)).toThrow();
-  const svg = sceneSvg(qrScene(encodeQr("<script>"), DEFAULT_DESIGN), 290);
+  const scene = qrScene(encodeQr("<script>"), DEFAULT_DESIGN);
+  const svg = sceneSvg(scene, exportSize(scene, "m"));
   expect(svg).toContain('viewBox="0 0 29 29"');
   expect(svg).not.toContain("script");
 });

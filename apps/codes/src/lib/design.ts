@@ -1,7 +1,11 @@
 /**
  * How a code looks, as a scene of filled paths: the same scene is written as SVG and drawn on a
- * canvas for PNG (`render.ts`), so both exports match. Coordinates are in modules (a QR
- * module, a barcode's narrowest bar), with the quiet zone included.
+ * canvas for PNG (`render.ts`), so both exports match.
+ *
+ * Every coordinate is a whole number of units, `unit` of them to a module (a QR module, a
+ * barcode's narrowest bar), quiet zone included: one unit for a plain code, ten when shapes,
+ * a logo or a frame need tenths of a module. Paths move relative to the last subpath, so the
+ * SVG is short and has no decimals, and every edge on a module line lands on whole pixels.
  */
 import { QUIET_ZONE } from "./qr.js";
 import type { QrCode } from "./qr.js";
@@ -94,6 +98,9 @@ export interface Caption {
   weight: number;
 }
 export interface Scene {
+  /** Units to a module. */
+  unit: number;
+  /** In units: always a whole number of modules. */
   width: number;
   height: number;
   /** Fills everything behind the code; none for a transparent background. */
@@ -107,25 +114,84 @@ export type Measure = (text: string, size: number, font: string, weight: number)
 export const estimateText: Measure = (text, size) => [...text].length * size * 0.62;
 
 export const CAPTION_FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
-const n3 = (value: number) => String(Math.round(value * 1000) / 1000);
 
-/** A rectangle with each corner's own radius (top-left, top-right, bottom-right, bottom-left). */
-export function roundRect(
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  radii: readonly [number, number, number, number] | number = 0
-): string {
-  const [tl, tr, br, bl] = typeof radii === "number" ? [radii, radii, radii, radii] : radii;
-  const arc = (r: number, ex: number, ey: number) =>
-    r ? `A${n3(r)} ${n3(r)} 0 0 1 ${n3(ex)} ${n3(ey)}` : "";
-  return (
-    `M${n3(x + tl)} ${n3(y)}H${n3(x + w - tr)}${arc(tr, x + w, y + tr)}` +
-    `V${n3(y + h - br)}${arc(br, x + w - br, y + h)}` +
-    `H${n3(x + bl)}${arc(bl, x, y + h - bl)}` +
-    `V${n3(y + tl)}${arc(tl, x + tl, y)}Z`
-  );
+/** Numbers in path data: a space between them, none before a minus sign. */
+const numbers = (...values: number[]) =>
+  values.map((value, i) => (i && value >= 0 ? " " : "") + value).join("");
+
+/**
+ * Path data in whole units, from coordinates in modules. Each subpath starts with a move
+ * relative to the start of the one before (where the last "z" left the pen); its segments are
+ * relative too, so the numbers stay small.
+ */
+export class PathData {
+  private out = "";
+  private x = 0;
+  private y = 0;
+  constructor(readonly unit: number) {}
+  private u(value: number): number {
+    return Math.round(value * this.unit);
+  }
+  move(x: number, y: number): this {
+    const ux = this.u(x),
+      uy = this.u(y);
+    this.out += this.out ? "m" + numbers(ux - this.x, uy - this.y) : "M" + numbers(ux, uy);
+    this.x = ux;
+    this.y = uy;
+    return this;
+  }
+  h(dx: number): this {
+    if (this.u(dx)) this.out += "h" + this.u(dx);
+    return this;
+  }
+  v(dy: number): this {
+    if (this.u(dy)) this.out += "v" + this.u(dy);
+    return this;
+  }
+  line(dx: number, dy: number): this {
+    this.out += "l" + numbers(this.u(dx), this.u(dy));
+    return this;
+  }
+  arc(r: number, dx: number, dy: number): this {
+    if (r) this.out += "a" + numbers(this.u(r), this.u(r), 0, 0, 1, this.u(dx), this.u(dy));
+    return this;
+  }
+  close(): this {
+    this.out += "z";
+    return this;
+  }
+  /** A rectangle with each corner's own radius (top-left, top-right, bottom-right, bottom-left). */
+  rect(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    radii: readonly [number, number, number, number] | number = 0
+  ): this {
+    const [tl, tr, br, bl] = typeof radii === "number" ? [radii, radii, radii, radii] : radii;
+    this.move(x + tl, y)
+      .h(w - tl - tr)
+      .arc(tr, tr, tr)
+      .v(h - tr - br)
+      .arc(br, -br, br)
+      .h(-(w - br - bl))
+      .arc(bl, -bl, -bl);
+    // With a square top-left corner, "z" draws the last side.
+    if (tl) this.v(-(h - bl - tl)).arc(tl, tl, -tl);
+    return this.close();
+  }
+  /** A diamond with its corners at the middle of each side of the square. */
+  diamond(x: number, y: number, side: number): this {
+    const half = side / 2;
+    return this.move(x + half, y)
+      .line(half, half)
+      .line(-half, half)
+      .line(-half, -half)
+      .close();
+  }
+  toString(): string {
+    return this.out;
+  }
 }
 
 export type Corner = "tl" | "tr" | "bl";
@@ -133,7 +199,8 @@ export type Corner = "tl" | "tr" | "bl";
 const leaf = (corner: Corner, r: number): [number, number, number, number] =>
   corner === "tl" ? [r, r, 0, r] : corner === "tr" ? [r, r, r, 0] : [r, 0, r, r];
 
-export function eyeFramePath(style: EyeFrame, corner: Corner, x: number, y: number): string {
+/** A corner square's 7 × 7 frame, its hole as a second subpath (drawn even-odd). */
+export function eyeFrame(path: PathData, style: EyeFrame, corner: Corner, x: number, y: number) {
   const [outer, inner] =
     style === "square"
       ? [0, 0]
@@ -142,11 +209,14 @@ export function eyeFramePath(style: EyeFrame, corner: Corner, x: number, y: numb
         : style === "circle"
           ? [3.5, 2.5]
           : ([leaf(corner, 3), leaf(corner, 2)] as const);
-  return roundRect(x, y, 7, 7, outer) + roundRect(x + 1, y + 1, 5, 5, inner);
+  path.rect(x, y, 7, 7, outer).rect(x + 1, y + 1, 5, 5, inner);
 }
-export function eyeBallPath(style: EyeBall, corner: Corner, x: number, y: number): string {
-  if (style === "diamond")
-    return `M${x + 1.5} ${y - 0.2}L${x + 3.2} ${y + 1.5}L${x + 1.5} ${y + 3.2}L${x - 0.2} ${y + 1.5}Z`;
+/** A corner square's 3 × 3 centre, its top-left corner at (x, y). */
+export function eyeBall(path: PathData, style: EyeBall, corner: Corner, x: number, y: number) {
+  if (style === "diamond") {
+    path.diamond(x - 0.2, y - 0.2, 3.4);
+    return;
+  }
   const radii =
     style === "square"
       ? 0
@@ -155,18 +225,18 @@ export function eyeBallPath(style: EyeBall, corner: Corner, x: number, y: number
         : style === "circle"
           ? 1.5
           : leaf(corner, 1.4);
-  return roundRect(x, y, 3, 3, radii);
+  path.rect(x, y, 3, 3, radii);
 }
 
-/** The dark modules as one path, in a shape; `on` says which are drawn (false off the grid). */
+/** The dark modules in a shape; `on` says which are drawn (false off the grid). */
 export function modulesPath(
+  path: PathData,
   size: number,
   on: (x: number, y: number) => boolean,
   shape: ModuleShape,
   ox: number,
   oy: number
-): string {
-  const out: string[] = [];
+): PathData {
   if (shape === "square" || shape === "horizontal" || shape === "vertical") {
     // Runs of dark modules in a row (or a column), each one rectangle or pill.
     const across = shape !== "vertical";
@@ -178,31 +248,33 @@ export function modulesPath(
         while (b + 1 < size && at(b + 1)) b++;
         const length = b - start + 1;
         if (shape === "square")
-          out.push(
-            across
-              ? `M${ox + start} ${oy + a}h${length}v1h${-length}z`
-              : `M${ox + a} ${oy + start}h1v${length}h-1z`
-          );
-        else
-          out.push(
-            across
-              ? roundRect(ox + start, oy + a + 0.1, length, 0.8, 0.4)
-              : roundRect(ox + a + 0.1, oy + start, 0.8, length, 0.4)
-          );
+          if (across)
+            path
+              .move(ox + start, oy + a)
+              .h(length)
+              .v(1)
+              .h(-length)
+              .close();
+          else
+            path
+              .move(ox + a, oy + start)
+              .h(1)
+              .v(length)
+              .h(-1)
+              .close();
+        else if (across) path.rect(ox + start, oy + a + 0.1, length, 0.8, 0.4);
+        else path.rect(ox + a + 0.1, oy + start, 0.8, length, 0.4);
       }
-    return out.join("");
+    return path;
   }
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
       if (!on(x, y)) continue;
       const px = ox + x,
         py = oy + y;
-      if (shape === "dots") out.push(roundRect(px + 0.08, py + 0.08, 0.84, 0.84, 0.42));
-      else if (shape === "soft") out.push(roundRect(px + 0.05, py + 0.05, 0.9, 0.9, 0.3));
-      else if (shape === "diamond")
-        out.push(
-          `M${px + 0.5} ${py}L${px + 1} ${py + 0.5}L${px + 0.5} ${py + 1}L${px} ${py + 0.5}Z`
-        );
+      if (shape === "dots") path.rect(px + 0.1, py + 0.1, 0.8, 0.8, 0.4);
+      else if (shape === "soft") path.rect(px + 0.1, py + 0.1, 0.8, 0.8, 0.3);
+      else if (shape === "diamond") path.diamond(px, py, 1);
       else {
         // Rounded: a corner rounds where neither of the modules beside it is dark.
         const n = on(x, y - 1),
@@ -210,42 +282,55 @@ export function modulesPath(
           w = on(x - 1, y),
           e = on(x + 1, y);
         const r = (round: boolean) => (round ? 0.5 : 0);
-        out.push(roundRect(px, py, 1, 1, [r(!n && !w), r(!n && !e), r(!s && !e), r(!s && !w)]));
+        path.rect(px, py, 1, 1, [r(!n && !w), r(!n && !e), r(!s && !e), r(!s && !w)]);
       }
     }
-  return out.join("");
+  return path;
 }
 
-function gradientPaint(design: Design, x: number, y: number, w: number, h: number): Paint {
+/** The code's paint, across its modules (x, y, w, h in modules) and written in units. */
+function gradientPaint(
+  design: Design,
+  unit: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): Paint {
   if (!design.gradient) return design.foreground;
   const { kind, to } = design.gradient;
+  const u = (value: number) => Math.round(value * unit);
   if (kind === "radial")
     return {
       kind: "radial",
       from: design.foreground,
       to,
-      x1: x + w / 2,
-      y1: y + h / 2,
+      x1: u(x + w / 2),
+      y1: u(y + h / 2),
       x2: 0,
       y2: 0,
-      r: Math.max(w, h) * 0.75,
+      r: u(Math.max(w, h) * 0.75),
     };
   return {
     kind: "linear",
     from: design.foreground,
     to,
-    x1: x,
-    y1: y,
-    x2: kind === "vertical" ? x : x + w,
-    y2: kind === "horizontal" ? y : y + h,
+    x1: u(x),
+    y1: u(y),
+    x2: u(kind === "vertical" ? x : x + w),
+    y2: u(kind === "horizontal" ? y : y + h),
     r: 0,
   };
 }
 
-/** The frame around a code and its caption: the panel the code sits on, and the whole size. */
+/**
+ * The frame around a code and its caption, in whole modules: the panel the code sits on, and
+ * the size of the whole.
+ */
 function framed(
   side: number,
   design: Design,
+  unit: number,
   measure: Measure
 ): {
   width: number;
@@ -257,24 +342,23 @@ function framed(
   if (design.frame === "none")
     return { width: side, height: side, panel: { x: 0, y: 0 }, layers: [] };
   const text = design.caption.trim();
-  const outline = design.frame === "outline";
-  const border = outline ? Math.max(0.5, side * 0.015) : Math.max(1, Math.round(side * 0.04));
+  const outline = design.frame === "outline",
+    above = design.frame === "above";
+  // A band of the frame's colour around the panel; an outline is a thin line a module out.
+  const border = outline ? 1 : Math.max(1, Math.round(side * 0.04));
   const band = text ? Math.round(side * (outline ? 0.18 : 0.2)) : outline ? 0 : border;
   const width = side + 2 * border;
-  const height = side + 2 * border + band - (outline ? 0 : border);
-  const above = design.frame === "above";
+  const height = side + border + band + (outline ? border : 0);
   const panel = { x: border, y: above ? band : border };
-  const radius = outline ? border * 3 : border * 2;
-  const frameHeight = outline ? side + 2 * border : height;
-  const layers: Layer[] = [
-    {
-      d:
-        roundRect(0, 0, width, frameHeight, radius) +
-        roundRect(panel.x, panel.y, side, side, Math.max(0, radius - border)),
-      paint: design.frameColor,
-      evenOdd: true,
-    },
-  ];
+  const frame = new PathData(unit);
+  if (outline) {
+    const line = 0.4,
+      boxHeight = side + 2 * border;
+    frame
+      .rect(0, 0, width, boxHeight, 1.2)
+      .rect(line, line, width - 2 * line, boxHeight - 2 * line, 0.8);
+  } else frame.rect(0, 0, width, height, 2 * border).rect(panel.x, panel.y, side, side, border);
+  const layers: Layer[] = [{ d: String(frame), paint: design.frameColor, evenOdd: true }];
   if (!text) return { width, height, panel, layers };
   let size = band * (outline ? 0.6 : 0.55);
   const fit = side * 0.9;
@@ -288,9 +372,9 @@ function framed(
     layers,
     caption: {
       text,
-      x: width / 2,
-      y: middle + size * 0.36,
-      size,
+      x: Math.round((width / 2) * unit),
+      y: Math.round((middle + size * 0.36) * unit),
+      size: Math.max(1, Math.round(size * unit)),
       // On a band of the frame's colour, the text takes the background's.
       color: outline ? design.frameColor : design.transparent ? "#ffffff" : design.background,
       font: CAPTION_FONT,
@@ -306,10 +390,22 @@ export function logoBox(size: number, share: number): { from: number; to: number
   return { from: (size - side) / 2 - pad, to: (size + side) / 2 + pad };
 }
 
+/** A plain code is drawn on whole modules; anything with shapes needs tenths of one. */
+export function unitFor(design: Design): number {
+  return design.modules === "square" &&
+    design.eyeFrame === "square" &&
+    design.eyeBall === "square" &&
+    !design.logo &&
+    design.frame === "none"
+    ? 1
+    : 10;
+}
+
 export function qrScene(qr: QrCode, design: Design, measure: Measure = estimateText): Scene {
+  const unit = unitFor(design);
   const size = qr.modules.length,
     side = size + 2 * QUIET_ZONE;
-  const frame = framed(side, design, measure);
+  const frame = framed(side, design, unit, measure);
   const ox = frame.panel.x + QUIET_ZONE,
     oy = frame.panel.y + QUIET_ZONE;
   const finder = (x: number, y: number) =>
@@ -319,37 +415,37 @@ export function qrScene(qr: QrCode, design: Design, measure: Measure = estimateT
     box !== undefined && x + 1 > box.from && x < box.to && y + 1 > box.from && y < box.to;
   const on = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < size && y < size && qr.modules[y][x] && !finder(x, y) && !covered(x, y);
-  const paint = gradientPaint(design, ox, oy, size, size);
+  const paint = gradientPaint(design, unit, ox, oy, size, size);
   const eyePaint = design.eyeColor ?? paint;
   const corners: [Corner, number, number][] = [
     ["tl", ox, oy],
     ["tr", ox + size - 7, oy],
     ["bl", ox, oy + size - 7],
   ];
+  const frames = new PathData(unit),
+    balls = new PathData(unit);
+  for (const [corner, x, y] of corners) {
+    eyeFrame(frames, design.eyeFrame, corner, x, y);
+    eyeBall(balls, design.eyeBall, corner, x + 2, y + 2);
+  }
   const squareEyes = design.eyeFrame === "square" && design.eyeBall === "square";
   const layers: Layer[] = [
     ...frame.layers,
     ...(design.transparent || design.frame === "none"
       ? []
-      : [{ d: roundRect(frame.panel.x, frame.panel.y, side, side), paint: design.background }]),
+      : [
+          {
+            d: String(new PathData(unit).rect(frame.panel.x, frame.panel.y, side, side)),
+            paint: design.background,
+          },
+        ]),
     {
-      d: modulesPath(size, on, design.modules, ox, oy),
+      d: String(modulesPath(new PathData(unit), size, on, design.modules, ox, oy)),
       paint,
       crisp: design.modules === "square",
     },
-    {
-      d: corners.map(([corner, x, y]) => eyeFramePath(design.eyeFrame, corner, x, y)).join(""),
-      paint: eyePaint,
-      evenOdd: true,
-      crisp: squareEyes,
-    },
-    {
-      d: corners
-        .map(([corner, x, y]) => eyeBallPath(design.eyeBall, corner, x + 2, y + 2))
-        .join(""),
-      paint: eyePaint,
-      crisp: squareEyes,
-    },
+    { d: String(frames), paint: eyePaint, evenOdd: true, crisp: squareEyes },
+    { d: String(balls), paint: eyePaint, crisp: squareEyes },
   ];
   let image: Scene["image"];
   if (design.logo && box) {
@@ -358,11 +454,19 @@ export function qrScene(qr: QrCode, design: Design, measure: Measure = estimateT
       aspect = width / height || 1;
     const w = inner * Math.min(1, aspect),
       h = inner * Math.min(1, 1 / aspect);
-    image = { href, x: ox + (size - w) / 2, y: oy + (size - h) / 2, width: w, height: h };
+    const u = (value: number) => Math.round(value * unit);
+    image = {
+      href,
+      x: u(ox + (size - w) / 2),
+      y: u(oy + (size - h) / 2),
+      width: u(w),
+      height: u(h),
+    };
   }
   return {
-    width: frame.width,
-    height: frame.height,
+    unit,
+    width: frame.width * unit,
+    height: frame.height * unit,
     ...(design.transparent ? {} : { background: design.background }),
     layers,
     ...(image ? { image } : {}),
@@ -383,21 +487,34 @@ export const BARCODE_QUIET: Record<BarcodeKind, readonly [left: number, right: n
 export function barcodeScene(code: Barcode, design: Design): Scene {
   const [left, right] = BARCODE_QUIET[code.kind];
   const width = code.modules.length + left + right;
-  let d = "";
+  const bars = new PathData(1);
   for (let x = 0; x < code.modules.length; x++) {
     if (!code.modules[x]) continue;
     const start = x;
     while (x + 1 < code.modules.length && code.modules[x + 1]) x++;
-    d += `M${start + left} 4h${x - start + 1}v60h${-(x - start + 1)}z`;
+    const length = x - start + 1;
+    bars
+      .move(start + left, 4)
+      .h(length)
+      .v(60)
+      .h(-length)
+      .close();
   }
   return {
+    unit: 1,
     width,
     height: 80,
     ...(design.transparent ? {} : { background: design.background }),
-    layers: [{ d, paint: gradientPaint(design, left, 4, code.modules.length, 60), crisp: true }],
+    layers: [
+      {
+        d: String(bars),
+        paint: gradientPaint(design, 1, left, 4, code.modules.length, 60),
+        crisp: true,
+      },
+    ],
     caption: {
       text: code.text,
-      x: width / 2,
+      x: Math.round(width / 2),
       y: 75,
       size: 7,
       color: design.foreground,

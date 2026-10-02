@@ -2,33 +2,38 @@
 import { escapeAttr, escapeXml } from "@tools/ui";
 import type { Paint, Scene } from "./design.js";
 
+/** The export sizes, by the width each aims for in pixels. */
+export const SIZES = { xs: 256, s: 512, m: 1024, l: 2048, xl: 4096 } as const;
+export type SizeName = keyof typeof SIZES;
+
 export interface Size {
   width: number;
   height: number;
+  /** Pixels to a module: a whole number, so every module edge falls on a pixel edge. */
+  perModule: number;
 }
-/** The export's size in pixels for a width, its height following the scene's proportions. */
-export function exportSize(scene: Scene, width: number): Size {
-  if (!Number.isInteger(width) || width < 64 || width > 4096)
-    throw new Error("Export width must be an integer from 64 to 4096 pixels.");
-  const minimum = Math.ceil(scene.width);
-  if (width < minimum)
-    throw new Error(`Increase export width to at least ${minimum} pixels for this code.`);
-  return { width, height: Math.round((width * scene.height) / scene.width) };
+/** The size nearest the named one at which each module is a whole number of pixels. */
+export function exportSize(scene: Scene, name: SizeName): Size {
+  const modules = scene.width / scene.unit;
+  const perModule = Math.max(1, Math.round(SIZES[name] / modules));
+  return {
+    width: perModule * modules,
+    height: (perModule * scene.height) / scene.unit,
+    perModule,
+  };
 }
 
-const n3 = (value: number) => String(Math.round(value * 1000) / 1000);
-
-export function sceneSvg(scene: Scene, width: number): string {
-  const size = exportSize(scene, width);
+/** The scene as SVG, its width and height those of the export: integers throughout. */
+export function sceneSvg(scene: Scene, size: Size): string {
   const defs: string[] = [];
   const fill = (paint: Paint) => {
     if (typeof paint === "string") return escapeAttr(paint);
     const id = "g" + defs.length;
-    const stops = `<stop offset="0" stop-color="${escapeAttr(paint.from)}"/><stop offset="1" stop-color="${escapeAttr(paint.to)}"/>`;
+    const stops = `<stop stop-color="${escapeAttr(paint.from)}"/><stop offset="1" stop-color="${escapeAttr(paint.to)}"/>`;
     defs.push(
       paint.kind === "linear"
-        ? `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${n3(paint.x1)}" y1="${n3(paint.y1)}" x2="${n3(paint.x2)}" y2="${n3(paint.y2)}">${stops}</linearGradient>`
-        : `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${n3(paint.x1)}" cy="${n3(paint.y1)}" r="${n3(paint.r)}">${stops}</radialGradient>`
+        ? `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${paint.x1}" y1="${paint.y1}" x2="${paint.x2}" y2="${paint.y2}">${stops}</linearGradient>`
+        : `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${paint.x1}" cy="${paint.y1}" r="${paint.r}">${stops}</radialGradient>`
     );
     return `url(#${id})`;
   };
@@ -44,47 +49,42 @@ export function sceneSvg(scene: Scene, width: number): string {
           "/>"
       );
   if (scene.image) {
-    const { href, x, y, width: w, height: h } = scene.image;
+    const { href, x, y, width, height } = scene.image;
     body.push(
-      `<image xlink:href="${escapeAttr(href)}" x="${n3(x)}" y="${n3(y)}" width="${n3(w)}" height="${n3(h)}" preserveAspectRatio="xMidYMid meet"/>`
+      `<image xlink:href="${escapeAttr(href)}" x="${x}" y="${y}" width="${width}" height="${height}"/>`
     );
   }
   if (scene.caption) {
     const c = scene.caption;
     body.push(
-      `<text x="${n3(c.x)}" y="${n3(c.y)}" font-family="${escapeAttr(c.font)}" font-size="${n3(c.size)}" font-weight="${c.weight}" text-anchor="middle" fill="${escapeAttr(c.color)}">${escapeXml(c.text)}</text>`
+      `<text x="${c.x}" y="${c.y}" font-family="${escapeAttr(c.font)}" font-size="${c.size}" font-weight="${c.weight}" text-anchor="middle" fill="${escapeAttr(c.color)}">${escapeXml(c.text)}</text>`
     );
   }
   return (
     `<svg xmlns="http://www.w3.org/2000/svg"` +
     (scene.image ? ` xmlns:xlink="http://www.w3.org/1999/xlink"` : "") +
-    ` width="${size.width}" height="${size.height}" viewBox="0 0 ${n3(scene.width)} ${n3(scene.height)}">` +
+    ` width="${size.width}" height="${size.height}" viewBox="0 0 ${scene.width} ${scene.height}">` +
     (defs.length ? `<defs>${defs.join("")}</defs>` : "") +
     body.join("") +
     "</svg>"
   );
 }
 
-/**
- * Draws the scene at its export size. A module is a whole number of pixels, so square modules
- * stay sharp; the pixels to spare go around the code, in its background.
- */
+/** Draws the scene at its export size, each module a whole number of pixels. */
 export function drawScene(
   context: CanvasRenderingContext2D,
   scene: Scene,
   size: Size,
   image?: CanvasImageSource
 ): void {
-  const scale = Math.max(1, Math.floor(size.width / scene.width));
-  const ox = Math.floor((size.width - scene.width * scale) / 2),
-    oy = Math.max(0, Math.floor((size.height - scene.height * scale) / 2));
+  const scale = size.perModule / scene.unit;
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.clearRect(0, 0, size.width, size.height);
   if (scene.background) {
     context.fillStyle = scene.background;
     context.fillRect(0, 0, size.width, size.height);
   }
-  context.setTransform(scale, 0, 0, scale, ox, oy);
+  context.setTransform(scale, 0, 0, scale, 0, 0);
   const paint = (value: Paint): string | CanvasGradient => {
     if (typeof value === "string") return value;
     const gradient =

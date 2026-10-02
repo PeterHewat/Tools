@@ -8,56 +8,96 @@ import {
   FRAMES,
   GRADIENTS,
   MODULE_SHAPES,
+  PathData,
   barcodeScene,
   colourWarnings,
   contrast,
   logoBox,
   qrScene,
-  roundRect,
 } from "./design.js";
-import type { Design } from "./design.js";
-import { exportSize, sceneSvg } from "./render.js";
+import type { Design, Scene } from "./design.js";
+import { SIZES, exportSize, sceneSvg } from "./render.js";
+import type { SizeName } from "./render.js";
 
 const qr = encodeQr("https://example.com/", "M");
 const size = qr.modules.length;
+const svg = (scene: Scene, name: SizeName = "m") => sceneSvg(scene, exportSize(scene, name));
 
-test("the default design is the plain code: square modules, square eyes, no frame", () => {
+test("the default design is the plain code: one unit a module, square everything", () => {
   const scene = qrScene(qr, DEFAULT_DESIGN);
-  expect([scene.width, scene.height, scene.background]).toEqual([size + 8, size + 8, "#ffffff"]);
+  expect([scene.unit, scene.width, scene.height]).toEqual([1, size + 8, size + 8]);
   const [modules, frames, balls] = scene.layers;
   expect(modules.crisp && frames.crisp && balls.crisp).toBe(true);
-  // The corner squares are drawn as eyes, never as modules.
-  expect(modules.d).not.toContain("M4 4h");
-  expect(frames.d.startsWith("M4 4H11")).toBe(true);
-  const svg = sceneSvg(scene, 512);
-  expect(svg).not.toContain("<defs>");
-  expect(svg).toContain('width="512" height="512"');
+  // The corner squares are drawn as eyes, never as modules: a frame, its hole, three times.
+  expect(frames.d).toBe(
+    `M4 4h7v7h-7zm1 1h5v5h-5zm${size - 8}-1h7v7h-7zm1 1h5v5h-5zm${6 - size} ${size - 8}h7v7h-7zm1 1h5v5h-5z`
+  );
+  expect(balls.d.startsWith("M6 6h3v3h-3z")).toBe(true);
+  const out = svg(scene);
+  expect(out).not.toContain("<defs>");
+  expect(out).toContain(`viewBox="0 0 ${size + 8} ${size + 8}"`);
 });
 
-test("every shape, eye and frame makes a scene that writes to SVG", () => {
+test("paths are relative and in whole units", () => {
+  expect(String(new PathData(10).rect(0, 0, 1, 1, [0.5, 0, 0, 0]))).toBe(
+    "M5 0h5v10h-10v-5a5 5 0 0 1 5-5z"
+  );
+  expect(String(new PathData(10).rect(1, 1, 0.8, 0.8, 0.4).rect(2, 1, 0.8, 0.8, 0.4))).toBe(
+    "M14 10a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4zm10 0a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4z"
+  );
+});
+
+test("every shape, eye and frame writes an SVG with no decimals", () => {
   for (const modules of MODULE_SHAPES)
     for (const eyeFrame of EYE_FRAMES)
       for (const eyeBall of EYE_BALLS)
         for (const frame of FRAMES) {
           const scene = qrScene(qr, { ...DEFAULT_DESIGN, modules, eyeFrame, eyeBall, frame });
-          expect(scene.layers.every((layer) => !/NaN|undefined/.test(layer.d))).toBe(true);
-          expect(sceneSvg(scene, 1024)).toStartWith("<svg");
+          const out = svg(scene);
+          expect(out).toStartWith("<svg");
+          expect(out).not.toMatch(/\d\.\d|NaN|undefined/);
+          expect(scene.width % scene.unit).toBe(0);
+          expect(scene.height % scene.unit).toBe(0);
         }
+  const styled = qrScene(qr, {
+    ...DEFAULT_DESIGN,
+    modules: "dots",
+    gradient: { to: "#0000ff", kind: "radial" },
+    logo: { href: "data:image/png;base64,AA==", width: 3, height: 2, size: 0.27 },
+  });
+  expect(styled.unit).toBe(10);
+  expect(svg(styled)).not.toMatch(/\d\.\d/);
+});
+
+test("each export size is a whole number of pixels a module, near its target", () => {
+  for (const scene of [
+    qrScene(qr, DEFAULT_DESIGN),
+    qrScene(qr, { ...DEFAULT_DESIGN, frame: "below" }),
+    barcodeScene(encodeBarcode("x".repeat(80), "code128"), DEFAULT_DESIGN),
+  ])
+    for (const name of Object.keys(SIZES) as SizeName[]) {
+      const modules = scene.width / scene.unit;
+      const size = exportSize(scene, name);
+      expect(Number.isInteger(size.perModule) && size.perModule >= 1).toBe(true);
+      expect(size.width).toBe(size.perModule * modules);
+      expect(size.height).toBe((size.perModule * scene.height) / scene.unit);
+      if (size.perModule > 1)
+        expect(Math.abs(size.width - SIZES[name])).toBeLessThanOrEqual(modules / 2);
+    }
 });
 
 test("rounded modules round only the corners with no dark neighbour", () => {
-  expect(roundRect(0, 0, 1, 1, [0.5, 0, 0, 0])).toBe("M0.5 0H1V1H0V0.5A0.5 0.5 0 0 1 0.5 0Z");
   const scene = qrScene(qr, { ...DEFAULT_DESIGN, modules: "rounded" });
-  expect(scene.layers[0].d).toContain("A0.5 0.5");
+  expect(scene.layers[0].d).toContain("a5 5 0 0 1");
   expect(scene.layers[0].crisp).toBe(false);
 });
 
 test("gradients and corner colours paint the modules and the eyes", () => {
   for (const kind of GRADIENTS) {
     const design: Design = { ...DEFAULT_DESIGN, gradient: { to: "#0000ff", kind } };
-    const svg = sceneSvg(qrScene(qr, design), 512);
-    expect(svg).toContain(kind === "radial" ? "<radialGradient" : "<linearGradient");
-    expect(svg).toContain('fill="url(#g0)"');
+    const out = svg(qrScene(qr, design));
+    expect(out).toContain(kind === "radial" ? "<radialGradient" : "<linearGradient");
+    expect(out).toContain('fill="url(#g0)"');
   }
   const eyes = qrScene(qr, { ...DEFAULT_DESIGN, eyeColor: "#ff0000" });
   expect(eyes.layers[1].paint).toBe("#ff0000");
@@ -70,13 +110,13 @@ test("a logo clears the modules under it and stays clear of the corner squares",
   const box = logoBox(big.modules.length, 0.22);
   expect(box.to - box.from).toBeCloseTo(big.modules.length * 0.22 + 1);
   const logo = { href: "data:image/png;base64,AA==", width: 200, height: 100, size: 0.22 };
-  const plain = qrScene(big, DEFAULT_DESIGN),
-    marked = qrScene(big, { ...DEFAULT_DESIGN, logo });
+  const plain = qrScene(big, { ...DEFAULT_DESIGN, modules: "soft" }),
+    marked = qrScene(big, { ...DEFAULT_DESIGN, modules: "soft", logo });
   expect(marked.layers[0].d.length).toBeLessThan(plain.layers[0].d.length);
   // Wide images fit the width, centred.
-  expect(marked.image!.width).toBeCloseTo(2 * marked.image!.height);
-  expect(marked.image!.x + marked.image!.width / 2).toBeCloseTo(marked.width / 2);
-  expect(sceneSvg(marked, 1024)).toContain('xlink:href="data:image/png;base64,AA=="');
+  expect(Math.abs(marked.image!.width - 2 * marked.image!.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(marked.image!.x + marked.image!.width / 2 - marked.width / 2)).toBeLessThan(1);
+  expect(svg(marked)).toContain('xlink:href="data:image/png;base64,AA=="');
 });
 
 test("frames add a captioned band, and long captions shrink to fit", () => {
@@ -88,10 +128,9 @@ test("frames add a captioned band, and long captions shrink to fit", () => {
   expect(above.caption!.y).toBeLessThan(above.height - above.width);
   const long = qrScene(qr, { ...DEFAULT_DESIGN, frame: "below", caption: "x".repeat(80) });
   expect(long.caption!.size).toBeLessThan(below.caption!.size);
-  expect(
-    sceneSvg(qrScene(qr, { ...DEFAULT_DESIGN, frame: "outline", caption: "<b>" }), 512)
-  ).toContain(">&lt;b&gt;</text>");
-  expect(exportSize(below, 500).height).toBe(Math.round((500 * below.height) / below.width));
+  expect(svg(qrScene(qr, { ...DEFAULT_DESIGN, frame: "outline", caption: "<b>" }))).toContain(
+    ">&lt;b&gt;</text>"
+  );
 });
 
 test("barcodes take the colours, and keep their quiet zones", () => {
@@ -103,7 +142,7 @@ test("barcodes take the colours, and keep their quiet zones", () => {
   expect(scene.background).toBeUndefined();
   expect(scene.layers[0].paint).toBe("#123456");
   expect(scene.caption!.color).toBe("#123456");
-  expect(scene.layers[0].d.startsWith("M11 4h1")).toBe(true);
+  expect(scene.layers[0].d.startsWith("M11 4h1v60h-1z")).toBe(true);
 });
 
 test("colour warnings for contrast, light on dark and transparency", () => {

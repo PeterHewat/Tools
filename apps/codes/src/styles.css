@@ -49,7 +49,8 @@
   margin: 16px 0 8px !important;
   font-size: 14px !important;
 }
-.codes-output .codes-step {
+.codes-output .codes-step,
+.codes-build .codes-step:first-child {
   margin-top: 0 !important;
 }
 .codes-step > span {
@@ -119,9 +120,47 @@
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-.codes-panel {
+/* The panels share one cell, the hidden ones kept invisible: the Design step is as tall as its
+   tallest panel, so neither changing tab nor turning on an option moves what is below. */
+.codes-panels {
+  display: grid;
+}
+.codes-panels > .codes-panel {
+  grid-area: 1 / 1;
   padding: 10px 0 2px;
-  min-height: 150px;
+}
+.codes-panels > .codes-panel[hidden] {
+  display: block;
+  visibility: hidden;
+}
+.codes-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  min-height: 34px;
+  margin-bottom: 6px;
+}
+.codes-row > .codes-check,
+.codes-row .codes-colour {
+  margin-bottom: 0;
+}
+.codes-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.codes-extra input[type="color"] {
+  width: 36px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  cursor: pointer;
+}
+.codes-off {
+  visibility: hidden;
 }
 .codes-panel h3 {
   margin: 4px 0 6px;
@@ -130,13 +169,6 @@
   font-weight: 500;
 }
 
-.codes-colours {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 8px 16px;
-  margin-bottom: 8px;
-}
 .codes-colour {
   display: flex;
   align-items: center;
