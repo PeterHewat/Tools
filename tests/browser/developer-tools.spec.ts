@@ -529,16 +529,17 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
     await expect(page.locator("#save-png")).toBeEnabled();
     expect(scanQr(await downloadedPixels(page)), modules).toBe("https://example.com/");
   }
-  // Neither another tab nor an option turned on moves what is below the Design step.
-  const below = async () => (await page.locator(".codes-actions").boundingBox())!.y;
-  const settled = await below();
+  // Each tab is as tall as what it holds; an option turned on opens beside its box.
+  const height = async () => (await page.locator(".codes-build").boundingBox())!.height;
+  const shapes = await height();
   await page.locator("#tab-colours").click();
-  expect(await below()).toBe(settled);
+  const settled = await height();
+  expect(settled).toBeLessThan(shapes);
   await page.locator("#fg").fill("#3a1c71");
   await page.locator("#gradient").check();
   await page.locator("#eye-own").check();
   await expect(page.locator("#gradient-to")).toBeVisible();
-  expect(await below()).toBe(settled);
+  expect(await height()).toBe(settled);
   await page.locator("#eye-color").fill("#b3122e");
   await expect(page.locator("#warnings")).toBeEmpty();
   await page.locator("#tab-logo").click();
@@ -547,6 +548,22 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   await expect(page.locator("#status")).toContainText("H correction");
   await page.locator("#tab-frame").click();
   await page.locator('#frame-options [data-value="below"]').click();
+  const lineOf = async (id: string) => (await page.locator(id).boundingBox())!;
+  const [caption, text, frame] = [
+    await lineOf("#caption"),
+    await lineOf("#caption-color"),
+    await lineOf("#frame-color"),
+  ];
+  expect([text.y, frame.y, text.height, frame.height]).toEqual([
+    caption.y,
+    caption.y,
+    caption.height,
+    caption.height,
+  ]);
+  await page.locator('#frame-options [data-value="outline"]').click();
+  await expect(page.locator("#caption-color")).toHaveValue("#000000");
+  await page.locator('#frame-options [data-value="below"]').click();
+  await expect(page.locator("#caption-color")).toHaveValue("#ffffff");
   const framed = await downloadedPixels(page);
   expect(framed.height).toBeGreaterThan(framed.width);
   expect(scanQr(framed)).toBe("https://example.com/");

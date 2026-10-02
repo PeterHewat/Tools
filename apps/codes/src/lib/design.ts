@@ -36,8 +36,6 @@ export interface Logo {
   /** Natural size, for its aspect ratio. */
   width: number;
   height: number;
-  /** Its width as a share of the code's, 0.1 to 0.3. */
-  size: number;
 }
 export interface Design {
   foreground: string;
@@ -53,6 +51,7 @@ export interface Design {
   logo?: Logo;
   frame: FrameStyle;
   caption: string;
+  captionColor: string;
   frameColor: string;
 }
 export const DEFAULT_DESIGN: Design = {
@@ -64,9 +63,14 @@ export const DEFAULT_DESIGN: Design = {
   eyeBall: "square",
   frame: "none",
   caption: "SCAN ME",
+  captionColor: "#ffffff",
   frameColor: "#000000",
 };
-export const LOGO_SIZE = { min: 0.1, max: 0.3, default: 0.22 };
+/**
+ * A logo's width as a share of the code's: as large as error correction H recovers from
+ * comfortably (a ninth of the modules covered), so every logo is drawn this size.
+ */
+export const LOGO_SHARE = 0.3;
 
 export interface Gradient {
   kind: "linear" | "radial";
@@ -375,8 +379,7 @@ function framed(
       x: Math.round((width / 2) * unit),
       y: Math.round((middle + size * 0.36) * unit),
       size: Math.max(1, Math.round(size * unit)),
-      // On a band of the frame's colour, the text takes the background's.
-      color: outline ? design.frameColor : design.transparent ? "#ffffff" : design.background,
+      color: design.captionColor,
       font: CAPTION_FONT,
       weight: 700,
     },
@@ -410,7 +413,7 @@ export function qrScene(qr: QrCode, design: Design, measure: Measure = estimateT
     oy = frame.panel.y + QUIET_ZONE;
   const finder = (x: number, y: number) =>
     (x < 7 && y < 7) || (x >= size - 7 && y < 7) || (x < 7 && y >= size - 7);
-  const box = design.logo ? logoBox(size, design.logo.size) : undefined;
+  const box = design.logo ? logoBox(size, LOGO_SHARE) : undefined;
   const covered = (x: number, y: number) =>
     box !== undefined && x + 1 > box.from && x < box.to && y + 1 > box.from && y < box.to;
   const on = (x: number, y: number) =>

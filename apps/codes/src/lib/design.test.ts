@@ -7,6 +7,7 @@ import {
   EYE_FRAMES,
   FRAMES,
   GRADIENTS,
+  LOGO_SHARE,
   MODULE_SHAPES,
   PathData,
   barcodeScene,
@@ -63,7 +64,7 @@ test("every shape, eye and frame writes an SVG with no decimals", () => {
     ...DEFAULT_DESIGN,
     modules: "dots",
     gradient: { to: "#0000ff", kind: "radial" },
-    logo: { href: "data:image/png;base64,AA==", width: 3, height: 2, size: 0.27 },
+    logo: { href: "data:image/png;base64,AA==", width: 3, height: 2 },
   });
   expect(styled.unit).toBe(10);
   expect(svg(styled)).not.toMatch(/\d\.\d/);
@@ -107,9 +108,9 @@ test("gradients and corner colours paint the modules and the eyes", () => {
 test("a logo clears the modules under it and stays clear of the corner squares", () => {
   expect(logoBox(21, 0.3)).toEqual({ from: 8, to: 13 });
   const big = encodeQr("x".repeat(200), "H");
-  const box = logoBox(big.modules.length, 0.22);
-  expect(box.to - box.from).toBeCloseTo(big.modules.length * 0.22 + 1);
-  const logo = { href: "data:image/png;base64,AA==", width: 200, height: 100, size: 0.22 };
+  const box = logoBox(big.modules.length, LOGO_SHARE);
+  expect(box.to - box.from).toBeCloseTo(big.modules.length * LOGO_SHARE + 1);
+  const logo = { href: "data:image/png;base64,AA==", width: 200, height: 100 };
   const plain = qrScene(big, { ...DEFAULT_DESIGN, modules: "soft" }),
     marked = qrScene(big, { ...DEFAULT_DESIGN, modules: "soft", logo });
   expect(marked.layers[0].d.length).toBeLessThan(plain.layers[0].d.length);
@@ -123,6 +124,9 @@ test("frames add a captioned band, and long captions shrink to fit", () => {
   const below = qrScene(qr, { ...DEFAULT_DESIGN, frame: "below" });
   expect(below.height).toBeGreaterThan(below.width);
   expect(below.caption).toMatchObject({ text: "SCAN ME", color: "#ffffff" });
+  expect(
+    qrScene(qr, { ...DEFAULT_DESIGN, frame: "outline", captionColor: "#ff0000" }).caption
+  ).toMatchObject({ color: "#ff0000" });
   expect(below.caption!.y).toBeGreaterThan(below.width);
   const above = qrScene(qr, { ...DEFAULT_DESIGN, frame: "above" });
   expect(above.caption!.y).toBeLessThan(above.height - above.width);

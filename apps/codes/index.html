@@ -59,7 +59,18 @@
             </button>
           </div>
 
-          <h2 class="codes-step"><span aria-hidden="true">2</span>Content</h2>
+          <div class="codes-head">
+            <h2 class="codes-step"><span aria-hidden="true">2</span>Content</h2>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn codes-clear"
+              id="clear"
+              aria-label="Clear content"
+              title="Clear content"
+            >
+              <svg data-ui-icon="trash"></svg>
+            </button>
+          </div>
           <div data-fields="link">
             <label class="ui-field"
               ><span>Website</span
@@ -255,7 +266,18 @@
             <pre class="ui-output" id="encoded"></pre>
           </details>
 
-          <h2 class="codes-step"><span aria-hidden="true">3</span>Design</h2>
+          <div class="codes-head">
+            <h2 class="codes-step"><span aria-hidden="true">3</span>Design</h2>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn codes-clear"
+              id="reset-design"
+              aria-label="Reset design"
+              title="Reset design"
+            >
+              <svg data-ui-icon="trash"></svg>
+            </button>
+          </div>
           <input type="hidden" id="design-tab" value="colours" />
           <div class="codes-tabs" role="tablist" aria-label="Design">
             <button type="button" role="tab" id="tab-colours" aria-controls="panel-colours">
@@ -344,10 +366,6 @@
                   <svg data-ui-icon="image" aria-hidden="true"></svg>Upload an image…
                 </button>
               </div>
-              <label class="ui-field"
-                ><span>Logo size</span
-                ><input type="range" id="logo-size" min="10" max="30" step="1" value="22"
-              /></label>
               <p class="codes-hint">
                 With a logo, error correction is H, so the code still reads with its middle covered.
               </p>
@@ -360,7 +378,7 @@
                 role="group"
                 aria-label="Frame"
               ></div>
-              <div class="codes-pair">
+              <div class="codes-caption">
                 <label class="ui-field"
                   ><span>Caption</span
                   ><input
@@ -370,15 +388,14 @@
                     value="SCAN ME"
                     autocomplete="off"
                 /></label>
-                <label class="codes-colour"
-                  ><input type="color" id="frame-color" value="#000000" /><span>Frame</span></label
-                >
+                <label class="ui-field"
+                  ><span>Text</span><input type="color" id="caption-color" value="#ffffff"
+                /></label>
+                <label class="ui-field"
+                  ><span>Frame</span><input type="color" id="frame-color" value="#000000"
+                /></label>
               </div>
             </div>
-          </div>
-          <div class="ui-row codes-actions">
-            <button type="button" class="ui-btn" id="clear">Clear content</button>
-            <button type="button" class="ui-btn" id="reset-design">Reset design</button>
           </div>
         </section>
 
@@ -467,8 +484,8 @@
             the preview says when the colours may not scan.
           </li>
           <li>
-            A logo covers the middle of the code, so error correction goes up to H, which recovers
-            up to 30% of it. Keep the logo small and test the printed code.
+            A logo covers the middle of the code, as large as it can be and still scan: error
+            correction goes up to H, which recovers up to 30% of it. Test the printed code.
           </li>
         </ul>
         <h3>Download</h3>

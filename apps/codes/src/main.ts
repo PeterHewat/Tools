@@ -38,7 +38,7 @@ import {
   EYE_FRAMES,
   FRAMES,
   GRADIENTS,
-  LOGO_SIZE,
+  contrast,
   MODULE_SHAPES,
   PathData,
   barcodeScene,
@@ -134,9 +134,9 @@ const ids = [
   "eye-frame",
   "eye-ball",
   "logo",
-  "logo-size",
   "frame",
   "caption",
+  "caption-color",
   "frame-color",
   "size",
   "level",
@@ -154,9 +154,9 @@ const DESIGN_DEFAULTS: Record<string, string | boolean> = {
   "eye-frame": "square",
   "eye-ball": "square",
   logo: "none",
-  "logo-size": String(LOGO_SIZE.default * 100),
   frame: "none",
   caption: "SCAN ME",
+  "caption-color": "#ffffff",
   "frame-color": "#000000",
 };
 
@@ -170,7 +170,7 @@ const colour = (id: string, fallback: string) =>
 
 const draft = readDraft("codes", 1);
 /** An image the person chose for the logo, downscaled, as a data: URL. */
-let upload: Omit<Logo, "size"> | undefined;
+let upload: Logo | undefined;
 if (draft.found && !draft.error) {
   restoreFields(draft.value, ids);
   const saved = draft.value.upload as Partial<Logo> | undefined;
@@ -194,7 +194,7 @@ const measure: Measure = (text, size, font, weight) => {
 };
 
 /** A preset logo: the icon in white on a disc of the code's colour. */
-function presetLogo(name: IconName, fill: string): Omit<Logo, "size"> {
+function presetLogo(name: IconName, fill: string): Logo {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">` +
     `<circle cx="12" cy="12" r="12" fill="${escapeAttr(fill)}"/>` +
@@ -211,7 +211,6 @@ function design(): Design {
       : LOGOS.includes(logoName as IconName)
         ? presetLogo(logoName as IconName, foreground)
         : undefined;
-  const share = Number(value("logo-size")) / 100;
   return {
     foreground,
     background: colour("bg", "#ffffff"),
@@ -228,18 +227,10 @@ function design(): Design {
     modules: oneOf(MODULE_SHAPES, value("module-shape"), "square"),
     eyeFrame: oneOf(EYE_FRAMES, value("eye-frame"), "square"),
     eyeBall: oneOf(EYE_BALLS, value("eye-ball"), "square"),
-    ...(logo
-      ? {
-          logo: {
-            ...logo,
-            size: Number.isFinite(share)
-              ? Math.min(LOGO_SIZE.max, Math.max(LOGO_SIZE.min, share))
-              : LOGO_SIZE.default,
-          },
-        }
-      : {}),
+    ...(logo ? { logo } : {}),
     frame: oneOf(FRAMES, value("frame"), "none"),
     caption: value("caption"),
+    captionColor: colour("caption-color", "#ffffff"),
     frameColor: colour("frame-color", "#000000"),
   };
 }
@@ -330,7 +321,12 @@ interface Choice {
   picture: () => string | Element;
 }
 /** A row of picture buttons that sets a hidden field; returns what redraws it. */
-function choices(container: string, field: string, list: () => readonly Choice[]): () => void {
+function choices(
+  container: string,
+  field: string,
+  list: () => readonly Choice[],
+  picked?: (value: string) => void
+): () => void {
   const draw = () => {
     byId(container).replaceChildren(
       ...list().map((choice) => {
@@ -346,6 +342,7 @@ function choices(container: string, field: string, list: () => readonly Choice[]
         setPressed(button, value(field) === choice.value);
         button.addEventListener("click", () => {
           input(field).value = choice.value;
+          picked?.(choice.value);
           update();
         });
         return button;
@@ -412,15 +409,29 @@ const drawLogos = choices("logo-options", "logo", () => [
     ? [{ value: "upload", label: "Logo: your image", picture: () => image(upload!.href) }]
     : []),
 ]);
-choices("frame-options", "frame", () =>
-  FRAMES.map((frame) => ({
-    value: frame,
-    label: LABELS[frame],
-    picture: () => {
-      const scene = qrScene(SAMPLE_QR, { ...DEFAULT_DESIGN, frame, caption: "SCAN ME" }, measure);
-      return sceneSvg(scene, exportSize(scene, "xs"));
-    },
-  }))
+choices(
+  "frame-options",
+  "frame",
+  () =>
+    FRAMES.map((frame) => ({
+      value: frame,
+      label: LABELS[frame],
+      picture: () => {
+        const captionColor = frame === "outline" ? "#000000" : "#ffffff";
+        const scene = qrScene(SAMPLE_QR, { ...DEFAULT_DESIGN, frame, captionColor }, measure);
+        return sceneSvg(scene, exportSize(scene, "xs"));
+      },
+    })),
+  (frame) => {
+    // The caption sits on the frame's band, or on the background under an outline: a text
+    // colour that would vanish there takes the other one.
+    const text = colour("caption-color", "#ffffff"),
+      band = colour("frame-color", "#000000"),
+      background = checked("transparent") ? "#ffffff" : colour("bg", "#ffffff");
+    const under = frame === "outline" ? background : band;
+    if (frame !== "none" && contrast(text, under) < 2)
+      input("caption-color").value = frame === "outline" ? band : background;
+  }
 );
 
 // ---------- Showing which fields apply ----------
@@ -461,13 +472,13 @@ function fields(): void {
         ? "Digits · 12 to have the check digit added, 13 to check it"
         : "Digits · 11 to have the check digit added, 12 to check it";
   const logo = value("logo") !== "none";
-  input("logo-size").disabled = !logo;
   const level = byId<HTMLSelectElement>("level");
   level.disabled = logo;
   if (logo) level.value = "H";
   const framed = value("frame") !== "none";
   input("caption").disabled = !framed;
   input("frame-color").disabled = !framed;
+  input("caption-color").disabled = !framed;
   for (const [container, field] of [
     ["module-options", "module-shape"],
     ["eye-frame-options", "eye-frame"],
@@ -610,7 +621,7 @@ byId("tab-colours").parentElement!.addEventListener("keydown", (event) => {
 });
 
 /** An image file, scaled to fit 512 pixels and kept as a PNG data: URL in the draft. */
-async function readLogo(file: File): Promise<Omit<Logo, "size">> {
+async function readLogo(file: File): Promise<Logo> {
   const url = URL.createObjectURL(file);
   try {
     const source = new Image();
