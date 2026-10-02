@@ -444,7 +444,8 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
       );
     });
     await writeFile(`test-results/${slug}-header.json`, JSON.stringify({ width: headerWidth }));
-    expect(findApp(slug)?.compactHeader).toBeGreaterThanOrEqual(headerWidth);
+    const compactHeader = findApp(slug)!.compactHeader;
+    if (compactHeader !== false) expect(compactHeader).toBeGreaterThanOrEqual(headerWidth);
     const violations = (await new AxeBuilder({ page }).analyze()).violations;
     expect(violations).toEqual([]);
     for (const width of [1280, 480, 420, 390, 320]) {
@@ -480,9 +481,23 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
         true
       );
     }
-    await page.setViewportSize({ width: findApp(slug)!.compactHeader!, height: 900 });
-    await expect(page.locator(".ui-app-name")).toHaveCSS("position", "absolute");
-    expect(await page.locator("header").evaluate((el) => el.scrollWidth <= innerWidth)).toBe(true);
+    if (compactHeader === false) {
+      for (const width of [274, 240]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expect(page.locator(".ui-app-name")).not.toHaveCSS("position", "absolute");
+        await expect(page.locator(".ui-app-title")).not.toHaveCSS("position", "absolute");
+        expect((await page.locator(".ui-app-title").boundingBox())!.width).toBeGreaterThan(0);
+        expect(await page.locator("header").evaluate((el) => el.scrollWidth <= innerWidth)).toBe(
+          true
+        );
+      }
+    } else {
+      await page.setViewportSize({ width: compactHeader!, height: 900 });
+      await expect(page.locator(".ui-app-name")).toHaveCSS("position", "absolute");
+      expect(await page.locator("header").evaluate((el) => el.scrollWidth <= innerWidth)).toBe(
+        true
+      );
+    }
     await page.setViewportSize({ width: 320, height: 900 });
     await page.screenshot({ path: `test-results/${slug}-phone.png`, fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });

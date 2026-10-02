@@ -272,8 +272,12 @@ function compactHeaderTag(app: ToolsApp): HtmlTagDescriptor {
   ];
   const css = [
     // An app may drop "Tools" first, keeping its name beside the "‹".
-    ...(app.compactHome && app.compactHome > width ? home(app.compactHome, ".ui-home-label") : []),
-    ...home(width, ":is(.ui-home-label, .ui-app-name, .ui-app-status, .ui-app-title)"),
+    ...(app.compactHome && (width === false || app.compactHome > width)
+      ? home(app.compactHome, ".ui-home-label")
+      : []),
+    ...(width === false
+      ? []
+      : home(width, ":is(.ui-home-label, .ui-app-name, .ui-app-status, .ui-app-title)")),
   ].join("\n");
   return {
     tag: "style",

@@ -52,7 +52,7 @@ describe("page head", () => {
 
   test('each app\'s header reduces to "‹" at the width its catalog entry gives, first in the head', () => {
     const style = (app: typeof svg) => headTags(app).find((t) => t.tag === "style");
-    expect(style(svg)?.children).toContain(`@media (width < ${svg.compactHeader! + 1}px)`);
+    expect(style(svg)?.children).toContain(`@media (width < ${Number(svg.compactHeader) + 1}px)`);
     expect(style(svg)?.injectTo).toBe("head-prepend");
     expect(style({ ...svg, compactHeader: undefined })?.children).toContain(
       `(width < ${COMPACT_HEADER + 1}px)`
@@ -68,6 +68,16 @@ describe("page head", () => {
     const first = css.slice(0, css.indexOf("(width < 201px)"));
     expect(first).toContain(".ui-home-label {");
     expect(first).not.toContain(".ui-app-name");
+  });
+
+  test("an app can keep its name and title while only the home button collapses", () => {
+    const css = headTags({ ...svg, compactHeader: false, compactHome: 424 }).find(
+      (tag) => tag.tag === "style"
+    )!.children as string;
+    expect(css).toContain("(width < 425px)");
+    expect(css).toContain(".ui-home-label");
+    expect(css).not.toContain(".ui-app-name");
+    expect(css).not.toContain(".ui-app-title");
   });
 
   test("the icon is the app's own, addressed from its base rather than from the page", () => {

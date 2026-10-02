@@ -33,9 +33,9 @@ export interface ToolsApp {
   /**
    * Widest screen (px) at which the header's start reduces from "‹ Tools  Name" to "‹": the
    * width the header needs with the words, so it collapses as soon as they stop fitting.
-   * 720 when not given.
+   * 720 when not given; false keeps the name and title at every width.
    */
-  readonly compactHeader?: number;
+  readonly compactHeader?: number | false;
   /**
    * Widest screen (px) at which "‹ Tools" alone reduces to "‹", the app's name staying beside
    * it: a step before `compactHeader`, for an app whose name in full needs the room.
@@ -100,7 +100,7 @@ export const APPS: readonly ToolsApp[] = [
     icon: "M3 8h16l-4-4m4 4-4 4M21 16H5l4-4m-4 4 4 4",
     tags: ["base64", "hex", "url", "utf-8", "encoding", "developer"],
     art: true,
-    compactHeader: 274,
+    compactHeader: false,
     compactHome: 424,
     jsBudget: { entryGzip: 135, totalGzip: 135 },
     status: "stable",
