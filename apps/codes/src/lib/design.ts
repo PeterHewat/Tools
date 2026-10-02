@@ -31,10 +31,11 @@ export type EyeBall = (typeof EYE_BALLS)[number];
 export type GradientKind = (typeof GRADIENTS)[number];
 export type FrameStyle = (typeof FRAMES)[number];
 
+/** A logo: an image (a data: URL), or SVG markup drawn in a box of its width and height. */
 export interface Logo {
-  /** An image URL the page and the export can both draw: a data: URL. */
-  href: string;
-  /** Natural size, for its aspect ratio. */
+  href?: string;
+  markup?: string;
+  /** Natural size, for its aspect ratio (and the markup's box). */
   width: number;
   height: number;
 }
@@ -72,6 +73,25 @@ export const DEFAULT_DESIGN: Design = {
  * comfortably (a ninth of the modules covered), so every logo is drawn this size.
  */
 export const LOGO_SHARE = 0.3;
+
+/**
+ * The code a new tab starts with, and the one on the index card (scripts/codes-art.ts): the
+ * site's own address, in its colours, with a link logo and a caption.
+ */
+export const EXAMPLE = {
+  link: "https://peterhewat.github.io/Tools/",
+  logo: "link",
+  design: {
+    ...DEFAULT_DESIGN,
+    foreground: "#4f86e8",
+    gradient: { to: "#8a5cf0", kind: "radial" },
+    modules: "rounded",
+    eyeFrame: "leaf",
+    eyeBall: "leaf",
+    frame: "below",
+    frameColor: "#5b6fe6",
+  },
+} as const satisfies { link: string; logo: string; design: Design };
 
 export interface Gradient {
   kind: "linear" | "radial";
@@ -111,7 +131,8 @@ export interface Scene {
   /** Fills everything behind an unframed code; none for a fully transparent background. */
   background?: string;
   layers: Layer[];
-  image?: { href: string; x: number; y: number; width: number; height: number };
+  /** The logo, placed: its image or markup, and the markup's own box. */
+  image?: { logo: Logo; x: number; y: number; width: number; height: number };
   caption?: Caption;
 }
 /** How wide a text is at a font size, in the same units: a canvas measures it in the page. */
@@ -455,14 +476,14 @@ export function qrScene(qr: QrCode, design: Design, measure: Measure = estimateT
   ];
   let image: Scene["image"];
   if (design.logo && box) {
-    const { href, width, height } = design.logo;
+    const { width, height } = design.logo;
     const inner = box.to - box.from - 1,
       aspect = width / height || 1;
     const w = inner * Math.min(1, aspect),
       h = inner * Math.min(1, 1 / aspect);
     const u = (value: number) => Math.round(value * unit);
     image = {
-      href,
+      logo: design.logo,
       x: u(ox + (size - w) / 2),
       y: u(oy + (size - h) / 2),
       width: u(w),

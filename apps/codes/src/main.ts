@@ -1,15 +1,15 @@
 import {
-  ICONS,
   bindColorSwatch,
   bindToolHelp,
+  debounce,
   byId,
   contrast,
   downloadBlob,
   downloadText,
-  escapeAttr,
   fieldValues,
   flatten,
   iconSvg,
+  isOn,
   onFileDrop,
   paintSwatch,
   parseHex,
@@ -18,6 +18,8 @@ import {
   registerServiceWorker,
   renderPng,
   restoreFields,
+  bindSwitch,
+  setOn,
   setPressed,
   showMessage,
   splitAlpha,
@@ -42,6 +44,7 @@ import {
 } from "./lib/content.js";
 import {
   DEFAULT_DESIGN,
+  EXAMPLE,
   EYE_BALLS,
   EYE_FRAMES,
   FRAMES,
@@ -56,6 +59,7 @@ import {
   qrScene,
 } from "./lib/design.js";
 import type { Design, Logo, Measure, Scene } from "./lib/design.js";
+import { LOGOS, logoSvg, presetLogo } from "./lib/logo.js";
 import { SIZES, exportSize, sceneSvg } from "./lib/render.js";
 import type { Size, SizeName } from "./lib/render.js";
 
@@ -76,16 +80,6 @@ const TYPES = [
 ] as const;
 type ContentType = (typeof TYPES)[number];
 const TABS = ["colours", "shapes", "logo", "frame"] as const;
-const LOGOS: readonly IconName[] = [
-  "link",
-  "mail",
-  "phone",
-  "message",
-  "chat",
-  "wifi",
-  "contact",
-  "calendar",
-];
 const SYMBOLOGIES: readonly BarcodeKind[] = ["code128", "ean13", "upca"];
 const LEVELS: readonly Level[] = ["L", "M", "Q", "H"];
 const SIZE_NAMES = Object.keys(SIZES) as SizeName[];
@@ -147,27 +141,37 @@ const ids = [
   "size",
   "level",
 ];
-const DESIGN_DEFAULTS: Record<string, string | boolean> = {
-  fg: "#000000",
-  bg: "#ffffff",
-  gradient: false,
-  "gradient-to": "#1f6feb",
-  "gradient-kind": "diagonal",
-  "eye-own": false,
-  "eye-color": "#1f6feb",
-  "module-shape": "square",
-  "eye-frame": "square",
-  "eye-ball": "square",
-  logo: "none",
-  frame: "none",
-  caption: "SCAN ME",
-  "caption-color": "#ffffff",
-  "frame-color": "#000000",
-};
+/** The design fields that show a design, with this logo. */
+function designFields(look: Design, logo: string): Record<string, string | boolean> {
+  return {
+    fg: look.foreground,
+    bg: look.background,
+    gradient: look.gradient !== undefined,
+    "gradient-to": look.gradient?.to ?? "#1f6feb",
+    "gradient-kind": look.gradient?.kind ?? "diagonal",
+    "eye-own": look.eyeColor !== undefined,
+    "eye-color": look.eyeColor ?? "#1f6feb",
+    "module-shape": look.modules,
+    "eye-frame": look.eyeFrame,
+    "eye-ball": look.eyeBall,
+    logo,
+    frame: look.frame,
+    caption: look.caption,
+    "caption-color": look.captionColor,
+    "frame-color": look.frameColor,
+  };
+}
+/** Reset design: the plain code. */
+const DESIGN_DEFAULTS = designFields(DEFAULT_DESIGN, "none");
+function showDesign(fields: Record<string, string | boolean>): void {
+  for (const [id, shown] of Object.entries(fields))
+    if (typeof shown === "boolean") setOn(byId(id), shown);
+    else input(id).value = shown;
+}
 
 const input = (id: string) => byId<HTMLInputElement>(id);
 const value = (id: string) => input(id).value;
-const checked = (id: string) => input(id).checked;
+const checked = (id: string) => isOn(byId(id));
 const oneOf = <T extends string>(options: readonly T[], candidate: string, fallback: T): T =>
   options.includes(candidate as T) ? (candidate as T) : fallback;
 /** A colour field's value, "#rrggbb" or "#rrggbbaa", or the fallback when it holds neither. */
@@ -187,7 +191,11 @@ if (draft.found && !draft.error) {
     typeof saved.height === "number"
   )
     upload = { href: saved.href, width: saved.width, height: saved.height };
-} else input("link-url").value = "https://example.com/";
+} else {
+  // A new tab starts on the example: the same code as on the index page.
+  input("link-url").value = EXAMPLE.link;
+  showDesign(designFields(EXAMPLE.design, EXAMPLE.logo));
+}
 
 const type = (): ContentType => oneOf(TYPES, value("type"), "link");
 
@@ -198,15 +206,6 @@ const measure: Measure = (text, size, font, weight) => {
   measuring.font = `${weight} 100px ${font}`;
   return (measuring.measureText(text).width * size) / 100;
 };
-
-/** A preset logo: the icon in white on a disc of the code's colour. */
-function presetLogo(name: IconName, fill: string): Logo {
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">` +
-    `<circle cx="12" cy="12" r="12" fill="${escapeAttr(fill)}"/>` +
-    `<g transform="translate(5 5) scale(0.5833)" color="#ffffff">${ICONS[name]}</g></svg>`;
-  return { href: "data:image/svg+xml," + encodeURIComponent(svg), width: 24, height: 24 };
-}
 
 function design(): Design {
   const foreground = colour("fg", "#000000");
@@ -403,15 +402,16 @@ const image = (href: string) => {
   element.src = href;
   return element;
 };
+const presetPicture = (name: IconName) => logoSvg(presetLogo(name, colour("fg", "#000000")));
 const drawLogos = choices("logo-options", "logo", () => [
   { value: "none", label: "No logo", picture: () => iconSvg("close") },
   ...LOGOS.map((name) => ({
     value: name,
     label: `Logo: ${name}`,
-    picture: () => image(presetLogo(name, colour("fg", "#000000")).href),
+    picture: () => presetPicture(name),
   })),
   ...(upload
-    ? [{ value: "upload", label: "Logo: your image", picture: () => image(upload!.href) }]
+    ? [{ value: "upload", label: "Logo: your image", picture: () => image(upload!.href!) }]
     : []),
 ]);
 choices(
@@ -456,6 +456,8 @@ function selectTab(tab: (typeof TABS)[number], focus = false): void {
   }
 }
 
+/** The error correction chosen, while a logo holds it at H. */
+let levelChoice = "M";
 function fields(): void {
   const kind = type(),
     barcode = kind === "barcode";
@@ -479,9 +481,13 @@ function fields(): void {
         ? "Digits · 12 to have the check digit added, 13 to check it"
         : "Digits · 11 to have the check digit added, 12 to check it";
   const logo = value("logo") !== "none";
+  // A logo holds error correction at H; the level chosen before comes back without it.
   const level = byId<HTMLSelectElement>("level");
+  if (logo && !level.disabled) {
+    levelChoice = level.value;
+    level.value = "H";
+  } else if (!logo && level.disabled) level.value = levelChoice;
   level.disabled = logo;
-  if (logo) level.value = "H";
   const framed = value("frame") !== "none";
   input("caption").disabled = !framed;
   byId<HTMLButtonElement>("frame-color-swatch").disabled = !framed;
@@ -501,8 +507,9 @@ function fields(): void {
 
 /** The code on show, ready to download. */
 let current: { scene: Scene; size: Size; svg: string; name: string } | undefined;
-let revision = 0,
-  timer: ReturnType<typeof setTimeout> | undefined;
+let revision = 0;
+/** The code is drawn again once edits pause. */
+const redraw = debounce(render, 100);
 
 function exportsEnabled(enabled: boolean): void {
   byId<HTMLButtonElement>("save-svg").disabled = !enabled;
@@ -579,7 +586,10 @@ function render(): void {
 function save(): void {
   // An incompatible draft stays as it was: this tab works without saving over it.
   if (draft.error) return;
-  if (!writeDraft("codes", 1, { ...fieldValues(ids), ...(upload ? { upload } : {}) }))
+  // The level kept is the one chosen, not the H a logo holds it at.
+  const level = byId<HTMLSelectElement>("level");
+  const kept = { ...fieldValues(ids), level: level.disabled ? levelChoice : level.value };
+  if (!writeDraft("codes", 1, { ...kept, ...(upload ? { upload } : {}) }))
     showMessage(
       byId("status"),
       "Draft could not be remembered (storage unavailable or over 2 MB).",
@@ -593,19 +603,9 @@ function save(): void {
  */
 function update(): void {
   revision++;
-  clearTimeout(timer);
   fields();
   save();
-  timer = setTimeout(() => {
-    timer = undefined;
-    render();
-  }, 100);
-}
-function flush(): void {
-  if (timer === undefined) return;
-  clearTimeout(timer);
-  timer = undefined;
-  render();
+  redraw();
 }
 
 /**
@@ -644,14 +644,15 @@ function morph(shown: Element, next: Element): void {
 
 for (const id of ids) {
   const element = byId(id);
-  if (!(element instanceof HTMLInputElement && element.type === "hidden"))
+  if (element.getAttribute("role") === "switch") bindSwitch(element, update);
+  else if (!(element instanceof HTMLInputElement && element.type === "hidden"))
     element.addEventListener("input", update);
 }
 // Preset logos are drawn in the code's colour: each picture follows it in place, without a blink.
 function tintLogos(): void {
-  for (const picture of byId("logo-options").querySelectorAll<HTMLImageElement>("img")) {
-    const name = picture.closest<HTMLElement>("[data-value]")?.dataset.value as IconName;
-    if (LOGOS.includes(name)) picture.src = presetLogo(name, colour("fg", "#000000")).href;
+  for (const button of byId("logo-options").querySelectorAll<HTMLElement>("[data-value]")) {
+    const name = button.dataset.value as IconName;
+    if (LOGOS.includes(name)) button.innerHTML = presetPicture(name);
   }
 }
 
@@ -741,25 +742,23 @@ onFileDrop(document.querySelector("main")!, (files) => {
 
 byId("clear").addEventListener("click", () => {
   for (const field of textFields(type())) field.value = "";
-  if (type() === "wifi") input("hidden-network").checked = false;
+  if (type() === "wifi") setOn(byId("hidden-network"), false);
   update();
   textFields(type())[0]?.focus();
 });
 byId("reset-design").addEventListener("click", () => {
-  for (const [id, fallback] of Object.entries(DESIGN_DEFAULTS))
-    if (typeof fallback === "boolean") input(id).checked = fallback;
-    else input(id).value = fallback;
+  showDesign(DESIGN_DEFAULTS);
   drawLogos();
   paintSwatches();
   update();
 });
 
 byId("save-svg").addEventListener("click", () => {
-  flush();
+  redraw.flush();
   if (current) downloadText(current.name + ".svg", current.svg, "image/svg+xml");
 });
 byId("save-png").addEventListener("click", async () => {
-  flush();
+  redraw.flush();
   if (!current) return;
   const version = revision,
     { svg, size, name } = current;

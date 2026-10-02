@@ -58,7 +58,16 @@
                 <option>SHA-512</option>
                 <option value="SHA-1">SHA-1 (legacy)</option>
               </select></label
-            ><label><input type="checkbox" id="hmac" /> HMAC</label>
+            ><label class="digests-switch"
+              ><button
+                type="button"
+                class="ui-switch"
+                id="hmac"
+                role="switch"
+                aria-checked="false"
+              ></button>
+              HMAC</label
+            >
           </div>
           <p id="legacy" hidden>SHA-1 is legacy; avoid it for security.</p>
           <div id="key-fields" hidden>

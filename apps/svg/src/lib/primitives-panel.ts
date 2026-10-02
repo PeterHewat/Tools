@@ -24,7 +24,7 @@ import {
   towardFront,
   setRowChecked,
 } from "./accordion.js";
-import { byId } from "@tools/ui";
+import { byId, setOn } from "@tools/ui";
 
 const primitiveListEl = byId("primitive-list");
 
@@ -503,10 +503,8 @@ function updatePrimitiveListValues(state: EditorState): void {
     }
     setField(li, "markerStart", el.markerStart);
     setField(li, "markerEnd", el.markerEnd);
-    const fillCheckbox = li.querySelector<HTMLInputElement>('[data-field="fillEnabled"]');
-    if (fillCheckbox && fillCheckbox !== document.activeElement) {
-      fillCheckbox.checked = !!el.fillEnabled;
-    }
+    const fillSwitch = li.querySelector<HTMLElement>('[data-field="fillEnabled"]');
+    if (fillSwitch) setOn(fillSwitch, !!el.fillEnabled);
   }
   // An open row grows and shrinks with what it shows - a gradient's stops, say - and the lines
   // below it have to move with it.

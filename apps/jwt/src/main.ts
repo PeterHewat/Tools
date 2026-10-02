@@ -4,6 +4,7 @@ import {
   bindToolHelp,
   byId,
   copyText,
+  debounce,
   readDraft,
   registerServiceWorker,
   showMessage,
@@ -67,7 +68,6 @@ const generated = { secret: false, pair: false };
 /** The encoding the secret is written in, so changing it can rewrite the secret. */
 let secretEncoding: KeyFormat = "text";
 let revision = 0;
-let timer: ReturnType<typeof setTimeout> | undefined;
 /**
  * The header or payload changed and the token has not been rebuilt from them yet. Kept until a
  * rebuild finishes, so a later edit of a key does not drop it, and saved with the draft, so a
@@ -360,15 +360,16 @@ function fromJson(): void {
 }
 
 /** After the edits stop: signs again when asked, then verifies, saves and reports. */
+/** Signs, verifies and reports once edits pause, for the latest of them. */
+const later = debounce(() => void run(revision), 120);
 function settle(resign: boolean): void {
-  const version = ++revision;
+  ++revision;
   if (resign) pendingResign = true;
-  clearTimeout(timer);
   checkSecret();
   keyError = "";
   note("key-status", "");
   save();
-  timer = setTimeout(() => void run(version), 120);
+  later();
 }
 async function run(version: number): Promise<void> {
   const resign = pendingResign;

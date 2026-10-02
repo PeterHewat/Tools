@@ -13,9 +13,7 @@ export interface Prefs {
 }
 
 const PREFS_KEY = "tools.json.prefs";
-const DRAFT_KEY = "tools.json.draft";
 const EXACT_KEY = "tools.json.exact";
-const MAX_SAVED = 2_000_000;
 const VIEWS: readonly ViewMode[] = ["json", "yaml", "csv", "ts", "schema"];
 
 /** Each released setting is read independently, retaining older and partial preferences. */
@@ -32,9 +30,6 @@ export function parsePrefs(value: unknown): Prefs {
 
 export const readPrefs = () => parsePrefs(readStored(PREFS_KEY));
 export const writePrefs = (prefs: Prefs) => writeStored(PREFS_KEY, prefs);
-export const readDraft = () => readStored(DRAFT_KEY, "session");
-export const writeDraft = (text: string, dropped: boolean) =>
-  writeStored(DRAFT_KEY, text.length > MAX_SAVED || dropped ? false : text, "session");
 export function readExactChoices(): string[] {
   const raw = readStored(EXACT_KEY, "session");
   return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string") : [];

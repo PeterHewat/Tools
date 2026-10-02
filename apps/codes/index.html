@@ -167,7 +167,14 @@
               /></label>
             </div>
             <label class="codes-check"
-              ><input id="hidden-network" type="checkbox" /> Hidden network</label
+              ><button
+                type="button"
+                class="ui-switch"
+                id="hidden-network"
+                role="switch"
+                aria-checked="false"
+              ></button>
+              Hidden network</label
             >
           </div>
           <div data-fields="vcard">
@@ -315,7 +322,16 @@
                 >
               </div>
               <div class="codes-row">
-                <label class="codes-check"><input type="checkbox" id="gradient" /> Gradient</label>
+                <label class="codes-check"
+                  ><button
+                    type="button"
+                    class="ui-switch"
+                    id="gradient"
+                    role="switch"
+                    aria-checked="false"
+                  ></button>
+                  Gradient</label
+                >
                 <span class="codes-extra" id="gradient-fields">
                   <label class="codes-colour"
                     ><input type="hidden" id="gradient-to" value="#1f6feb" /><button
@@ -335,7 +351,14 @@
               </div>
               <div class="codes-row" data-qr-only>
                 <label class="codes-check"
-                  ><input type="checkbox" id="eye-own" /> Corner squares in their own colour</label
+                  ><button
+                    type="button"
+                    class="ui-switch"
+                    id="eye-own"
+                    role="switch"
+                    aria-checked="false"
+                  ></button>
+                  Corner squares in their own colour</label
                 >
                 <span class="codes-extra" id="eye-fields">
                   <input type="hidden" id="eye-color" value="#1f6feb" /><button

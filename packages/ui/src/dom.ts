@@ -15,6 +15,25 @@ export function setPressed(button: HTMLElement, on: boolean): void {
   button.setAttribute("aria-pressed", String(on));
 }
 
+/**
+ * A setting that is on or off is a `.ui-switch` button with role="switch", its state in
+ * aria-checked (styles in controls.css). Its label is a <label> around it or for it.
+ */
+export const isOn = (button: HTMLElement): boolean =>
+  button.getAttribute("aria-checked") === "true";
+
+export function setOn(button: HTMLElement, on: boolean): void {
+  button.setAttribute("aria-checked", String(on));
+}
+
+/** A switch that turns over when pressed, then says so. */
+export function bindSwitch(button: HTMLElement, onChange: (on: boolean) => void): void {
+  button.addEventListener("click", () => {
+    setOn(button, !isOn(button));
+    onChange(isOn(button));
+  });
+}
+
 /** File sizes in bytes, kilobytes and megabytes, rounded consistently at unit boundaries. */
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

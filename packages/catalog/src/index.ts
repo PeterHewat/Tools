@@ -100,7 +100,7 @@ export const APPS: readonly ToolsApp[] = [
     tags: ["qr", "barcode", "wifi", "vcard", "logo", "svg", "png", "print"],
     art: true,
     compactHeader: 268,
-    jsBudget: { entryGzip: 18, totalGzip: 18 },
+    jsBudget: { entryGzip: 20, totalGzip: 20 },
     status: "stable",
     listed: true,
   },

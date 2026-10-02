@@ -15,7 +15,7 @@ import {
   keepsRotation,
   parseDash,
 } from "./model.js";
-import { closeColorPicker, isColorPickerOpenFor, openColorPicker } from "@tools/ui";
+import { closeColorPicker, isColorPickerOpenFor, isOn, openColorPicker, setOn } from "@tools/ui";
 import { escapeAttr } from "./utils.js";
 import { membersOf } from "./groups.js";
 import type { BBox, SceneElement } from "./types.js";
@@ -101,7 +101,7 @@ export function primitiveBodyHtml(el: SceneElement): string {
   );
   if (el.type !== "line") {
     rows.push(
-      `<div class="field-row"><label class="fill-toggle"><span>Fill</span><input type="checkbox" data-field="fillEnabled"${el.fillEnabled ? " checked" : ""} /></label>${swatchHtml("fill", el.fill, el.fillOpacity, "Fill color and opacity")}</div>`,
+      `<div class="field-row"><label class="fill-toggle"><span>Fill</span><button type="button" class="ui-switch" role="switch" data-field="fillEnabled" aria-checked="${!!el.fillEnabled}"></button></label>${swatchHtml("fill", el.fill, el.fillOpacity, "Fill color and opacity")}</div>`,
       `<div class="field-row"><span>Fill type</span>${selectHtml("fillType", el.fillType, [
         ["solid", "Solid"],
         ["linear", "Linear Gradient"],
@@ -125,7 +125,7 @@ export function primitiveBodyHtml(el: SceneElement): string {
   }
   if (canToggleClosed(el)) {
     rows.push(
-      `<div class="field-row"><label class="fill-toggle"><span>Closed</span><input type="checkbox" data-field="closed"${isClosedShape(el) ? " checked" : ""} /></label></div>`
+      `<div class="field-row"><label class="fill-toggle"><span>Closed</span><button type="button" class="ui-switch" role="switch" data-field="closed" aria-checked="${isClosedShape(el)}"></button></label></div>`
     );
   }
   rows.push(
@@ -363,6 +363,20 @@ export function bindPrimitiveFields(primitiveListEl: HTMLElement, refresh: () =>
     });
   });
 
+  /* The switches: Fill, and Closed for a path. */
+  primitiveListEl.addEventListener("click", (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLElement>('[role="switch"][data-field]');
+    const id = button?.closest<HTMLElement>("[data-element-id]")?.dataset.elementId;
+    if (!button || !id) return;
+    const on = !isOn(button);
+    setOn(button, on);
+    if (button.dataset.field === "fillEnabled")
+      applyToElement(id, (el) => {
+        el.fillEnabled = on;
+      });
+    else if (button.dataset.field === "closed") setElementClosed(id, on);
+  });
+
   primitiveListEl.addEventListener("change", (e) => {
     const input = e.target as HTMLInputElement;
     const field = input.dataset?.field;
@@ -377,13 +391,7 @@ export function bindPrimitiveFields(primitiveListEl: HTMLElement, refresh: () =>
         : input.value.trim();
       if (current && (current as unknown as Record<string, unknown>)[field] === v) return;
     }
-    if (field === "fillEnabled") {
-      applyToElement(id, (el) => {
-        el.fillEnabled = input.checked;
-      });
-    } else if (field === "closed") {
-      setElementClosed(id, input.checked);
-    } else if (field === "dashStyle") {
+    if (field === "dashStyle") {
       const style = input.value as DashStyle;
       if (style === "custom") {
         // Nothing changes yet: the pattern opens for typing, starting from what the style drew.

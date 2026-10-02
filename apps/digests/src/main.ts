@@ -1,11 +1,14 @@
 import { decodeBytes, toBase64, toHex, utf8 } from "@tools/bytes";
 import type { ByteFormat, HashAlgorithm } from "@tools/bytes";
 import {
+  bindSwitch,
   bindToolHelp,
   byId,
+  debounce,
   copyText,
   fieldValues,
   formatBytes,
+  isOn,
   onFileDrop,
   readDraft,
   registerServiceWorker,
@@ -22,18 +25,17 @@ if (!draft.error) restoreFields(draft.value, ids);
 const text = byId<HTMLTextAreaElement>("text");
 const source = byId<HTMLSelectElement>("source");
 const algorithm = byId<HTMLSelectElement>("algorithm");
-const keyed = byId<HTMLInputElement>("hmac");
+const keyed = byId("hmac");
 const key = byId<HTMLInputElement>("key");
 const keyFormat = byId<HTMLSelectElement>("key-format");
 const fileInput = byId<HTMLInputElement>("file");
 let file: File | undefined;
-let revision = 0,
-  timer: ReturnType<typeof setTimeout> | undefined;
+let revision = 0;
 let fileName = typeof draft.value.fileName === "string" ? draft.value.fileName : "";
 function fields(): void {
   byId("text-field").hidden = source.value !== "text";
   byId("file-field").hidden = source.value !== "file";
-  byId("key-fields").hidden = !keyed.checked;
+  byId("key-fields").hidden = !isOn(keyed);
   byId("legacy").hidden = algorithm.value !== "SHA-1";
   byId("file-name").textContent = file
     ? file.name + " · " + formatBytes(file.size)
@@ -79,9 +81,7 @@ async function fileDigest(
 async function compute(version: number): Promise<void> {
   try {
     const hash = algorithm.value as HashAlgorithm;
-    const hmacKey = keyed.checked
-      ? decodeBytes(key.value, keyFormat.value as ByteFormat)
-      : undefined;
+    const hmacKey = isOn(keyed) ? decodeBytes(key.value, keyFormat.value as ByteFormat) : undefined;
     if (source.value === "file" && !file)
       throw new Error(
         fileName ? "Reselect the file to recompute its digest." : "Choose or drop a file."
@@ -97,7 +97,7 @@ async function compute(version: number): Promise<void> {
     byId("hex").textContent = toHex(result);
     byId("base64").textContent = toBase64(result);
     for (const id of ["copy-hex", "copy-base64"]) byId<HTMLButtonElement>(id).disabled = false;
-    showMessage(byId("status"), (keyed.checked ? "HMAC · " : "") + hash + " · " + description);
+    showMessage(byId("status"), (isOn(keyed) ? "HMAC · " : "") + hash + " · " + description);
     const expected = byId<HTMLInputElement>("expected").value.trim();
     showMessage(
       byId("compare-status"),
@@ -115,20 +115,23 @@ async function compute(version: number): Promise<void> {
     }
   }
 }
+/** Computed again once edits pause; a result from before a later edit is not shown. */
+const recompute = debounce(() => void compute(revision), 100);
 function update(): void {
-  const version = ++revision;
-  clearTimeout(timer);
+  revision++;
   fields();
   // Leave the fixed result region in place, but never allow copying a pending old result.
   for (const id of ["copy-hex", "copy-base64"]) byId<HTMLButtonElement>(id).disabled = true;
   showMessage(byId("status"), "Computing…");
   showMessage(byId("compare-status"), "");
   save();
-  timer = setTimeout(() => {
-    void compute(version);
-  }, 100);
+  recompute();
 }
-for (const id of ids) byId(id).addEventListener("input", update);
+for (const id of ids) {
+  const element = byId(id);
+  if (element.getAttribute("role") === "switch") bindSwitch(element, update);
+  else element.addEventListener("input", update);
+}
 fileInput.addEventListener("change", () => {
   file = fileInput.files?.[0];
   fileName = file?.name ?? "";

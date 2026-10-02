@@ -28,11 +28,14 @@ test("versioned session drafts preserve empty fields and fail closed on unknown 
   expect(readDraft("codec", 1).error).toContain("Clear");
   expect(readDraft("codec", 1).value).toEqual({});
 });
-test("oversized drafts remove stale state and refused storage does not throw", () => {
-  const values = storage();
+test("oversized drafts leave a dropped mark, and refused storage does not throw", () => {
+  storage();
   writeDraft("jwt", 1, { token: "old" });
   expect(writeDraft("jwt", 1, { token: "x".repeat(2 * 1024 * 1024) })).toBe(false);
-  expect(values.has("tools.jwt.draft")).toBe(false);
+  expect(readDraft("jwt", 1)).toEqual({ found: true, value: {}, dropped: true });
+  expect(readDraft("jwt", 2).error).toContain("Clear");
+  expect(writeDraft("jwt", 1, { token: "new" })).toBe(true);
+  expect(readDraft("jwt", 1)).toEqual({ found: true, value: { token: "new" } });
   expect(writeDraft("jwt", 1, { token: "🌍".repeat(600_000) })).toBe(false);
   Object.defineProperty(globalThis, "sessionStorage", {
     configurable: true,

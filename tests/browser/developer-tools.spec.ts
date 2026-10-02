@@ -354,7 +354,8 @@ test("Digests computes live text/file/HMAC and compares exact outputs", async ({
   await expect(page.locator("#hex")).toHaveText(createHash("sha512").update("abc").digest("hex"));
   expect(await page.locator("#base64").boundingBox()).toEqual(geometry);
   await page.locator("#algorithm").selectOption("SHA-256");
-  await page.locator("#hmac").check();
+  await page.locator("#hmac").click();
+  await expect(page.locator("#hmac")).toHaveAttribute("aria-checked", "true");
   await page.locator("#key").fill("test key");
   await expect(page.locator("#hex")).toHaveText(
     createHmac("sha256", "test key").update("abc").digest("hex")
@@ -364,7 +365,8 @@ test("Digests computes live text/file/HMAC and compares exact outputs", async ({
   await expect(page.locator("#status")).toContainText("non-empty");
   await expect(page.locator("#copy-hex")).toBeDisabled();
   expect(await page.locator("#base64").boundingBox()).toEqual(geometry);
-  await page.locator("#hmac").uncheck();
+  await page.locator("#hmac").click();
+  await expect(page.locator("#hmac")).toHaveAttribute("aria-checked", "false");
   await page.locator("#source").selectOption("file");
   const bytes = Buffer.from([0, 255, 13, 10]);
   await page
@@ -445,7 +447,8 @@ test("Codes makes each kind of content, keeps the preview in place and exports s
   page,
 }) => {
   await page.goto("/Tools/codes/");
-  await expect(page.locator("#preview svg")).toBeVisible();
+  await page.locator("#reset-design").click();
+  await expect(page.locator("#preview > svg")).toBeVisible();
   const before = await page.locator("#preview").boundingBox();
   await page.locator("#link-url").fill("example.com/🌍");
   await expect(page.locator("#encoded")).toHaveText("https://example.com/🌍");
@@ -518,8 +521,43 @@ test("Codes makes each kind of content, keeps the preview in place and exports s
   }
 });
 
+test("Codes starts on the example, the same code as on the index page", async ({ page }) => {
+  await page.goto("/Tools/codes/");
+  await expect(page.locator("#link-url")).toHaveValue("https://peterhewat.github.io/Tools/");
+  await expect(page.locator("#status")).toContainText("H correction");
+  await expect(page.locator("#gradient")).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("#gradient-kind")).toHaveValue("radial");
+  const shown = await page
+    .locator("#preview > svg")
+    .evaluate((svg) => [...svg.querySelectorAll("path")].map((p) => p.getAttribute("d")));
+  const art = await page.evaluate(async () => {
+    const text = await (await fetch("/Tools/codes/art.svg")).text();
+    const svg = new DOMParser().parseFromString(text, "image/svg+xml").querySelector("svg svg")!;
+    return {
+      paths: [...svg.querySelectorAll("path")].map((p) => p.getAttribute("d")),
+      gradient: [...svg.querySelector("radialGradient")!.querySelectorAll("*")]
+        .map((stop) => stop.getAttribute("stop-color"))
+        .concat(
+          ["cx", "cy", "r"].map((name) => svg.querySelector("radialGradient")!.getAttribute(name))
+        ),
+    };
+  });
+  expect(shown).toEqual(art.paths);
+  const gradient = await page
+    .locator("#preview > svg radialGradient")
+    .evaluate((g) =>
+      [...g.querySelectorAll("*")]
+        .map((stop) => stop.getAttribute("stop-color"))
+        .concat(["cx", "cy", "r"].map((name) => g.getAttribute(name)))
+    );
+  expect(gradient).toEqual(art.gradient);
+  expect(scanQr(await downloadedPixels(page))).toBe("https://peterhewat.github.io/Tools/");
+});
+
 test("Codes redraws the code in place as it changes, without blinking", async ({ page }) => {
   await page.goto("/Tools/codes/");
+  await page.locator("#reset-design").click();
+  await expect(page.locator("#status")).toContainText("M correction");
   await page.locator("#tab-logo").click();
   await page.locator('#logo-options [data-value="link"]').click();
   await expect(page.locator("#status")).toContainText("H correction");
@@ -532,20 +570,23 @@ test("Codes redraws the code in place as it changes, without blinking", async ({
       for (const change of changes)
         if (change.type === "attributes" || change.removedNodes.length) marked.blinks++;
     }).observe(preview, { attributes: true, attributeFilter: ["class"], childList: true });
-    Object.assign(preview.querySelector("image")!, { kept: true });
+    Object.assign(preview.querySelector("svg svg")!, { kept: true });
   });
   await page.locator("#tab-shapes").click();
   await page.locator('#module-options [data-value="dots"]').click();
   await page.locator('#eye-frame-options [data-value="circle"]').click();
   await page.locator("#tab-colours").click();
-  await page.locator("#gradient").check();
+  await page.locator("#gradient").click();
+  await expect(page.locator("#gradient")).toHaveAttribute("aria-checked", "true");
   await page.locator("#link-url").fill("https://example.org/");
   await expect(page.locator("#encoded")).toHaveText("https://example.org/");
-  await expect(page.locator("#preview svg path").nth(1)).toHaveAttribute("fill", "url(#g0)");
+  await pickColour(page, "fg", "#a0306e");
+  await expect(page.locator("#preview svg svg circle")).toHaveAttribute("fill", "#a0306e");
+  await expect(page.locator("#preview > svg > path").nth(1)).toHaveAttribute("fill", "url(#g0)");
   expect(
     await page.evaluate(() => ({
       blinks: (window as unknown as { blinks: number }).blinks,
-      kept: (document.querySelector("#preview image") as unknown as { kept?: boolean }).kept,
+      kept: (document.querySelector("#preview svg svg") as unknown as { kept?: boolean }).kept,
     }))
   ).toEqual({ blinks: 0, kept: true });
   await expect(page.locator("#save-png")).toBeEnabled();
@@ -554,6 +595,7 @@ test("Codes redraws the code in place as it changes, without blinking", async ({
 test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/Tools/codes/");
+  await page.locator("#reset-design").click();
   await page.locator("#link-url").fill("https://example.com/");
   // Small enough to decode quickly, large enough for several pixels a module.
   await page.locator("#size").selectOption("xs");
@@ -584,8 +626,10 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   const settled = await height();
   expect(settled).toBeLessThan(shapes);
   await pickColour(page, "fg", "#3a1c71");
-  await page.locator("#gradient").check();
-  await page.locator("#eye-own").check();
+  await page.locator("#gradient").click();
+  await expect(page.locator("#gradient")).toHaveAttribute("aria-checked", "true");
+  await page.locator("#eye-own").click();
+  await expect(page.locator("#eye-own")).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("#gradient-to-swatch")).toBeVisible();
   expect(await height()).toBe(settled);
   await pickColour(page, "eye-color", "#b3122e");
@@ -636,11 +680,15 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   );
   // Poor colours are flagged, and reset brings back the plain code.
   await page.locator("#tab-colours").click();
-  await page.locator("#gradient").uncheck();
+  await page.locator("#gradient").click();
+  await expect(page.locator("#gradient")).toHaveAttribute("aria-checked", "false");
   await pickColour(page, "fg", "#bbbbbb");
   await expect(page.locator("#warnings")).toContainText("Low contrast");
   await page.locator("#reset-design").click();
   await expect(page.locator("#warnings")).toBeEmpty();
+  // Without the logo, error correction is the level chosen before it, not H.
+  await expect(page.locator("#level")).toBeEnabled();
+  await expect(page.locator("#level")).toHaveValue("M");
   await expect(page.locator("#status")).toContainText(/ (\d+) × \1 px/);
   // A background at 0% opacity is transparent: no background drawn, clear pixels in the PNG.
   await pickColour(page, "bg", "#ffffff", 0);
@@ -796,7 +844,7 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
     await page.setViewportSize({ width: 1280, height: 900 });
     if (slug === "codes") {
       await page.locator("#link-url").fill("https://example.com/");
-      await expect(page.locator("#preview svg")).toBeVisible();
+      await expect(page.locator("#preview > svg")).toBeVisible();
     }
     if (slug === "digests") {
       await page.locator("#text").fill("Hello, world!");

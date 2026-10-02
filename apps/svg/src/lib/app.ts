@@ -393,7 +393,9 @@ async function dropFiles(files: readonly File[]): Promise<void> {
 
 window.addEventListener("keydown", (e) => {
   const t = e.target as HTMLElement;
-  const isToggle = t.matches?.("input[type=checkbox], input[type=radio], input[type=range]");
+  const isToggle = t.matches?.(
+    "input[type=checkbox], input[type=radio], input[type=range], [role=switch]"
+  );
   // Only real text entry swallows shortcuts (the SVG source editor is contenteditable); a
   // focused checkbox or button must not.
   if (t.matches?.("textarea, select") || t.isContentEditable || (t.matches?.("input") && !isToggle))

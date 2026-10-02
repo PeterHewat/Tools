@@ -56,9 +56,11 @@ export function sceneSvg(scene: Scene, size: Size): string {
           "/>"
       );
   if (scene.image) {
-    const { href, x, y, width, height } = scene.image;
+    const { logo, x, y, width, height } = scene.image;
     body.push(
-      `<image xlink:href="${escapeAttr(href)}" x="${x}" y="${y}" width="${width}" height="${height}"/>`
+      logo.markup !== undefined
+        ? `<svg x="${x}" y="${y}" width="${width}" height="${height}" viewBox="0 0 ${logo.width} ${logo.height}">${logo.markup}</svg>`
+        : `<image xlink:href="${escapeAttr(logo.href ?? "")}" x="${x}" y="${y}" width="${width}" height="${height}"/>`
     );
   }
   if (scene.caption) {
@@ -69,7 +71,7 @@ export function sceneSvg(scene: Scene, size: Size): string {
   }
   return (
     `<svg xmlns="http://www.w3.org/2000/svg"` +
-    (scene.image ? ` xmlns:xlink="http://www.w3.org/1999/xlink"` : "") +
+    (scene.image?.logo.href !== undefined ? ` xmlns:xlink="http://www.w3.org/1999/xlink"` : "") +
     ` width="${size.width}" height="${size.height}" viewBox="0 0 ${scene.width} ${scene.height}">` +
     (defs.length ? `<defs>${defs.join("")}</defs>` : "") +
     body.join("") +
