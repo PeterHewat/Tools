@@ -9,12 +9,10 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@tools/catalog": "workspace:*",
-    "@tools/ui": "workspace:*",
-    "typescript": "~6.0.3",
-    "vite": "^8.3.1",
     "@tools/bytes": "workspace:*",
+    "@tools/catalog": "workspace:*",
     "@tools/editor": "workspace:*",
-    "@tools/json-core": "workspace:*"
+    "@tools/json-core": "workspace:*",
+    "@tools/ui": "workspace:*"
   }
 }

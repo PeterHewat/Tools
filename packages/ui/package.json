@@ -18,26 +18,11 @@
     "./tool.css": "./tool.css",
     "./color-picker.css": "./color-picker.css"
   },
-  "files": [
-    "src",
-    "sw.js",
-    "base.css",
-    "header.css",
-    "panels.css",
-    "tokens.css",
-    "controls.css",
-    "tool.css",
-    "color-picker.css"
-  ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
     "@tools/catalog": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "~6.0.3",
-    "vite": "^8.3.1"
   }
 }

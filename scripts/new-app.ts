@@ -58,9 +58,7 @@ const files: Record<string, string> = {
   },
   "devDependencies": {
     "@tools/catalog": "workspace:*",
-    "@tools/ui": "workspace:*",
-    "typescript": "~6.0.3",
-    "vite": "^8.3.1"
+    "@tools/ui": "workspace:*"
   }
 }
 `,

@@ -7,6 +7,7 @@
       "devDependencies": {
         "@axe-core/playwright": "4.13.0",
         "@eslint/js": "^10.0.1",
+        "@happy-dom/global-registrator": "^20.14.5",
         "@playwright/test": "1.63.0",
         "@tools/ui": "workspace:*",
         "@types/bun": "^1.4.2",
@@ -31,8 +32,6 @@
         "@tools/catalog": "workspace:*",
         "@tools/editor": "workspace:*",
         "@tools/ui": "workspace:*",
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
     "apps/codes": {
@@ -41,9 +40,6 @@
       "devDependencies": {
         "@tools/catalog": "workspace:*",
         "@tools/ui": "workspace:*",
-        "jsqr": "1.4.0",
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
     "apps/digests": {
@@ -53,8 +49,6 @@
         "@tools/bytes": "workspace:*",
         "@tools/catalog": "workspace:*",
         "@tools/ui": "workspace:*",
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
     "apps/home": {
@@ -63,21 +57,15 @@
       "devDependencies": {
         "@tools/catalog": "workspace:*",
         "@tools/ui": "workspace:*",
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
     "apps/json": {
       "name": "@tools/json",
       "version": "0.0.0",
       "devDependencies": {
-        "@happy-dom/global-registrator": "^20.14.5",
-        "@tools/catalog": "workspace:*",
         "@tools/editor": "workspace:*",
         "@tools/json-core": "workspace:*",
         "@tools/ui": "workspace:*",
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
     "apps/jwt": {
@@ -89,34 +77,23 @@
         "@tools/editor": "workspace:*",
         "@tools/json-core": "workspace:*",
         "@tools/ui": "workspace:*",
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
     "apps/svg": {
       "name": "@tools/svg",
       "version": "0.0.0",
       "devDependencies": {
-        "@happy-dom/global-registrator": "^20.14.5",
         "@tools/editor": "workspace:*",
         "@tools/ui": "workspace:*",
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
     "packages/bytes": {
       "name": "@tools/bytes",
       "version": "0.0.0",
-      "devDependencies": {
-        "typescript": "~6.0.3",
-      },
     },
     "packages/catalog": {
       "name": "@tools/catalog",
       "version": "0.0.0",
-      "devDependencies": {
-        "typescript": "~6.0.3",
-      },
     },
     "packages/editor": {
       "name": "@tools/editor",
@@ -134,17 +111,10 @@
         "@lezer/highlight": "1.2.4",
         "@tools/ui": "workspace:*",
       },
-      "devDependencies": {
-        "@happy-dom/global-registrator": "^20.14.5",
-        "typescript": "~6.0.3",
-      },
     },
     "packages/json-core": {
       "name": "@tools/json-core",
       "version": "0.0.0",
-      "devDependencies": {
-        "typescript": "~6.0.3",
-      },
     },
     "packages/tsconfig": {
       "name": "@tools/tsconfig",
@@ -155,10 +125,6 @@
       "version": "0.0.0",
       "dependencies": {
         "@tools/catalog": "workspace:*",
-      },
-      "devDependencies": {
-        "typescript": "~6.0.3",
-        "vite": "^8.3.1",
       },
     },
   },
