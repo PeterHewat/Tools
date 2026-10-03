@@ -68,7 +68,7 @@ test("exports have explicit dimensions, readable modules and XML-safe labels", (
   expect(svg).toContain("&lt;script&gt;");
   expect(svg).not.toContain("<script>");
   const long = barcodeScene(encodeBarcode("x".repeat(80), "code128"), DEFAULT_DESIGN);
-  expect(exportSize(long, "xs")).toMatchObject({ perModule: 1, width: long.width });
+  expect(exportSize(long, "s")).toMatchObject({ perModule: 1, width: long.width });
 });
 test("Code 128 B and C symbol/checksum vectors", () => {
   expect(encodeBarcode("AB", "code128").symbols).toEqual([104, 33, 34, 102, 106]);

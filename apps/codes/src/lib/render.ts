@@ -6,7 +6,7 @@ import { escapeAttr, escapeXml } from "@tools/ui";
 import type { Paint, Scene } from "./design.js";
 
 /** The export sizes, by the width each aims for in pixels. */
-export const SIZES = { xs: 256, s: 512, m: 1024, l: 2048, xl: 4096 } as const;
+export const SIZES = { s: 512, m: 1024, l: 2048 } as const;
 export type SizeName = keyof typeof SIZES;
 
 export interface Size {

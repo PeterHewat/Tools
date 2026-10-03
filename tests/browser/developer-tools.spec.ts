@@ -598,7 +598,7 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
   await page.locator("#reset-design").click();
   await page.locator("#link-url").fill("https://example.com/");
   // Small enough to decode quickly, large enough for several pixels a module.
-  await page.locator("#size").selectOption("xs");
+  await page.locator("#size").selectOption("s");
   await page.locator("#tab-shapes").click();
   const designs: [string, string, string][] = [
     ["rounded", "rounded", "rounded"],

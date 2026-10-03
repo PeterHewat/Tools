@@ -424,7 +424,7 @@ choices(
       picture: () => {
         const captionColor = frame === "outline" ? "#000000" : "#ffffff";
         const scene = qrScene(SAMPLE_QR, { ...DEFAULT_DESIGN, frame, captionColor }, measure);
-        return sceneSvg(scene, exportSize(scene, "xs"));
+        return sceneSvg(scene, exportSize(scene, "s"));
       },
     })),
   (frame) => {
