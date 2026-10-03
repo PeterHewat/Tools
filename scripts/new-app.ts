@@ -58,9 +58,7 @@ const files: Record<string, string> = {
   },
   "devDependencies": {
     "@tools/catalog": "workspace:*",
-    "@tools/ui": "workspace:*",
-    "typescript": "~6.0.3",
-    "vite": "^8.3.1"
+    "@tools/ui": "workspace:*"
   }
 }
 `,
@@ -89,17 +87,28 @@ export default defineConfig(toolsApp("${slug}"));
   <body>
     <header class="ui-header" data-tools-header>
       <div class="ui-header-end">
-        <button type="button" class="ui-theme-toggle" id="theme-toggle"></button>
+        <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button>
+        <button type="button" class="ui-btn ui-icon-btn" id="help-toggle" aria-label="Help" aria-controls="help">
+          <svg data-ui-icon="help"></svg>
+        </button>
       </div>
     </header>
     <main class="ui-main" id="app"></main>
+    <aside class="ui-dock" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head"><h2 class="ui-dock-title">Help</h2></div>
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <h3>Using this tool</h3>
+        <p>Describe this tool's controls here.</p>
+      </div>
+    </aside>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
 `,
-  "src/main.ts": `import { bindThemeToggle, byId, registerServiceWorker } from "@tools/ui";
+  "src/main.ts": `import { bindToolHelp, byId, registerServiceWorker } from "@tools/ui";
 
-bindThemeToggle(byId("theme-toggle"));
+bindToolHelp("${slug}");
 byId("app").textContent = "Nothing here yet.";
 
 registerServiceWorker();

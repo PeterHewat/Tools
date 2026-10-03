@@ -26,6 +26,9 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run format
+      - run: bun run links
+      # Known vulnerabilities in the dependencies, high or critical.
+      - run: bun audit --audit-level=high
       - run: bun run test
       - run: bun run build
       - run: bunx playwright install --with-deps chromium firefox

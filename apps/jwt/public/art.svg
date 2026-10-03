@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <style>
+    text { white-space: pre }
+    .h { fill: #e27133 } .p { fill: #9472f7 } .s { fill: #8fc88a } .ok { fill: #5fbf7f } .okl { stroke: #5fbf7f }
+    .d, .pun { fill: #8a90a0 } .key { fill: #4f86e8 } .str { fill: #3a9d62 } .num { fill: #c48a1c } .note { fill: #8a90a0 }
+    @media (prefers-color-scheme: light) {
+      .h { fill: #b4501a } .p { fill: #774bf5 } .s { fill: #3f7a3a } .ok { fill: #237641 } .okl { stroke: #237641 }
+    }
+  </style>
+  <defs>
+    <linearGradient id="backdrop" x2="0" y2="1">
+      <stop stop-color="#5b8def" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#5b8def" stop-opacity=".04"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="320" fill="url(#backdrop)"/>
+  <g font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace">
+    <!-- The encoded token, in jwt.io's colours, with its verdicts underneath. -->
+    <rect x="16.5" y="16.5" width="287" height="157" rx="9" fill="#8a93a8" fill-opacity=".10" stroke="#8a93a8" stroke-opacity=".35"/>
+    <text x="28" y="39" font-size="12" font-weight="600" class="pun" font-family="system-ui, sans-serif">Encoded token</text>
+    <path d="M17 49h286" stroke="#8a93a8" stroke-opacity=".3"/>
+    <g font-size="11">
+      <text x="28" y="69"><tspan class="h">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</tspan><tspan class="d">.</tspan><tspan class="p">eyJ</tspan></text>
+      <text x="28" y="84" class="p">zdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkphbmU</text>
+      <text x="28" y="99" class="p">gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjI</text>
+      <text x="28" y="114"><tspan class="p">zOTAyMn0</tspan><tspan class="d">.</tspan><tspan class="s">4bhpUTktU-sgMx6iTqJWQFgrOyE0m50</tspan></text>
+      <text x="28" y="129" class="s">EGfMS6N-UgOo</text>
+    </g>
+    <g font-family="system-ui, sans-serif" font-size="10" font-weight="600">
+      <rect x="28.5" y="142.5" width="74" height="19" rx="9.5" class="ok okl" fill-opacity=".12" stroke-opacity=".6"/>
+      <text x="38" y="155.5" class="ok">✓ Valid JWT</text>
+      <rect x="108.5" y="142.5" width="116" height="19" rx="9.5" class="ok okl" fill-opacity=".12" stroke-opacity=".6"/>
+      <text x="118" y="155.5" class="ok">✓ Signature verified</text>
+    </g>
+
+    <!-- The payload, each claim explained beside it. -->
+    <rect x="16.5" y="183.5" width="287" height="120" rx="9" fill="#8a93a8" fill-opacity=".10" stroke="#8a93a8" stroke-opacity=".35"/>
+    <text x="28" y="206" font-size="12" font-weight="600" class="p" font-family="system-ui, sans-serif">Payload</text>
+    <path d="M17 216h286" stroke="#8a93a8" stroke-opacity=".3"/>
+    <g font-size="11">
+      <text x="28" y="233" class="pun">{</text>
+      <text x="28" y="248"><tspan class="pun">  </tspan><tspan class="key">"sub"</tspan><tspan class="pun">: </tspan><tspan class="str">"1234567890"</tspan><tspan class="pun">,</tspan></text>
+      <text x="28" y="263"><tspan class="pun">  </tspan><tspan class="key">"name"</tspan><tspan class="pun">: </tspan><tspan class="str">"Jane Doe"</tspan><tspan class="pun">,</tspan></text>
+      <text x="28" y="278"><tspan class="pun">  </tspan><tspan class="key">"iat"</tspan><tspan class="pun">: </tspan><tspan class="num">1516239022</tspan></text>
+      <text x="28" y="293" class="pun">}</text>
+    </g>
+    <g font-family="system-ui, sans-serif" font-size="9.5" class="note">
+      <text x="186" y="248">Subject</text>
+      <text x="179" y="263">Full name</text>
+      <text x="166" y="278">Issued at · Jan 18, 2018</text>
+    </g>
+  </g>
+</svg>

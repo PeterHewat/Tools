@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <main class="ui-workbench codec">
+      <p class="ui-message" id="status" role="status" hidden></p>
+      <div class="codec-fields">
+        <section class="ui-card codec-field" id="text-card" aria-labelledby="text-title">
+          <div class="ui-row">
+            <h2 id="text-title">UTF-8 text</h2>
+            <span class="ui-note" id="text-note"></span>
+            <a class="ui-btn ui-btn--small codec-link" id="to-digests" href="../digests/"
+              ><svg data-ui-icon="hash"></svg>Digests</a
+            >
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="text-copy"
+              aria-label="Copy UTF-8 text"
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor ui-data" id="text"></div>
+        </section>
+        <section class="ui-card codec-field" id="url-card" aria-labelledby="url-title">
+          <div class="ui-row">
+            <h2 id="url-title">URL component</h2>
+            <span class="ui-note" id="url-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="url-copy"
+              aria-label="Copy URL component"
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor ui-data" id="url"></div>
+        </section>
+        <section class="ui-card codec-field" id="base64-card" aria-labelledby="base64-title">
+          <div class="ui-row">
+            <h2 id="base64-title">Base64</h2>
+            <span class="ui-note" id="base64-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="base64-copy"
+              aria-label="Copy Base64"
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor ui-data" id="base64"></div>
+        </section>
+        <section class="ui-card codec-field" id="base64url-card" aria-labelledby="base64url-title">
+          <div class="ui-row">
+            <h2 id="base64url-title">Base64url</h2>
+            <span class="ui-note" id="base64url-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="base64url-copy"
+              aria-label="Copy Base64url"
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor ui-data" id="base64url"></div>
+        </section>
+        <section class="ui-card codec-field" id="hex-card" aria-labelledby="hex-title">
+          <div class="ui-row">
+            <h2 id="hex-title">Hex</h2>
+            <span class="codec-count" id="count" role="status"></span>
+            <span class="ui-note" id="hex-note"></span>
+            <button type="button" class="ui-btn ui-icon-btn" id="hex-copy" aria-label="Copy Hex">
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <div class="ui-editor ui-data" id="hex"></div>
+        </section>
+      </div>
+    </main>
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+      </div>
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            The draft is kept only for this tab, up to 2 MB. Reloading restores it; a new tab starts
+            fresh. Light / dark applies to every tool.
+          </li>
+        </ul>
+        <h3>Editing</h3>
+        <ul>
+          <li>
+            Every field holds the same bytes. Edit any of them and the others are rewritten as you
+            type; the one you edit is left as you wrote it.
+          </li>
+          <li>
+            While what you type cannot be read yet (an odd hex digit, a cut Base64 group), the error
+            shows beside its name and the other fields keep their last value, dimmed.
+          </li>
+          <li>
+            Bytes that are not valid UTF-8 have no text: the UTF-8 field stays empty and says so.
+            Typing in it starts again from text.
+          </li>
+          <li>
+            A new tab opens with several scripts, composed and combining accents, emoji, URL
+            punctuation, a byte order mark, Windows line breaks, nonbreaking and zero-width spaces,
+            a tab and a null. The byte count appears beside Hex. Select all and delete in any field
+            to empty every format.
+          </li>
+        </ul>
+        <h3>Formats</h3>
+        <ul>
+          <li>
+            UTF-8 text is kept byte for byte: a Windows line break stays <code>\r\n</code>, and
+            invisible characters are drawn: a tab as a line across its width, control characters as
+            symbols (␀ ␍), others by their code point, such as U+FEFF for a byte order mark. Hover a
+            symbol for its name.
+          </li>
+          <li>
+            URL component is percent encoding as <code>encodeURIComponent</code> writes it; a byte
+            that is not part of UTF-8 text is written as %XX too. A + is a plus, not a space.
+          </li>
+          <li>
+            Base64 accepts white space and optional padding; Base64url uses the unpadded URL-safe
+            alphabet. Both refuse padding bits that are not zero.
+          </li>
+          <li>Hex accepts white space between complete byte pairs, in either case.</li>
+          <li>
+            Digests, beside UTF-8 text, opens the Digests app on the same text, to see its SHA
+            digests or HMAC.
+          </li>
+        </ul>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,11 +1,37 @@
 /** Small DOM helpers the apps would otherwise each write for themselves. */
 
+export function escapeXml(value: unknown): string {
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+export function escapeAttr(value: unknown): string {
+  return escapeXml(value).replace(/"/g, "&quot;");
+}
+
 /** Toggle buttons expose their state to accessibility and CSS through the same attribute. */
 export const isPressed = (button: HTMLElement): boolean =>
   button.getAttribute("aria-pressed") === "true";
 
 export function setPressed(button: HTMLElement, on: boolean): void {
   button.setAttribute("aria-pressed", String(on));
+}
+
+/**
+ * A setting that is on or off is a `.ui-switch` button with role="switch", its state in
+ * aria-checked (styles in controls.css). Its label is a <label> around it or for it.
+ */
+export const isOn = (button: HTMLElement): boolean =>
+  button.getAttribute("aria-checked") === "true";
+
+export function setOn(button: HTMLElement, on: boolean): void {
+  button.setAttribute("aria-checked", String(on));
+}
+
+/** A switch that turns over when pressed, then says so. */
+export function bindSwitch(button: HTMLElement, onChange: (on: boolean) => void): void {
+  button.addEventListener("click", () => {
+    setOn(button, !isOn(button));
+    onChange(isOn(button));
+  });
 }
 
 /** File sizes in bytes, kilobytes and megabytes, rounded consistently at unit boundaries. */

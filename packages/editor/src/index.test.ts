@@ -10,6 +10,14 @@ const make = (text: string, options: EditorOptions = {}) => {
 const DOC = '{\n  "a": [\n    1,\n    2\n  ],\n  "b": {\n    "c": true\n  }\n}';
 
 describe("createEditor", () => {
+  test("decoder and encoder modes can change editability without losing the document", () => {
+    const ed = make('{"a":1}');
+    ed.setReadOnly(true);
+    expect(ed.dom.querySelector(".cm-content")?.getAttribute("aria-readonly")).toBe("true");
+    ed.setReadOnly(false);
+    expect(ed.dom.querySelector(".cm-content")?.getAttribute("aria-readonly")).toBeNull();
+    expect(ed.text).toBe('{"a":1}');
+  });
   test("holds and replaces the text", () => {
     const ed = make("abc");
     expect(ed.text).toBe("abc");
@@ -30,6 +38,14 @@ describe("createEditor", () => {
     ed.select(2);
     ed.setText("hello there world");
     expect(ed.selection.head).toBe(2);
+  });
+
+  test("exact text keeps a carriage return and draws invisible characters", () => {
+    const ed = make("\ufeffa\r\nb\u0000", { language: null, exact: true });
+    expect(ed.text).toBe("\ufeffa\r\nb\u0000");
+    expect(ed.lineCount).toBe(2);
+    const drawn = [...ed.dom.querySelectorAll(".cm-specialChar")].map((s) => s.textContent);
+    expect(drawn).toEqual(["U+FEFF", "\u240d", "\u2400"]);
   });
 
   test("position and line are 1-based", () => {
@@ -93,6 +109,21 @@ describe("createEditor", () => {
     expect(mark?.getAttribute("title")).toBe("nope");
     ed.setError(null);
     expect(ed.dom.querySelector(".cm-error-mark")).toBeNull();
+  });
+
+  test("notes show after the text without becoming part of it", () => {
+    const ed = make('{\n  "a": 1\n}');
+    ed.setNotes([
+      { at: 10, text: "first" },
+      { at: 99, text: "past the end" },
+      { at: 10, text: "second", class: "cm-note-warn" },
+    ]);
+    const shown = [...ed.dom.querySelectorAll(".cm-note")];
+    expect(shown.map((note) => note.textContent)).toEqual(["first", "second"]);
+    expect(shown[1].classList.contains("cm-note-warn")).toBe(true);
+    expect(ed.text).toBe('{\n  "a": 1\n}');
+    ed.setNotes([]);
+    expect(ed.dom.querySelector(".cm-note")).toBeNull();
   });
 
   test("marks and line labels", () => {

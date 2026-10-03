@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <main class="ui-workbench codes">
+      <p class="ui-message" id="draft-status" role="status" hidden></p>
+      <div class="codes-layout">
+        <section class="ui-card codes-build" aria-label="Make a code">
+          <input type="hidden" id="type" value="link" />
+          <h2 class="codes-step"><span aria-hidden="true">1</span>Type</h2>
+          <div class="codes-types" role="group" aria-label="What the code holds">
+            <button type="button" class="ui-btn" data-type="link">
+              <svg data-ui-icon="link" aria-hidden="true"></svg>Link
+            </button>
+            <button type="button" class="ui-btn" data-type="text">
+              <svg data-ui-icon="text" aria-hidden="true"></svg>Text
+            </button>
+            <button type="button" class="ui-btn" data-type="email">
+              <svg data-ui-icon="mail" aria-hidden="true"></svg>Email
+            </button>
+            <button type="button" class="ui-btn" data-type="call">
+              <svg data-ui-icon="phone" aria-hidden="true"></svg>Call
+            </button>
+            <button type="button" class="ui-btn" data-type="sms">
+              <svg data-ui-icon="message" aria-hidden="true"></svg>SMS
+            </button>
+            <button type="button" class="ui-btn" data-type="whatsapp">
+              <svg data-ui-icon="chat" aria-hidden="true"></svg>WhatsApp
+            </button>
+            <button type="button" class="ui-btn" data-type="wifi">
+              <svg data-ui-icon="wifi" aria-hidden="true"></svg>Wi-Fi
+            </button>
+            <button type="button" class="ui-btn" data-type="vcard">
+              <svg data-ui-icon="contact" aria-hidden="true"></svg>Contact
+            </button>
+            <button type="button" class="ui-btn" data-type="event">
+              <svg data-ui-icon="calendar" aria-hidden="true"></svg>Event
+            </button>
+            <button type="button" class="ui-btn" data-type="barcode">
+              <svg data-ui-icon="barcode" aria-hidden="true"></svg>Barcode
+            </button>
+          </div>
+
+          <div class="codes-head">
+            <h2 class="codes-step"><span aria-hidden="true">2</span>Content</h2>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn codes-clear"
+              id="clear"
+              aria-label="Clear content"
+              title="Clear content"
+            >
+              <svg data-ui-icon="trash"></svg>
+            </button>
+          </div>
+          <div data-fields="link">
+            <label class="ui-field"
+              ><span>Website</span
+              ><input
+                class="ui-input"
+                id="link-url"
+                type="url"
+                placeholder="https://example.com/"
+                autocomplete="url"
+                spellcheck="false"
+            /></label>
+          </div>
+          <div data-fields="text">
+            <label class="ui-field"
+              ><span>Text</span
+              ><textarea class="ui-input" id="text-content" spellcheck="false"></textarea>
+            </label>
+          </div>
+          <div data-fields="email">
+            <label class="ui-field"
+              ><span>Send to</span
+              ><input
+                class="ui-input"
+                id="email-to"
+                type="email"
+                placeholder="name@example.com"
+                autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Subject · optional</span><input class="ui-input" id="email-subject"
+            /></label>
+            <label class="ui-field"
+              ><span>Message · optional</span
+              ><textarea class="ui-input codes-short" id="email-body"></textarea>
+            </label>
+          </div>
+          <div data-fields="call">
+            <label class="ui-field"
+              ><span>Phone number, with its country code</span
+              ><input
+                class="ui-input"
+                id="call-number"
+                type="tel"
+                placeholder="+44 20 7946 0000"
+                autocomplete="off"
+            /></label>
+          </div>
+          <div data-fields="sms">
+            <label class="ui-field"
+              ><span>Phone number, with its country code</span
+              ><input
+                class="ui-input"
+                id="sms-number"
+                type="tel"
+                placeholder="+44 7700 900000"
+                autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Message · optional</span
+              ><textarea class="ui-input codes-short" id="sms-message"></textarea>
+            </label>
+          </div>
+          <div data-fields="whatsapp">
+            <label class="ui-field"
+              ><span>WhatsApp number, with its country code</span
+              ><input
+                class="ui-input"
+                id="wa-number"
+                type="tel"
+                placeholder="+44 7700 900000"
+                autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Message · optional</span
+              ><textarea class="ui-input codes-short" id="wa-message"></textarea>
+            </label>
+          </div>
+          <div data-fields="wifi">
+            <label class="ui-field"
+              ><span>Network name (SSID)</span
+              ><input class="ui-input" id="ssid" autocomplete="off" spellcheck="false"
+            /></label>
+            <div class="codes-pair">
+              <label class="ui-field"
+                ><span>Security</span
+                ><select class="ui-input" id="security">
+                  <option value="WPA">WPA / WPA2 / WPA3</option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass">Open network</option>
+                </select></label
+              ><label class="ui-field"
+                ><span>Password</span
+                ><input class="ui-input" id="password" type="password" autocomplete="off"
+              /></label>
+            </div>
+            <label class="codes-check"
+              ><button
+                type="button"
+                class="ui-switch"
+                id="hidden-network"
+                role="switch"
+                aria-checked="false"
+              ></button>
+              Hidden network</label
+            >
+          </div>
+          <div data-fields="vcard">
+            <div class="codes-pair">
+              <label class="ui-field"
+                ><span>First name</span><input class="ui-input" id="vc-first" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Last name</span><input class="ui-input" id="vc-last" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Organization</span><input class="ui-input" id="vc-org" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Job title</span><input class="ui-input" id="vc-title" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Mobile</span
+                ><input class="ui-input" id="vc-mobile" type="tel" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Work phone</span
+                ><input class="ui-input" id="vc-phone" type="tel" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Email</span
+                ><input class="ui-input" id="vc-email" type="email" autocomplete="off"
+              /></label>
+              <label class="ui-field"
+                ><span>Website</span
+                ><input class="ui-input" id="vc-website" type="url" autocomplete="off"
+              /></label>
+            </div>
+            <details class="codes-more">
+              <summary>Address and note</summary>
+              <label class="ui-field"
+                ><span>Street</span><input class="ui-input" id="vc-street" autocomplete="off"
+              /></label>
+              <div class="codes-pair">
+                <label class="ui-field"
+                  ><span>City</span><input class="ui-input" id="vc-city" autocomplete="off"
+                /></label>
+                <label class="ui-field"
+                  ><span>Region</span><input class="ui-input" id="vc-region" autocomplete="off"
+                /></label>
+                <label class="ui-field"
+                  ><span>Postcode</span><input class="ui-input" id="vc-postcode" autocomplete="off"
+                /></label>
+                <label class="ui-field"
+                  ><span>Country</span><input class="ui-input" id="vc-country" autocomplete="off"
+                /></label>
+              </div>
+              <label class="ui-field"
+                ><span>Note</span><textarea class="ui-input codes-short" id="vc-note"></textarea>
+              </label>
+            </details>
+          </div>
+          <div data-fields="event">
+            <label class="ui-field"
+              ><span>Title</span><input class="ui-input" id="ev-title" autocomplete="off"
+            /></label>
+            <div class="codes-pair">
+              <label class="ui-field"
+                ><span>Starts</span><input class="ui-input" id="ev-start" type="datetime-local"
+              /></label>
+              <label class="ui-field"
+                ><span>Ends · an hour later if empty</span
+                ><input class="ui-input" id="ev-end" type="datetime-local"
+              /></label>
+            </div>
+            <label class="ui-field"
+              ><span>Location · optional</span
+              ><input class="ui-input" id="ev-location" autocomplete="off"
+            /></label>
+            <label class="ui-field"
+              ><span>Description · optional</span
+              ><textarea class="ui-input codes-short" id="ev-description"></textarea>
+            </label>
+          </div>
+          <div data-fields="barcode">
+            <label class="ui-field"
+              ><span>Barcode</span
+              ><select class="ui-input" id="symbology">
+                <option value="code128">Code 128 · printable ASCII text</option>
+                <option value="ean13">EAN-13 · product, 12 or 13 digits</option>
+                <option value="upca">UPC-A · product, 11 or 12 digits</option>
+              </select></label
+            ><label class="ui-field"
+              ><span id="barcode-label">Text</span
+              ><input class="ui-input" id="barcode-value" autocomplete="off" spellcheck="false"
+            /></label>
+          </div>
+
+          <details class="codes-more">
+            <summary>Encoded content</summary>
+            <pre class="ui-output" id="encoded"></pre>
+          </details>
+
+          <div class="codes-head">
+            <h2 class="codes-step"><span aria-hidden="true">3</span>Design</h2>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn codes-clear"
+              id="reset-design"
+              aria-label="Reset design"
+              title="Reset design"
+            >
+              <svg data-ui-icon="trash"></svg>
+            </button>
+          </div>
+          <input type="hidden" id="design-tab" value="colours" />
+          <div class="codes-tabs" role="tablist" aria-label="Design">
+            <button type="button" role="tab" id="tab-colours" aria-controls="panel-colours">
+              Colours</button
+            ><button type="button" role="tab" id="tab-shapes" aria-controls="panel-shapes">
+              Shapes</button
+            ><button type="button" role="tab" id="tab-logo" aria-controls="panel-logo">Logo</button
+            ><button type="button" role="tab" id="tab-frame" aria-controls="panel-frame">
+              Frame
+            </button>
+          </div>
+          <div class="codes-panels">
+            <div
+              class="codes-panel"
+              role="tabpanel"
+              id="panel-colours"
+              aria-labelledby="tab-colours"
+            >
+              <div class="codes-row">
+                <label class="codes-colour"
+                  ><input type="hidden" id="fg" value="#000000" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="fg-swatch"
+                  ></button
+                  ><span>Code</span></label
+                >
+                <label class="codes-colour"
+                  ><input type="hidden" id="bg" value="#ffffff" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="bg-swatch"
+                  ></button
+                  ><span>Background</span></label
+                >
+              </div>
+              <div class="codes-row">
+                <label class="codes-check"
+                  ><button
+                    type="button"
+                    class="ui-switch"
+                    id="gradient"
+                    role="switch"
+                    aria-checked="false"
+                  ></button>
+                  Gradient</label
+                >
+                <span class="codes-extra" id="gradient-fields">
+                  <label class="codes-colour"
+                    ><input type="hidden" id="gradient-to" value="#1f6feb" /><button
+                      type="button"
+                      class="color-swatch"
+                      id="gradient-to-swatch"
+                    ></button
+                    ><span>to</span></label
+                  >
+                  <select class="ui-input" id="gradient-kind" aria-label="Gradient direction">
+                    <option value="diagonal">Diagonal</option>
+                    <option value="horizontal">Across</option>
+                    <option value="vertical">Down</option>
+                    <option value="radial">From the middle</option>
+                  </select>
+                </span>
+              </div>
+              <div class="codes-row" data-qr-only>
+                <label class="codes-check"
+                  ><button
+                    type="button"
+                    class="ui-switch"
+                    id="eye-own"
+                    role="switch"
+                    aria-checked="false"
+                  ></button>
+                  Corner squares in their own colour</label
+                >
+                <span class="codes-extra" id="eye-fields">
+                  <input type="hidden" id="eye-color" value="#1f6feb" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="eye-color-swatch"
+                    aria-label="Corner colour"
+                  ></button>
+                </span>
+              </div>
+            </div>
+            <div class="codes-panel" role="tabpanel" id="panel-shapes" aria-labelledby="tab-shapes">
+              <input type="hidden" id="module-shape" value="square" />
+              <input type="hidden" id="eye-frame" value="square" />
+              <input type="hidden" id="eye-ball" value="square" />
+              <h3>Modules</h3>
+              <div
+                class="codes-options"
+                id="module-options"
+                role="group"
+                aria-label="Modules"
+              ></div>
+              <h3>Corner frames</h3>
+              <div
+                class="codes-options"
+                id="eye-frame-options"
+                role="group"
+                aria-label="Corner frames"
+              ></div>
+              <h3>Corner centres</h3>
+              <div
+                class="codes-options"
+                id="eye-ball-options"
+                role="group"
+                aria-label="Corner centres"
+              ></div>
+            </div>
+            <div class="codes-panel" role="tabpanel" id="panel-logo" aria-labelledby="tab-logo">
+              <input type="hidden" id="logo" value="none" />
+              <div class="codes-options" id="logo-options" role="group" aria-label="Logo"></div>
+              <div class="ui-row">
+                <button type="button" class="ui-btn" id="logo-upload">
+                  <svg data-ui-icon="image" aria-hidden="true"></svg>Upload an image…
+                </button>
+              </div>
+              <p class="codes-hint">
+                With a logo, error correction is H, so the code still reads with its middle covered.
+              </p>
+            </div>
+            <div class="codes-panel" role="tabpanel" id="panel-frame" aria-labelledby="tab-frame">
+              <input type="hidden" id="frame" value="none" />
+              <div
+                class="codes-options codes-frames"
+                id="frame-options"
+                role="group"
+                aria-label="Frame"
+              ></div>
+              <div class="codes-caption">
+                <label class="ui-field"
+                  ><span>Caption</span
+                  ><input
+                    class="ui-input"
+                    id="caption"
+                    maxlength="40"
+                    value="SCAN ME"
+                    autocomplete="off"
+                /></label>
+                <label class="ui-field"
+                  ><span>Text</span
+                  ><input type="hidden" id="caption-color" value="#ffffff" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="caption-color-swatch"
+                  ></button
+                ></label>
+                <label class="ui-field"
+                  ><span>Frame</span><input type="hidden" id="frame-color" value="#000000" /><button
+                    type="button"
+                    class="color-swatch"
+                    id="frame-color-swatch"
+                  ></button
+                ></label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="ui-card codes-output" aria-label="Download">
+          <h2 class="codes-step"><span aria-hidden="true">4</span>Download</h2>
+          <div id="preview" role="group" aria-label="Code preview"></div>
+          <p class="ui-message" id="status" role="status"></p>
+          <ul class="codes-warnings" id="warnings"></ul>
+          <div class="codes-pair">
+            <label class="ui-field"
+              ><span>Size</span
+              ><select class="ui-input" id="size">
+                <option value="s">S</option>
+                <option value="m" selected>M</option>
+                <option value="l">L</option>
+              </select></label
+            >
+            <label class="ui-field" data-qr-only
+              ><span>Error correction</span
+              ><select class="ui-input" id="level">
+                <option value="L">L · 7%</option>
+                <option value="M" selected>M · 15%</option>
+                <option value="Q">Q · 25%</option>
+                <option value="H">H · 30%</option>
+              </select></label
+            >
+          </div>
+          <div class="codes-downloads">
+            <button type="button" class="ui-btn ui-btn--primary" id="save-png" disabled>
+              <svg data-ui-icon="export" aria-hidden="true"></svg>PNG
+            </button>
+            <button type="button" class="ui-btn" id="save-svg" disabled>
+              <svg data-ui-icon="export" aria-hidden="true"></svg>SVG
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+      </div>
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            Codes are made here, in your browser: what they hold is never sent anywhere. They are
+            static, so they keep working without this site, but what they hold cannot change once
+            printed.
+          </li>
+          <li>
+            The draft is kept only for this tab, up to 2 MB. Reloading restores it; a new tab starts
+            fresh. Light / dark applies to every tool.
+          </li>
+        </ul>
+        <h3>What a code holds</h3>
+        <ul>
+          <li>
+            <b>Link</b> opens a website; one typed without https:// gets it. <b>Email</b>,
+            <b>Call</b> and <b>SMS</b> start a message or a call, written and ready to send.
+            <b>WhatsApp</b> opens a chat through wa.me.
+          </li>
+          <li>
+            <b>Wi-Fi</b> joins a network. The password is readable by anyone who scans the code.
+          </li>
+          <li>
+            <b>Contact</b> is a vCard the phone offers to save. <b>Event</b> is a calendar entry,
+            its times in your time zone.
+          </li>
+          <li>
+            <b>Barcode</b>: Code 128 for printable ASCII, up to 80 characters; EAN-13 and UPC-A for
+            product numbers. Enter one digit less to have the check digit calculated, or all of them
+            to have it checked.
+          </li>
+        </ul>
+        <h3>Design</h3>
+        <ul>
+          <li>
+            Colours, shapes, a logo and a frame change how a QR code looks, not what it holds. A
+            barcode takes the colours only.
+          </li>
+          <li>
+            Every colour has an opacity; a background at 0% is transparent. Scanners need contrast:
+            a dark code on a light background reads best. A warning under the preview says when the
+            colours may not scan.
+          </li>
+          <li>
+            A logo covers the middle of the code, as large as it can be and still scan: error
+            correction goes up to H, which recovers up to 30% of it. Test the printed code.
+          </li>
+        </ul>
+        <h3>Download</h3>
+        <ul>
+          <li>
+            Size picks the image's width, S (about 512 pixels), M (1024) or L (2048); its height
+            follows. Each module is a whole number of pixels, so the PNG has no blurred edges, and
+            the SVG uses whole numbers only. SVG scales to any size for print.
+          </li>
+          <li>
+            Every code keeps the clear border scanners need: four modules around a QR code, and the
+            standard space before and after a barcode's bars.
+          </li>
+        </ul>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+@import "@tools/ui/base.css";
+@import "@tools/ui/tool.css";
+
+/* One field per format, stacked; each grows with its value, then scrolls inside. */
+.codec {
+  max-width: 1200px;
+}
+.codec-count {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+/* An icon and a word, like the copy buttons beside it in height. */
+.codec-link svg {
+  width: 14px;
+  height: 14px;
+}
+.codec-fields {
+  display: grid;
+  gap: 10px;
+}
+.codec-fields .ui-card + .ui-card {
+  margin-top: 0;
+}
+.codec-field .ui-row {
+  flex-wrap: nowrap;
+}
+.codec-field .ui-row h2 {
+  flex: none;
+  margin-right: 0;
+}
+.codec-field .ui-editor,
+.codec-field .cm-editor {
+  min-height: 0;
+}
+.codec-field .cm-scroller {
+  max-height: 240px;
+}
+.codec-field .cm-content {
+  min-height: 3em;
+  padding: 6px 4px;
+}
+/* The others while the field being edited cannot be read: their last value, dimmed. */
+.codec-field[data-stale] .cm-content {
+  opacity: 0.45;
+}

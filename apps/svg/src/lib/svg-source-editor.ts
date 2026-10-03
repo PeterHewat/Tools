@@ -5,14 +5,13 @@ import { sanitizeName, elementIdFromSvgId, groupIdFromSvgId } from "./svg-names.
 import { importSvgFile } from "./svg-import.js";
 import { groupsOf, selectedGroups } from "./groups.js";
 import { type EditorState, type SceneElement } from "./types.js";
-import { byId } from "@tools/ui";
+import { byId, debounce } from "@tools/ui";
 import { createEditor, type Highlight } from "@tools/editor";
 
 /* ---------- SVG source: editable, highlighted, synced with the selection ---------- */
 const svgError = byId("svg-error");
 const primitiveListEl = byId("primitive-list");
 let editStep = undoStepper();
-let svgApplyTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSelectionKey = "";
 /** What the highlights were last built from; see `refreshSvgHighlight`. */
 let highlightKey = "";
@@ -55,6 +54,9 @@ const FIELD_BLOCKS: Record<string, [string, string?]> = {
 };
 let svgFocus: { id: string; field: string } | null = null;
 
+/** Typed markup is applied once typing pauses, or at once when the editor loses focus. */
+const applySoon = debounce(applySvgText, 500);
+
 const editor = createEditor(byId("svg-editor"), {
   language: "xml",
   colours: "syntax",
@@ -63,16 +65,14 @@ const editor = createEditor(byId("svg-editor"), {
   onChange(user) {
     if (!user) return;
     refreshSvgHighlight(getState().selection.elementIds);
-    if (svgApplyTimer) clearTimeout(svgApplyTimer);
-    svgApplyTimer = setTimeout(applySvgText, 500);
+    applySoon();
   },
   onSelection: selectFromCaret,
   onFocus(focused) {
     if (focused) {
       editStep = undoStepper();
-    } else if (svgApplyTimer) {
-      clearTimeout(svgApplyTimer);
-      applySvgText();
+    } else {
+      applySoon.flush();
     }
   },
 });
@@ -286,7 +286,7 @@ const sameNames = (a: Record<string, string>, b: Record<string, string>) =>
 
 /** Applies the edited markup. Untouched shapes keep their exact float geometry. */
 function applySvgText(): void {
-  svgApplyTimer = null;
+  applySoon.cancel();
   let parsed;
   try {
     parsed = importSvgFile(editor.text, { keepIds: true });

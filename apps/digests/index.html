@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <main class="ui-workbench digests">
+      <p class="ui-message" id="draft-status" role="status" hidden></p>
+      <div class="digests-cards">
+        <section class="ui-card digests-input" aria-labelledby="input-title">
+          <div class="ui-row">
+            <h2 id="input-title">Input</h2>
+            <span class="ui-note" id="status" role="status"></span>
+            <div class="ui-seg" role="group" aria-label="Hash">
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-source="text"
+                aria-pressed="true"
+              >
+                Text</button
+              ><button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-source="file"
+                aria-pressed="false"
+              >
+                File
+              </button>
+            </div>
+            <a class="ui-btn ui-btn--small digests-link" id="to-codec" href="../codec/"
+              ><svg data-ui-icon="convert"></svg>Codec</a
+            >
+            <button type="button" class="ui-btn ui-icon-btn" id="clear" aria-label="Clear input">
+              <svg data-ui-icon="trash"></svg>
+            </button>
+          </div>
+          <div class="ui-editor ui-data" id="text"></div>
+          <div class="digests-drop" id="file-field" hidden>
+            <input type="file" id="file" class="digests-file" aria-label="File to hash" />
+            <label class="ui-btn" for="file"><svg data-ui-icon="import"></svg>Choose a file</label>
+            <p id="file-name"></p>
+          </div>
+          <div class="digests-options">
+            <label class="digests-switch"
+              ><button
+                type="button"
+                class="ui-switch"
+                id="hmac"
+                role="switch"
+                aria-checked="false"
+              ></button>
+              HMAC</label
+            >
+            <div class="ui-seg" role="group" aria-label="Encoding">
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-encoding="hex"
+                aria-pressed="true"
+              >
+                Hex</button
+              ><button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-encoding="base64"
+                aria-pressed="false"
+              >
+                Base64
+              </button>
+            </div>
+          </div>
+          <div class="digests-key" id="key-fields" hidden>
+            <div class="digests-key-head">
+              <label for="key">Key</label>
+              <select class="ui-input" id="key-format" aria-label="Key encoding">
+                <option value="text">UTF-8</option>
+                <option value="hex">Hex</option>
+                <option value="base64">Base64</option>
+                <option value="base64url">Base64url</option>
+              </select>
+            </div>
+            <textarea
+              class="ui-input"
+              id="key"
+              rows="2"
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
+          </div>
+        </section>
+        <section class="ui-card digests-item" id="sha-256-item" aria-labelledby="sha-256-title">
+          <div class="ui-row">
+            <h2 id="sha-256-title">SHA-256</h2>
+            <span class="ui-note" id="sha-256-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="sha-256-copy"
+              aria-label="Copy SHA-256"
+              disabled
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <code class="digests-value" id="sha-256"><span></span></code>
+        </section>
+        <section class="ui-card digests-item" id="sha-384-item" aria-labelledby="sha-384-title">
+          <div class="ui-row">
+            <h2 id="sha-384-title">SHA-384</h2>
+            <span class="ui-note" id="sha-384-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="sha-384-copy"
+              aria-label="Copy SHA-384"
+              disabled
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <code class="digests-value" id="sha-384"><span></span></code>
+        </section>
+        <section class="ui-card digests-item" id="sha-512-item" aria-labelledby="sha-512-title">
+          <div class="ui-row">
+            <h2 id="sha-512-title">SHA-512</h2>
+            <span class="ui-note" id="sha-512-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="sha-512-copy"
+              aria-label="Copy SHA-512"
+              disabled
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <code class="digests-value" id="sha-512"><span></span></code>
+        </section>
+        <section class="ui-card digests-item" id="sha-1-item" aria-labelledby="sha-1-title">
+          <div class="ui-row">
+            <h2 id="sha-1-title">SHA-1</h2>
+            <span class="ui-note" id="sha-1-note"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="sha-1-copy"
+              aria-label="Copy SHA-1"
+              disabled
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <code class="digests-value" id="sha-1"><span></span></code>
+        </section>
+        <section class="ui-card" aria-labelledby="compare-title">
+          <div class="ui-row">
+            <h2 id="compare-title"><label for="expected">Compare</label></h2>
+            <span class="ui-note" id="compare-status" role="status"></span>
+          </div>
+          <input
+            class="ui-input digests-expected"
+            id="expected"
+            placeholder="Paste an expected digest, hex or Base64"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </section>
+      </div>
+    </main>
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+      </div>
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            The draft is kept only for this tab, up to 2 MB. Reloading restores it; a new tab starts
+            on an example. Light / dark applies to every tool.
+          </li>
+        </ul>
+        <h3>Input</h3>
+        <ul>
+          <li>
+            Text is hashed as its exact UTF-8 bytes. Invisible characters are drawn, so what you see
+            is what is hashed: a tab as a line across its width, a carriage return as ␍, others by
+            their code point. The byte count shows beside Input, and Codec opens the same text (or a
+            file up to 1 MiB, as Base64) to see it as hex, Base64 or a URL component.
+          </li>
+          <li>
+            Choose or drop a file to hash its bytes; it never leaves your browser. Files are limited
+            to 64 MiB because Web Crypto reads them whole. A file must be chosen again after a
+            reload.
+          </li>
+          <li>The trash button empties the text and the file.</li>
+        </ul>
+        <h3>Digests</h3>
+        <ul>
+          <li>
+            SHA-256, SHA-384, SHA-512 and SHA-1 are computed together, each in its own card, in hex
+            or Base64. SHA-1 is legacy: do not rely on it for security.
+          </li>
+          <li>
+            Paste an expected digest under Compare, hex in either case or Base64, spaces ignored: it
+            names the algorithm it matches and marks that card.
+          </li>
+          <li>
+            With HMAC on, each card is the HMAC of the input with that hash, keyed by a non-empty
+            key in UTF-8, hex, Base64 or Base64url. The key is kept in this tab's draft.
+          </li>
+          <li>A digest is not encryption. Web Crypto needs HTTPS or localhost.</li>
+        </ul>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

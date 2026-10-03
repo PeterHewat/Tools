@@ -42,6 +42,17 @@ That scaffolds `apps/color-forge` and adds an unlisted entry to
 [`packages/catalog`](./packages/catalog/src/index.ts). The catalog is the only list — the index
 page, the build, each page's title and manifest, and the deploy all read from it.
 
+The scaffold includes the shared theme toggle and Help dock. Put help content in
+`.ui-dock-body.ui-help`; `<div data-tools-about></div>` becomes the common About preface
+using the catalog name. `bindToolHelp(slug)` wires both header buttons and remembers the
+Help dock's open state for the tab.
+
+JWT, Codec, Codes and Digests keep versioned session drafts with `readDraft` / `writeDraft`
+from `@tools/ui`. These restore the current tab on reload, including entered keys, but a
+fresh tab starts with defaults. Drafts are limited to 2 MB; an incompatible format asks
+the user to clear that app's session storage. Native file selections must be made again
+after a reload.
+
 ## How it is put together
 
 ```text
@@ -50,6 +61,8 @@ packages/
   catalog/     which apps exist, and where the site is deployed
   ui/          shared styles, browser helpers, build wiring and the offline service worker
   editor/      the code editor the apps share: CodeMirror 6 behind a small API
+  bytes/       strict UTF-8, hex and Base64 codecs, and Web Crypto helpers
+  json-core/   source-preserving JSON parser and formatter shared by JSON and JWT
   tsconfig/    shared TypeScript config
 scripts/       build and scaffold scripts
 docs/          decisions, reference and plans

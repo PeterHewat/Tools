@@ -255,16 +255,29 @@ export const COMPACT_HEADER = 720;
  */
 function compactHeaderTag(app: ToolsApp): HtmlTagDescriptor {
   const width = app.compactHeader ?? COMPACT_HEADER;
-  const css = [
-    // "Up to and including" as a range, so a fractional width (browser zoom) falls on one side.
-    `@media (width < ${width + 1}px) {`,
-    "[data-tools-header] .ui-home { justify-content: center; min-width: 36px; padding: 0; }",
-    "[data-tools-header] .ui-home::before { margin-left: 4px; }",
-    "[data-tools-header] :is(.ui-home-label, .ui-app-name, .ui-app-status) {",
+  // Hidden from sight, kept for screen readers.
+  const hide = (selector: string) => [
+    `[data-tools-header] ${selector} {`,
     "  position: absolute; width: 1px; height: 1px; overflow: hidden;",
     "  clip-path: inset(50%); white-space: nowrap;",
     "}",
+  ];
+  // "Up to and including" as a range, so a fractional width (browser zoom) falls on one side.
+  const home = (at: number, selector: string) => [
+    `@media (width < ${at + 1}px) {`,
+    "[data-tools-header] .ui-home { justify-content: center; min-width: 36px; padding: 0; }",
+    "[data-tools-header] .ui-home::before { margin-left: 4px; }",
+    ...hide(selector),
     "}",
+  ];
+  const css = [
+    // An app may drop "Tools" first, keeping its name beside the "‹".
+    ...(app.compactHome && (width === false || app.compactHome > width)
+      ? home(app.compactHome, ".ui-home-label")
+      : []),
+    ...(width === false
+      ? []
+      : home(width, ":is(.ui-home-label, .ui-app-name, .ui-app-status, .ui-app-title)")),
   ].join("\n");
   return {
     tag: "style",
@@ -308,8 +321,8 @@ export function escapeHtml(s: string): string {
 }
 
 /**
- * How every app's header starts: back to the index, the app's name, and its status while it is
- * not stable. Styled by `@tools/ui/header.css`. They are direct children of the header, so an
+ * How every app's header starts: back to the index, the app's name, its status while it is not
+ * stable, and its name in full when the catalog gives one. Styled by `@tools/ui/header.css`. They are direct children of the header, so an
  * app's own layout (a phone's floating buttons, say) can place each of them.
  */
 export function headerStartHtml(app: ToolsApp): string {
@@ -317,11 +330,13 @@ export function headerStartHtml(app: ToolsApp): string {
     app.status === "stable"
       ? ""
       : `<span class="ui-app-status ui-app-status--${app.status}">${app.status}</span>`;
+  const title = app.title ? `<span class="ui-app-title">${escapeHtml(app.title)}</span>` : "";
   return (
     `<a class="ui-home" href="../" title="All ${escapeHtml(SITE.name.toLowerCase())}">` +
     `<span class="ui-home-label">${escapeHtml(SITE.name)}</span></a>` +
     `<h1 class="ui-app-name">${escapeHtml(app.name)}</h1>` +
-    status
+    status +
+    title
   );
 }
 
@@ -350,10 +365,18 @@ function appHeader(appOf: AppOf): Plugin {
       order: "pre",
       handler(html, ctx) {
         const app = appOf(ctx.filename);
-        return app ? withHeaderStart(html, app) : html;
+        return app ? withHelpAbout(withHeaderStart(html, app), app) : html;
       },
     },
   };
+}
+
+/** One About preface for every app, written before first paint from the catalog. */
+export function withHelpAbout(html: string, app: ToolsApp): string {
+  return html.replace(
+    "<div data-tools-about></div>",
+    `<h3>About</h3><ul><li>${escapeHtml(app.name)} is part of a set of <a href="../">Tools</a> that run entirely in your browser and keep working offline.</li></ul>`
+  );
 }
 
 /** Draws the shared icons into a page's empty `<svg data-ui-icon>` and `<symbol data-ui-icon>`. */

@@ -1,0 +1,137 @@
+/* Compact text-tool workbenches; Help uses the same dock and body as JSON/SVG. */
+.ui-workbench [hidden] {
+  display: none;
+}
+.ui-workbench {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 12px;
+}
+.ui-workbench h2 {
+  font-size: 13px;
+  margin: 0;
+}
+.ui-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.ui-workbench > .ui-card,
+.ui-card + .ui-card {
+  margin-top: 10px;
+}
+.ui-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ui-row h2 {
+  margin-right: auto;
+}
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.ui-field > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.ui-workbench textarea {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+  font: 13px/1.5 var(--mono);
+}
+.ui-workbench input,
+.ui-workbench select {
+  min-width: 0;
+  max-width: 100%;
+}
+.ui-output {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.5 var(--mono);
+}
+.ui-output {
+  min-height: 36px;
+  margin: 8px 0;
+}
+.ui-message {
+  height: 38px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  margin: 6px 0;
+  font-size: 12px;
+}
+.ui-message[data-error="true"] {
+  color: var(--danger);
+}
+.ui-editor {
+  min-height: 150px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.ui-editor .cm-editor {
+  min-height: 150px;
+}
+.ui-editor .cm-scroller {
+  max-height: 320px;
+  overflow: auto;
+}
+.ui-header:has(+ .ui-workbench) {
+  flex-wrap: nowrap;
+}
+.ui-pane-actions {
+  display: inline-flex;
+  gap: var(--ui-group-gap);
+  margin-left: auto;
+}
+/* Beside a card's heading: a count, or what is wrong. Takes the room left, wrapping inside it. */
+.ui-note {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ui-note[data-error="true"] {
+  color: var(--danger);
+}
+/* Text kept as data (the editor's `exact`): no gutter or active line; a tab drawn as a line
+   across its width, other invisible characters as small labels. */
+.ui-data .cm-gutters {
+  display: none;
+}
+.ui-data .cm-activeLine {
+  background: transparent;
+}
+.ui-data .cm-tab {
+  background: linear-gradient(var(--muted), var(--muted)) center / calc(100% - 4px) 1px no-repeat;
+}
+.ui-data .cm-specialChar {
+  margin: 0 1px;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--text);
+  font-size: 0.85em;
+}
+.ui-help a {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .ui-workbench {
+    padding: 8px;
+  }
+}

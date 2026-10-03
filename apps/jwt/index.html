@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="ui-header" data-tools-header>
+      <div class="ui-header-end">
+        <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <main class="ui-workbench">
+      <div class="jwt-grid">
+        <section class="ui-card jwt-token-card" aria-labelledby="token-title">
+          <div class="ui-row">
+            <h2 id="token-title">Encoded token</h2>
+            <div class="ui-pane-actions">
+              <button
+                type="button"
+                class="ui-btn ui-icon-btn"
+                id="token-copy"
+                aria-label="Copy token"
+              >
+                <svg data-ui-icon="copy"></svg>
+              </button>
+            </div>
+          </div>
+          <div class="ui-editor" id="token"></div>
+          <div class="jwt-status" aria-live="polite">
+            <span class="jwt-state" id="token-state" hidden></span
+            ><span class="jwt-state" id="signature-state" hidden></span
+            ><span class="jwt-state" id="time-state" hidden></span>
+          </div>
+          <p class="jwt-note" id="token-status"></p>
+        </section>
+        <div class="jwt-decoded">
+          <section class="ui-card" aria-labelledby="header-title">
+            <div class="ui-row">
+              <h2 id="header-title" class="jwt-title-header">Header</h2>
+              <button
+                type="button"
+                class="ui-btn ui-icon-btn"
+                id="header-copy"
+                aria-label="Copy header"
+              >
+                <svg data-ui-icon="copy"></svg>
+              </button>
+            </div>
+            <div class="ui-editor" id="header-editor"></div>
+            <p class="jwt-note" id="header-status"></p>
+          </section>
+          <section class="ui-card" aria-labelledby="payload-title">
+            <div class="ui-row">
+              <h2 id="payload-title" class="jwt-title-payload">Payload</h2>
+              <button
+                type="button"
+                class="ui-btn ui-icon-btn"
+                id="payload-copy"
+                aria-label="Copy payload"
+              >
+                <svg data-ui-icon="copy"></svg>
+              </button>
+            </div>
+            <div class="ui-editor" id="payload-editor"></div>
+            <p class="jwt-note" id="payload-status"></p>
+          </section>
+          <section class="ui-card" aria-labelledby="signature-title">
+            <div class="ui-row">
+              <h2 id="signature-title" class="jwt-title-signature">Signature</h2>
+              <label class="jwt-inline"
+                >Algorithm
+                <select class="ui-input" id="algorithm"></select
+              ></label>
+            </div>
+            <div id="secret-fields">
+              <div class="jwt-field-head">
+                <label for="secret">Secret</label>
+                <select class="ui-input" id="secret-format" aria-label="Secret encoding">
+                  <option value="text">UTF-8</option>
+                  <option value="base64url">Base64url</option>
+                  <option value="base64">Base64</option>
+                  <option value="hex">Hex</option>
+                  <option value="jwk">JWK (oct)</option>
+                </select>
+              </div>
+              <textarea
+                class="ui-input"
+                id="secret"
+                rows="2"
+                autocomplete="off"
+                spellcheck="false"
+              ></textarea>
+              <p class="jwt-check" id="secret-check" hidden></p>
+              <p class="jwt-hint" id="secret-hint" hidden>
+                <span id="secret-hint-text"></span>
+                <button type="button" class="ui-btn" id="secret-reread"></button>
+              </p>
+            </div>
+            <div id="pair-fields" hidden>
+              <div class="jwt-field-head">
+                <label for="public-key">Public key <span>verifies · PEM or JWK</span></label>
+              </div>
+              <textarea
+                class="ui-input"
+                id="public-key"
+                rows="4"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="-----BEGIN PUBLIC KEY-----"
+              ></textarea>
+              <p class="jwt-check" id="public-check" hidden></p>
+              <div class="jwt-field-head">
+                <label for="private-key">Private key <span>signs · optional</span></label>
+              </div>
+              <textarea
+                class="ui-input"
+                id="private-key"
+                rows="4"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="-----BEGIN PRIVATE KEY-----"
+              ></textarea>
+              <p class="jwt-check" id="private-check" hidden></p>
+            </div>
+            <p class="jwt-note" id="key-status"></p>
+            <div class="jwt-actions" id="key-actions">
+              <button type="button" class="ui-btn" id="generate-key">Generate key</button
+              ><button type="button" class="ui-btn" id="sign">Sign token</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+      </div>
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            Nothing is sent anywhere: decoding, signing and verifying run in this page with the
+            browser's Web Crypto.
+          </li>
+          <li>
+            The token and keys are kept only for this tab, up to 2 MB. Reloading restores them; a
+            new tab starts fresh. Light / dark applies to every tool.
+          </li>
+        </ul>
+        <h3>Editing</h3>
+        <ul>
+          <li>
+            Every panel is editable. Edit the encoded token and the header and payload follow. Edit
+            the header or payload and the token is rebuilt and signed again with the key below.
+          </li>
+          <li>
+            Without a key that can sign (a long enough secret, or a private key), the token keeps
+            its old signature, which then no longer verifies.
+          </li>
+          <li>
+            The algorithm is the header's <code>alg</code>. Choosing another one rewrites the header
+            and signs again; if there is no key for it yet, one is generated.
+          </li>
+          <li>
+            Orange, violet and green mark the header, payload and signature, in the token and in the
+            panel titles.
+          </li>
+          <li>
+            Known header parameters and claims are explained at the end of their line, with
+            <code>exp</code>, <code>nbf</code> and <code>iat</code> as local dates and how long ago
+            or ahead they are. The notes are not part of the JSON: they are not copied or signed.
+            JSON written on one line gets no notes.
+          </li>
+          <li>
+            With the token cleared, typing a payload starts a new token with a default header.
+          </li>
+          <li>
+            A token pasted with its <code>Bearer</code> prefix, or wrapped over several lines, is
+            made compact as it is pasted.
+          </li>
+        </ul>
+        <h3>Keys</h3>
+        <ul>
+          <li>
+            HS256, HS384 and HS512 use a shared secret, as UTF-8 text, Base64url, Base64, hex or an
+            oct JWK. Changing the encoding rewrites the secret in it, so the key stays the same; if
+            the text was already written in the new encoding, a button reads it that way instead.
+            Signing needs at least 32, 48 or 64 bytes; verifying accepts any length.
+          </li>
+          <li>
+            RS, PS, ES and EdDSA verify with the public key and sign with the private key, each as
+            PEM (SPKI public / PKCS#8 private) or JWK. With only a private key, its public half is
+            used to verify.
+          </li>
+          <li>
+            Under each key, a line says whether it is a valid secret, public key or private key for
+            the algorithm. Generate key makes a fresh random secret (as text) or key pair for the
+            algorithm and signs the token with it. Sign token signs the current header and payload
+            with the key as it is.
+          </li>
+        </ul>
+        <h3>What the checks mean</h3>
+        <ul>
+          <li>
+            Valid JWT: three Base64url parts, with a strict JSON header and payload and an
+            <code>alg</code>. Signature verified: the key matches the signature.
+          </li>
+          <li>
+            <code>alg</code> <code>none</code> is an unsigned token: its signature is empty, and
+            there is nothing to verify. Encrypted tokens (JWE, five parts) show only their header.
+          </li>
+          <li>
+            Neither says the claims should be trusted: issuer, audience and authorization are for
+            the service that receives the token. Expiry and not-before are shown for reference.
+          </li>
+          <li>
+            <code>exp</code>, <code>nbf</code> and <code>iat</code> are Unix seconds. Duplicate
+            member names, <code>crit</code> and unencoded payloads (<code>b64</code>) are refused.
+          </li>
+        </ul>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

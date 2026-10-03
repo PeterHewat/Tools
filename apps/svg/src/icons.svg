@@ -726,17 +726,6 @@
         stroke-width="1.5"
       />
     </symbol>
-    <!-- An eyedropper: pick a colour from the reference image. -->
-    <symbol id="icon-dropper" viewBox="0 0 24 24">
-      <path
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        d="M14 6l4 4M16.5 3.5a2.1 2.1 0 013 3L18 8l-2-2 .5-2.5zM15 7l-9 9-1.5 4.5L9 19l9-9"
-      />
-    </symbol>
     <!-- A padlock, shut and open: lock a shape out of reach on the canvas, and unlock it. -->
     <symbol id="icon-lock" viewBox="0 0 24 24">
       <rect

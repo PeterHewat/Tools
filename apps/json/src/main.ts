@@ -2,8 +2,6 @@ import { bindHeader } from "./lib/header.js";
 import {
   readPrefs,
   writePrefs,
-  readDraft,
-  writeDraft,
   readExactChoices,
   writeExactChoices,
   type Prefs,
@@ -15,12 +13,18 @@ import {
   bindMenu,
   byId,
   copyText,
+  debounce,
   downloadText,
+  dropDraft,
   formatBytes,
+  isOn,
   onFileDrop,
   pickFiles,
+  readDraft,
   registerServiceWorker,
+  setOn,
   setPressed,
+  writeDraft,
 } from "@tools/ui";
 import { createEditor, type LineLexer } from "@tools/editor";
 import { applyEdits, REPAIRS, type Edit, type JsonNode, type RepairKind } from "./lib/ast.js";
@@ -85,7 +89,6 @@ const editor = createEditor(codeEl, {
     {
       key: "Mod-Enter",
       run: () => {
-        clearTimeout(pending);
         validate();
         rewrite(false);
         return true;
@@ -143,6 +146,8 @@ const find = bindFind([editor, exportView], () => ({
 
 // ---------- Storage ----------
 
+/** This tab's document, in the shared session draft (`@tools/ui`). */
+const DRAFT = 1;
 /** The tab reloaded after dropping a draft too large to keep: said until the next change. */
 let droppedDraft = false;
 /** Only text changes write the draft; settings changes leave it alone. */
@@ -156,10 +161,11 @@ function restore(): void {
   pathStyle = prefs.pathStyle;
   colours = prefs.colours;
   // A tab with no draft yet opens on the sample. Cleared, the draft is "" and stays empty.
-  const draft = readDraft();
-  showDocument(typeof draft === "string" ? draft : draft === false ? "" : SAMPLE);
+  const draft = readDraft("json", DRAFT);
+  const saved = draft.value.text;
+  showDocument(draft.dropped ? "" : typeof saved === "string" ? saved : SAMPLE);
   // After the document is in: putting it there was a change, and a change ends the warning.
-  droppedDraft = draft === false;
+  droppedDraft = draft.dropped === true;
   for (const place of readExactChoices()) exactPlaces.add(place);
   showOptions();
 }
@@ -178,18 +184,15 @@ function savePrefs(): void {
 function saveDraft(): void {
   if (!draftChanged) return;
   draftChanged = false;
-  const text = documentText();
-  // False while the empty editor still stands for a draft too large to keep: every reload says so.
-  writeDraft(text, droppedDraft);
+  // Marked dropped while the empty editor still stands for a draft too large to keep: every
+  // reload says so.
+  if (droppedDraft) dropDraft("json", DRAFT);
+  else writeDraft("json", DRAFT, { text: documentText() });
 }
 
 function saveExactChoices(): void {
   writeExactChoices(exactPlaces);
 }
-
-/** Switches (settings that are on or off) keep theirs in aria-checked, as role="switch" has it. */
-const isOn = (button: HTMLElement) => button.getAttribute("aria-checked") === "true";
-const setOn = (button: HTMLElement, on: boolean) => button.setAttribute("aria-checked", String(on));
 
 function indent(): number | "\t" {
   return indentChoice === "tab" ? "\t" : Number(indentChoice);
@@ -432,7 +435,7 @@ function runNested(action: string): void {
 // ---------- Validation: after every pause in typing, and every change made from code ----------
 
 function validate(): void {
-  clearTimeout(pending);
+  validateSoon.cancel();
   const text = documentText();
   const empty = !text.trim();
   currentAnalysis = analysis.read(text);
@@ -517,11 +520,7 @@ function validate(): void {
   saveDraft();
 }
 
-let pending = 0;
-function validateSoon(): void {
-  clearTimeout(pending);
-  pending = window.setTimeout(validate, 150);
-}
+const validateSoon = debounce(validate, 150);
 
 /** Past this, a document with hardly any line breaks gets a nudge to format it. */
 const LONG_TEXT = 1_000_000;
@@ -776,7 +775,7 @@ for (const b of pathStyleButtons) {
 }
 const settingsMenu = bindMenu(optionsBtn, options, {
   onOpen: () => {
-    clearTimeout(pending);
+    validateSoon.cancel();
     if (stale) validate();
     showOptions();
   },

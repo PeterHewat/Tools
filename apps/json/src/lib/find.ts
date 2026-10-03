@@ -1,4 +1,4 @@
-import { byId, isPressed, setPressed } from "@tools/ui";
+import { byId, debounce, isPressed, setPressed } from "@tools/ui";
 import type { Editor } from "@tools/editor";
 import { findInText, MAX_MATCHES } from "./search.js";
 
@@ -113,20 +113,17 @@ export function bindFind(
   function closeFind(): void {
     findBar.classList.add("hidden");
     findOpenBtn.setAttribute("aria-expanded", "false");
-    clearTimeout(findTimer);
+    findSoon.cancel();
     for (const editor of editors) editor.setMarks([]);
     current().editor.focus();
   }
 
-  let findTimer = 0;
-  findInput.addEventListener("input", () => {
-    clearTimeout(findTimer);
-    findTimer = window.setTimeout(() => findStep(0), 120);
-  });
+  const findSoon = debounce(() => findStep(0), 120);
+  findInput.addEventListener("input", findSoon);
   findInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      clearTimeout(findTimer);
+      findSoon.cancel();
       findStep(e.shiftKey ? -1 : 1);
     } else if (e.key === "Escape") {
       e.preventDefault();

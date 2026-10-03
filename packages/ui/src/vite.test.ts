@@ -12,9 +12,20 @@ import {
   toolsHome,
   toolsSite,
   withHeaderStart,
+  withHelpAbout,
 } from "./vite.js";
 
 const svg = findApp("svg")!;
+
+test("the shared About preface uses each catalog name and leaves existing help intact", () => {
+  for (const slug of ["svg", "json", "jwt", "codec", "codes", "digests"]) {
+    const result = withHelpAbout("<div data-tools-about></div><h3>Features</h3>", findApp(slug)!);
+    expect(result).toContain(findApp(slug)!.name + " is part of a set");
+    expect(result).toContain('href="../"');
+    expect(result).toContain("keep working offline");
+    expect(result).toEndWith("<h3>Features</h3>");
+  }
+});
 
 describe("toolsApp", () => {
   test("refuses an app the catalog does not list", () => {
@@ -41,12 +52,32 @@ describe("page head", () => {
 
   test('each app\'s header reduces to "‹" at the width its catalog entry gives, first in the head', () => {
     const style = (app: typeof svg) => headTags(app).find((t) => t.tag === "style");
-    expect(style(svg)?.children).toContain(`@media (width < ${svg.compactHeader! + 1}px)`);
+    expect(style(svg)?.children).toContain(`@media (width < ${Number(svg.compactHeader) + 1}px)`);
     expect(style(svg)?.injectTo).toBe("head-prepend");
     expect(style({ ...svg, compactHeader: undefined })?.children).toContain(
       `(width < ${COMPACT_HEADER + 1}px)`
     );
     expect(headTags(null).some((t) => t.tag === "style")).toBe(false);
+  });
+
+  test('an app may drop "Tools" first, at a wider screen, keeping its name', () => {
+    const css = headTags({ ...svg, compactHeader: 200, compactHome: 389 }).find(
+      (t) => t.tag === "style"
+    )!.children as string;
+    expect(css.indexOf("(width < 390px)")).toBeLessThan(css.indexOf("(width < 201px)"));
+    const first = css.slice(0, css.indexOf("(width < 201px)"));
+    expect(first).toContain(".ui-home-label {");
+    expect(first).not.toContain(".ui-app-name");
+  });
+
+  test("an app can keep its name and title while only the home button collapses", () => {
+    const css = headTags({ ...svg, compactHeader: false, compactHome: 424 }).find(
+      (tag) => tag.tag === "style"
+    )!.children as string;
+    expect(css).toContain("(width < 425px)");
+    expect(css).toContain(".ui-home-label");
+    expect(css).not.toContain(".ui-app-name");
+    expect(css).not.toContain(".ui-app-title");
   });
 
   test("the icon is the app's own, addressed from its base rather than from the page", () => {
@@ -106,6 +137,13 @@ describe("app header", () => {
     expect(headerStartHtml({ ...json, status: "beta" })).toContain(
       '<span class="ui-app-status ui-app-status--beta">beta</span>'
     );
+  });
+
+  test("an abbreviated name is followed by the name in full, outside the heading", () => {
+    expect(headerStartHtml({ ...json, title: "JavaScript Object Notation" })).toContain(
+      '<h1 class="ui-app-name">JSON</h1><span class="ui-app-title">JavaScript Object Notation</span>'
+    );
+    expect(headerStartHtml(svg)).not.toContain("ui-app-title");
   });
 
   test("the marker is found among other attributes", () => {

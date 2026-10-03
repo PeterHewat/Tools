@@ -1,0 +1,290 @@
+@import "@tools/ui/base.css";
+@import "@tools/ui/tool.css";
+
+/* Make on the left, step by step; the code and its downloads on the right, in view while the
+   page scrolls. One column on a phone, the code under what makes it. */
+.codes-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 10px;
+  align-items: start;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.codes-output {
+  position: sticky;
+  top: 10px;
+}
+@media (max-width: 760px) {
+  .codes-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .codes-output {
+    position: static;
+  }
+}
+
+.codes-types {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 6px;
+}
+.codes-types .ui-btn {
+  justify-content: flex-start;
+  min-width: 0;
+  white-space: nowrap;
+}
+.codes-types svg,
+.codes-downloads svg,
+#logo-upload svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+}
+
+.codes-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 8px !important;
+  font-size: 14px !important;
+}
+.codes-output .codes-step,
+.codes-build .codes-step:first-child {
+  margin-top: 0 !important;
+}
+/* A step whose fields can be cleared: its heading, and the button at the far end. */
+.codes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+.codes-head > .codes-step {
+  margin: 0 !important;
+}
+.codes-clear.ui-icon-btn {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+.codes-clear > svg {
+  width: 16px;
+  height: 16px;
+}
+.codes-step > span {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.codes-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 10px;
+}
+@media (max-width: 340px) {
+  .codes-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.codes .codes-short {
+  min-height: 72px;
+}
+.codes .codes-build textarea:not(.codes-short) {
+  min-height: 120px;
+}
+.codes-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.codes-more {
+  margin-bottom: 8px;
+}
+.codes-more summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.codes-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.codes-tabs [role="tab"] {
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.codes-tabs [role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+.codes-tabs [role="tab"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* Each panel as tall as what it holds, nothing under its last row. Turning an option on shows
+   its extra beside the box, in room kept for it, so that does not move anything. */
+.codes-panel {
+  padding-top: 10px;
+}
+.codes-panel > :nth-last-child(1 of :not([hidden], input[type="hidden"])) {
+  margin-bottom: 0;
+}
+.codes-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  min-height: 34px;
+  margin-bottom: 6px;
+}
+.codes-row > .codes-check,
+.codes-row .codes-colour {
+  margin-bottom: 0;
+}
+.codes-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.codes-off {
+  visibility: hidden;
+}
+.codes-panel h3 {
+  margin: 4px 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.codes-colour {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+/* The shared colour swatch (@tools/ui), sized as a control here. */
+.codes .color-swatch {
+  flex: 0 0 auto;
+  width: 36px;
+  max-width: none;
+  height: 30px;
+  border-radius: var(--radius);
+}
+.codes .color-swatch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.codes-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.codes-options .ui-btn {
+  width: 44px;
+  height: 44px;
+  padding: 6px;
+}
+.codes-options .ui-btn > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.codes-frames .ui-btn {
+  width: 56px;
+  height: 64px;
+  padding: 4px;
+}
+.codes-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+/* The caption and its two colours, each a label over its control, the controls in one line. */
+.codes-caption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+}
+.codes-caption > .ui-field {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: 4px;
+  margin-bottom: 0;
+}
+.codes-caption .color-swatch {
+  width: 44px;
+  height: 100%;
+}
+
+#preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: var(--radius);
+  height: 340px;
+  overflow: hidden;
+  /* A checkerboard shows where the code is transparent. */
+  background: repeating-conic-gradient(#e8e8e8 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+}
+#preview svg {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  transition: opacity 0.15s;
+}
+/* The code dims when what it would show cannot be made: only once that has lasted, so a value
+   half typed never flashes it. */
+#preview.pending svg {
+  opacity: 0.3;
+  transition-delay: 0.6s;
+}
+@media (prefers-reduced-motion: reduce) {
+  #preview svg {
+    transition: none;
+  }
+}
+.codes-warnings {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: var(--warn);
+  font-size: 12px;
+}
+.codes-warnings:empty {
+  display: none;
+}
+.codes-downloads {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+#encoded {
+  max-height: 120px;
+  overflow: auto;
+}

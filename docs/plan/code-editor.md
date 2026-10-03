@@ -2,7 +2,7 @@
 
 **Kind:** Plan — nothing here is built yet.
 
-The JSON app (its text and its converted views) and the SVG app's source panel edit in
+The JSON app (its text and its converted views), the SVG app's source panel and JWT's decoded JSON use
 `@tools/editor`: CodeMirror 6 behind a small API
 ([ADR 003](../adr/003-codemirror-for-code-editing.md)). The JSON text folds, shows its parse
 error in place, and is one document however long it is. What follows builds on that.
@@ -30,7 +30,7 @@ own YAML view is the test: every document it writes must read back to the same J
 
 - **Diff** (app-ideas #6) on `@codemirror/merge`, added to `@tools/editor`: side by side or
   unified, editable, unchanged stretches collapsed.
-- JWT's header and payload, and Icon Check's pasted SVG, in the editor.
+- Icon Check's pasted SVG in the editor.
 
 ## Optional extras
 

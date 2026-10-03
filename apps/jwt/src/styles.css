@@ -1,0 +1,263 @@
+@import "@tools/ui/base.css";
+@import "@tools/ui/tool.css";
+
+/* Token on the left, what it holds on the right; one column on a phone. */
+.jwt-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.jwt-token-card {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 10px;
+}
+/* A token is one long line: no line numbers, and a fixed height that scrolls inside. */
+#token .cm-editor {
+  height: clamp(220px, calc(100vh - 300px), 560px);
+}
+#token .cm-scroller {
+  max-height: none;
+}
+#token .cm-gutters {
+  display: none;
+}
+#token .cm-activeLine {
+  background: transparent;
+}
+#token .cm-content {
+  padding: 8px 4px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+#header-editor .cm-editor,
+#header-editor {
+  min-height: 0;
+}
+#header-editor .cm-scroller {
+  max-height: 200px;
+}
+.jwt-decoded .ui-card:first-child {
+  margin-top: 0;
+}
+
+/*
+ * The three parts keep jwt.io's colours, in the token and in the panel titles; the dots between
+ * them stay plain. On a light background the same hues are darker, to stay readable.
+ */
+:root {
+  --jwt-header: #e27133;
+  --jwt-payload: #9472f7;
+  --jwt-signature: #8fc88a;
+  /* A shade lighter than the token's violet: the titles sit on the panel, not the editor. */
+  --jwt-payload-title: #9979f7;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --jwt-header: #b4501a;
+    --jwt-payload: #774bf5;
+    --jwt-signature: #3f7a3a;
+    --jwt-payload-title: #774bf5;
+  }
+}
+:root[data-theme="light"] {
+  --jwt-header: #b4501a;
+  --jwt-payload: #774bf5;
+  --jwt-signature: #3f7a3a;
+  --jwt-payload-title: #774bf5;
+}
+.jwt-header,
+.jwt-title-header {
+  color: var(--jwt-header);
+}
+.jwt-payload {
+  color: var(--jwt-payload);
+}
+.jwt-title-payload {
+  color: var(--jwt-payload-title);
+}
+.jwt-signature,
+.jwt-title-signature {
+  color: var(--jwt-signature);
+}
+
+/* Verdicts under the token: what it is, whether the key matches, whether it is current. */
+.jwt-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 30px;
+  margin-top: 10px;
+}
+.jwt-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  --tone: var(--muted);
+}
+.jwt-state[data-state="ok"] {
+  --tone: var(--ok);
+}
+.jwt-state[data-state="error"] {
+  --tone: var(--danger);
+}
+.jwt-state[data-state="warn"] {
+  --tone: var(--warn);
+}
+.jwt-state[data-state]:not([data-state=""]) {
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 55%, transparent);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+}
+.jwt-state::before {
+  font-size: 12px;
+  line-height: 1;
+}
+.jwt-state[data-state="warn"]::before {
+  content: "!";
+}
+
+/*
+ * The tick and cross beside a verdict, drawn in the text's colour. A mask rather than the
+ * characters: the stylesheet stays ASCII, so a server that sends it without a charset cannot
+ * turn them into mojibake.
+ */
+:is(.jwt-state, .jwt-check)[data-state="ok"] {
+  --jwt-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 12.5 9.5 17.5 19.5 6.5'/%3E%3C/svg%3E");
+}
+:is(.jwt-state, .jwt-check)[data-state="error"] {
+  --jwt-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E");
+}
+:is(.jwt-state, .jwt-check):is([data-state="ok"], [data-state="error"])::before {
+  content: "";
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  vertical-align: -0.05em;
+  background: currentColor;
+  -webkit-mask: var(--jwt-mark) center / contain no-repeat;
+  mask: var(--jwt-mark) center / contain no-repeat;
+}
+
+/* One quiet line under each panel: a problem in red, otherwise a hint. */
+.jwt-note {
+  min-height: 18px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.jwt-note[data-error="true"] {
+  color: var(--danger);
+}
+
+.jwt-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.jwt-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+  min-height: 28px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.jwt-field-head label {
+  font-weight: 600;
+  color: var(--text);
+}
+.jwt-field-head label span {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.ui-workbench #secret-fields textarea,
+.ui-workbench #pair-fields textarea {
+  min-height: 0;
+  font-size: 12px;
+}
+.ui-workbench #secret {
+  height: 60px;
+}
+.ui-workbench #public-key,
+.ui-workbench #private-key {
+  height: 110px;
+}
+#pair-fields .jwt-check + .jwt-field-head,
+#pair-fields textarea + .jwt-field-head {
+  margin-top: 8px;
+}
+.jwt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* After the secret's encoding changed: what was done to it, and the other way to read it. */
+.jwt-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.jwt-hint .ui-btn {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* Under each key: whether it is valid for the algorithm, as jwt.io says it. */
+.jwt-check {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.jwt-check[data-state="ok"] {
+  color: var(--ok);
+}
+.jwt-check[data-state="warn"] {
+  color: var(--warn);
+}
+.jwt-check[data-state="error"] {
+  color: var(--danger);
+}
+.jwt-check::before {
+  margin-right: 0.35em;
+}
+.jwt-check[data-state="warn"]::before {
+  content: "!";
+}
+
+@media (max-width: 760px) {
+  .jwt-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .jwt-token-card {
+    position: static;
+  }
+  #token .cm-editor {
+    height: 180px;
+  }
+  #token .cm-content {
+    font-size: 14px;
+  }
+}

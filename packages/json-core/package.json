@@ -1,0 +1,15 @@
+{
+  "name": "@tools/json-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ast": "./src/ast.ts",
+    "./print": "./src/print.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  }
+}

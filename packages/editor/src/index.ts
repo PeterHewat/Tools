@@ -97,6 +97,17 @@ export interface Mark {
   current?: boolean;
 }
 
+/**
+ * A remark shown after the text at an offset, such as what a JSON member means. It is not part
+ * of the text: never edited, selected or copied with it.
+ */
+export interface Note {
+  at: number;
+  text: string;
+  /** Added to `cm-note`, as `cm-note-warn` is. */
+  class?: string;
+}
+
 export interface EditorError {
   /** Where the problem is. */
   from: number;
@@ -121,6 +132,11 @@ export interface EditorOptions {
   label?: string;
   placeholder?: string;
   lineWrapping?: boolean;
+  /**
+   * The text is data, kept exactly as it is: only "\n" breaks a line (a "\r" stays a character),
+   * control and invisible characters are drawn as symbols, and brackets are not closed as typed.
+   */
+  exact?: boolean;
   /** Indent unit: a number of spaces, or a tab. Two spaces by default. */
   indent?: number | "\t";
   /** Extra keys, tried before the editor's own. */
@@ -165,8 +181,10 @@ export interface Editor {
   focus(): void;
   setMarks(marks: readonly Mark[]): void;
   setHighlights(highlights: readonly Highlight[]): void;
+  setNotes(notes: readonly Note[]): void;
   setError(error: EditorError | null): void;
   setColours(colours: Colours): void;
+  setReadOnly(readOnly: boolean): void;
   setIndent(indent: number | "\t"): void;
   /** Numbers the gutter from elsewhere, one entry per line (null leaves it blank); null numbers lines. */
   setLineLabels(labels: readonly (number | string | null)[] | null): void;
@@ -238,6 +256,38 @@ const highlights = decorationField<readonly Highlight[]>((list, state) => {
   }
   return Decoration.set(ranges, true);
 });
+
+class NoteWidget extends WidgetType {
+  constructor(
+    readonly text: string,
+    readonly className: string
+  ) {
+    super();
+  }
+  override eq(other: NoteWidget) {
+    return other.text === this.text && other.className === this.className;
+  }
+  toDOM() {
+    const span = document.createElement("span");
+    span.className = this.className ? `cm-note ${this.className}` : "cm-note";
+    span.textContent = this.text;
+    return span;
+  }
+}
+
+const notes = decorationField<readonly Note[]>((list, state) =>
+  Decoration.set(
+    list
+      .filter((note) => note.at >= 0 && note.at <= state.doc.length)
+      .map((note) =>
+        Decoration.widget({
+          widget: new NoteWidget(note.text, note.class ?? ""),
+          side: 1,
+        }).range(note.at)
+      ),
+    true
+  )
+);
 
 interface PlacedError {
   from: number;
@@ -471,12 +521,28 @@ function numbers(labels: readonly (number | string | null)[] | null): Extension 
   });
 }
 
+/**
+ * An invisible character in exact text: a control character as its Unicode control picture
+ * (␀, ␍, ␛…), any other as its code point, both named on hover. A tab keeps its width, as a
+ * `cm-tab` the app may draw.
+ */
+function specialChar(code: number, description: string | null): HTMLElement {
+  const span = document.createElement("span");
+  const point = "U+" + code.toString(16).toUpperCase().padStart(4, "0");
+  span.className = "cm-specialChar";
+  span.textContent =
+    code < 0x20 ? String.fromCharCode(0x2400 + code) : code === 0x7f ? "\u2421" : point;
+  span.title = description ? `${description} (${point})` : point;
+  return span;
+}
+
 export function createEditor(parent: HTMLElement, options: EditorOptions = {}): Editor {
   const language = new Compartment();
   const colours = new Compartment();
   const indent = new Compartment();
   const gutter = new Compartment();
   const undo = new Compartment();
+  const readOnly = new Compartment();
   /** An `onFolds` call is waiting for the next frame. */
   let foldsPending = false;
   const languageChoice: Language = options.language ?? null;
@@ -487,7 +553,12 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     gutter.of(numbers(null)),
     folding,
     highlightActiveLineGutter(),
-    highlightSpecialChars(),
+    options.exact
+      ? [
+          EditorState.lineSeparator.of("\n"),
+          highlightSpecialChars({ render: specialChar, addSpecialChars: /\t/ }),
+        ]
+      : [highlightSpecialChars(), closeBrackets()],
     undo.of(history()),
     drawSelection(),
     dropCursor(),
@@ -495,7 +566,6 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     EditorState.tabSize.of(2),
     indentOnInput(),
     bracketMatching(),
-    closeBrackets(),
     rectangularSelection(),
     highlightActiveLine(),
     highlightSelectionMatches({ minSelectionLength: 2 }),
@@ -503,12 +573,13 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
     expandExtension,
     marks.field,
     highlights.field,
+    notes.field,
     errorField,
     siteTheme,
     language.of(languageExtension(languageChoice, text.length)),
     colours.of(colourExtension(options.colours ?? null)),
     indent.of(indentUnit.of(indentString(options.indent ?? 2))),
-    EditorState.readOnly.of(options.readOnly ?? false),
+    readOnly.of(EditorState.readOnly.of(options.readOnly ?? false)),
     // Files dropped on the editor are the app's to open, not text to insert.
     EditorView.domEventHandlers({
       drop: (e) => e.dataTransfer?.types.includes("Files") ?? false,
@@ -643,6 +714,10 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
       view.dispatch({ effects: highlights.set.of(list) });
     },
 
+    setNotes(list) {
+      view.dispatch({ effects: notes.set.of(list) });
+    },
+
     setError(error) {
       const current = view.state.field(errorField);
       if (!error) {
@@ -663,6 +738,10 @@ export function createEditor(parent: HTMLElement, options: EditorOptions = {}): 
 
     setColours(next) {
       view.dispatch({ effects: colours.reconfigure(colourExtension(next)) });
+    },
+
+    setReadOnly(next) {
+      view.dispatch({ effects: readOnly.reconfigure(EditorState.readOnly.of(next)) });
     },
 
     setIndent(next) {

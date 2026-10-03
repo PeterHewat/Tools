@@ -39,7 +39,10 @@ for (const script of page.querySelectorAll("script")) script.remove();
 document.body.innerHTML = page.body.innerHTML;
 sessionStorage.setItem(
   "tools.json.draft",
-  JSON.stringify('{"rows":[{"name":"one"},{"name":"two"}],"other":[2]}')
+  JSON.stringify({
+    version: 1,
+    value: { text: '{"rows":[{"name":"one"},{"name":"two"}],"other":[2]}' },
+  })
 );
 sessionStorage.removeItem("tools.json.exact");
 localStorage.removeItem("tools.json.prefs");
@@ -82,7 +85,9 @@ test("clearing a document drops previous CSV tables and saves the empty draft", 
   click('[data-view="json"]');
   click("#clear");
   click('[data-view="csv"]');
-  expect(sessionStorage.getItem("tools.json.draft")).toBe(JSON.stringify(""));
+  expect(sessionStorage.getItem("tools.json.draft")).toBe(
+    JSON.stringify({ version: 1, value: { text: "" } })
+  );
   expect(document.querySelector<HTMLButtonElement>("#download")!.disabled).toBe(true);
   expect(document.querySelector("#download")!.getAttribute("title")).toBe("Export CSV");
   expect(document.querySelector("#export-message")!.textContent).toBe("Nothing to convert yet.");

@@ -20,7 +20,7 @@ import {
 import { pushUndo, canUndo, canRedo, undo, redo, undoStepper } from "./undo.js";
 import { formatExportSvg } from "./svg-export.js";
 import { importSvgFile } from "./svg-import.js";
-import { pngSize, renderPng } from "./png-export.js";
+import { pngSize } from "./png-export.js";
 import { fileBase, isSvgFile, listed } from "./document-files.js";
 import { canJoin } from "./model.js";
 import {
@@ -34,13 +34,12 @@ import {
   onFileDrop,
   pickFiles,
   setPressed,
-} from "@tools/ui";
-import {
-  openColorPicker,
   closeColorPicker,
   isColorPickerOpenFor,
+  openColorPicker,
+  renderPng,
   setColorSampler,
-} from "./colorpicker.js";
+} from "@tools/ui";
 import { canPickFromImages, pickFromImages } from "./eyedropper.js";
 import { initRulers, renderRulers } from "./rulers.js";
 import { initActionBar, syncActionBar } from "./actionbar.js";
@@ -394,7 +393,9 @@ async function dropFiles(files: readonly File[]): Promise<void> {
 
 window.addEventListener("keydown", (e) => {
   const t = e.target as HTMLElement;
-  const isToggle = t.matches?.("input[type=checkbox], input[type=radio], input[type=range]");
+  const isToggle = t.matches?.(
+    "input[type=checkbox], input[type=radio], input[type=range], [role=switch]"
+  );
   // Only real text entry swallows shortcuts (the SVG source editor is contenteditable); a
   // focused checkbox or button must not.
   if (t.matches?.("textarea, select") || t.isContentEditable || (t.matches?.("input") && !isToggle))

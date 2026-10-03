@@ -28,3 +28,12 @@ test("missing HTML or initial assets cannot make a budget pass silently", () => 
     /missing initial/
   );
 });
+test("another site's script, the analytics beacon, is not weighed", () => {
+  const beacon =
+    '<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js"></script>';
+  const withBeacon = [
+    file("index.html", new TextDecoder().decode(files[0].bytes) + beacon),
+    ...files.slice(1),
+  ];
+  expect(checkJsBudget("test", withBeacon, { entryGzip: 1, totalGzip: 1 }).entry).toBe(51);
+});

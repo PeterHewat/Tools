@@ -18,7 +18,10 @@ export function checkJsBudget(
   for (const tag of text.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
     if (!/\b(?:type="module"|rel="modulepreload")/i.test(tag[0])) continue;
     const source = /\b(?:src|href)="([^"]+)"/i.exec(tag[0])?.[1];
-    if (source) initial.add(source.slice(source.lastIndexOf("/assets/") + 1));
+    // Another site's script (the analytics beacon) is not this app's to weigh.
+    if (source && !/^(?:[a-z]+:)?\/\//i.test(source)) {
+      initial.add(source.slice(source.lastIndexOf("/assets/") + 1));
+    }
   }
   if (!initial.size) throw new Error(`${label}: missing JavaScript entry`);
   let entry = 0,
