@@ -340,45 +340,76 @@ test("Codec rewrites every format live from whichever field is edited", async ({
   await expect(page.locator("#count")).toHaveText("0 bytes");
 });
 
-test("Digests computes live text/file/HMAC and compares exact outputs", async ({ page }) => {
+test("Digests hashes text and files with every SHA, HMAC, and names the digest that matches", async ({
+  page,
+}) => {
   await page.goto("/Tools/digests/");
-  await page.locator("#text").fill("abc\n");
-  await expect(page.locator("#hex")).toHaveText(createHash("sha256").update("abc\n").digest("hex"));
-  await page.locator("#text").fill("abc");
-  const expected = createHash("sha256").update("abc").digest("hex");
-  await expect(page.locator("#hex")).toHaveText(expected);
-  await page.locator("#expected").fill(expected.toUpperCase());
-  await expect(page.locator("#compare-status")).toHaveText("Digest matches.");
-  const geometry = await page.locator("#base64").boundingBox();
-  await page.locator("#algorithm").selectOption("SHA-512");
-  await expect(page.locator("#hex")).toHaveText(createHash("sha512").update("abc").digest("hex"));
-  expect(await page.locator("#base64").boundingBox()).toEqual(geometry);
-  await page.locator("#algorithm").selectOption("SHA-256");
+  // A new tab starts on the example sentence.
+  const fox = "The quick brown fox jumps over the lazy dog";
+  await expect(page.locator("#sha-256")).toHaveText(createHash("sha256").update(fox).digest("hex"));
+  await expect(page.locator("#size")).toHaveText("43 B");
+  const text = page.locator("#text .cm-content");
+  await text.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText("abc\n");
+  await expect(page.locator("#sha-256")).toHaveText(
+    createHash("sha256").update("abc\n").digest("hex")
+  );
+  await page.keyboard.press("Backspace");
+  for (const [name, node] of [
+    ["sha-256", "sha256"],
+    ["sha-384", "sha384"],
+    ["sha-512", "sha512"],
+    ["sha-1", "sha1"],
+  ])
+    await expect(page.locator("#" + name)).toHaveText(createHash(node).update("abc").digest("hex"));
+  const lines = await page.locator("#digests").boundingBox();
+  await page
+    .locator("#expected")
+    .fill(createHash("sha384").update("abc").digest("hex").toUpperCase());
+  await expect(page.locator("#compare-status")).toHaveText("Matches SHA-384.");
+  await expect(page.locator("#sha-384-item")).toHaveAttribute("data-match", "");
+  await page.locator('[data-encoding="base64"]').click();
+  await expect(page.locator("#sha-256")).toHaveText(
+    createHash("sha256").update("abc").digest("base64")
+  );
+  await expect(page.locator("#sha-384-item")).toHaveAttribute("data-match", "");
+  expect(await page.locator("#digests").boundingBox()).toEqual(lines);
+  await page.locator('[data-encoding="hex"]').click();
   await page.locator("#hmac").click();
   await expect(page.locator("#hmac")).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("#status")).toContainText("non-empty");
+  await expect(page.locator("#sha-256-copy")).toBeDisabled();
   await page.locator("#key").fill("test key");
-  await expect(page.locator("#hex")).toHaveText(
+  await expect(page.locator("#sha-256")).toHaveText(
     createHmac("sha256", "test key").update("abc").digest("hex")
   );
-  await expect(page.locator("#compare-status")).toHaveText("Digest does not match.");
-  await page.locator("#key").fill("");
-  await expect(page.locator("#status")).toContainText("non-empty");
-  await expect(page.locator("#copy-hex")).toBeDisabled();
-  expect(await page.locator("#base64").boundingBox()).toEqual(geometry);
+  await expect(page.locator("#sha-512")).toHaveText(
+    createHmac("sha512", "test key").update("abc").digest("hex")
+  );
+  await expect(page.locator("#compare-status")).toHaveText("Matches none of these digests.");
+  expect(await page.locator("#digests").boundingBox()).toEqual(lines);
   await page.locator("#hmac").click();
   await expect(page.locator("#hmac")).toHaveAttribute("aria-checked", "false");
-  await page.locator("#source").selectOption("file");
   const bytes = Buffer.from([0, 255, 13, 10]);
   await page
     .locator("#file")
     .setInputFiles({ name: "binary.dat", mimeType: "application/octet-stream", buffer: bytes });
-  await expect(page.locator("#hex")).toHaveText(createHash("sha256").update(bytes).digest("hex"));
+  await expect(page.locator('[data-source="file"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#sha-256")).toHaveText(
+    createHash("sha256").update(bytes).digest("hex")
+  );
+  await expect(page.locator("#size")).toHaveText("4 B");
   await page.reload();
   await expect(page.locator("#file-name")).toContainText("binary.dat");
-  await expect(page.locator("#status")).toContainText("Reselect");
-  await expect(page.locator("#hex")).toBeEmpty();
+  await expect(page.locator("#status")).toContainText("Choose the file again");
+  await expect(page.locator("#sha-256")).toBeEmpty();
+  await page.locator('[data-source="text"]').click();
+  await expect(page.locator("#sha-256")).toHaveText(
+    createHash("sha256").update("abc").digest("hex")
+  );
   await page.locator("#clear").click();
-  await expect(page.locator("#hex")).toHaveText(createHash("sha256").update("").digest("hex"));
+  await expect(page.locator("#sha-256")).toHaveText(createHash("sha256").update("").digest("hex"));
 });
 
 /** Sets a colour through its swatch and the shared picker: hex, then opacity in percent. */
@@ -702,7 +733,6 @@ test("Codes designs: shapes, colours, a logo and a frame still scan", async ({ p
 
 for (const [slug, field, value] of [
   ["codes", "#link-url", "example.org/remember"],
-  ["digests", "#text", "remember digests"],
   ["jwt", "#secret", "remember jwt"],
 ] as const) {
   test(
@@ -721,6 +751,37 @@ for (const [slug, field, value] of [
     }
   );
 }
+test("digests draft survives reload; a fresh tab starts on the example; an incompatible draft is kept", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/Tools/digests/");
+  await page.locator("#text .cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText("remember digests");
+  await expect(page.locator("#sha-256")).toHaveText(
+    createHash("sha256").update("remember digests").digest("hex")
+  );
+  await page.reload();
+  await expect(page.locator("#text .cm-content")).toHaveText("remember digests");
+  const fresh = await context.newPage();
+  await fresh.goto("/Tools/digests/");
+  await expect(fresh.locator("#text .cm-content")).toHaveText(
+    "The quick brown fox jumps over the lazy dog"
+  );
+  await fresh.close();
+  const saved = JSON.stringify({ version: 999, value: {} });
+  await page.evaluate((value) => sessionStorage.setItem("tools.digests.draft", value), saved);
+  await page.reload();
+  await expect(page.locator("#draft-status")).toContainText("Clear this app's session storage");
+  await page.locator("#text .cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText("still works");
+  await expect(page.locator("#sha-256")).toHaveText(
+    createHash("sha256").update("still works").digest("hex")
+  );
+  expect(await page.evaluate(() => sessionStorage.getItem("tools.digests.draft"))).toBe(saved);
+});
 test("incompatible drafts fail closed without overwriting saved data", async ({ page }) => {
   await page.goto("/Tools/codec/");
   const saved = JSON.stringify({ version: 999, value: { left: "old version" } });
@@ -737,7 +798,6 @@ test("incompatible drafts fail closed without overwriting saved data", async ({ 
 
 for (const [slug, field, value, result] of [
   ["codes", "#link-url", "example.org/still-works", "#encoded"],
-  ["digests", "#text", "still works", "#hex"],
 ] as const) {
   test(`${slug} works without saving over an incompatible draft`, async ({ page }) => {
     await page.goto(`/Tools/${slug}/`);
@@ -749,9 +809,7 @@ for (const [slug, field, value, result] of [
     await page.reload();
     await expect(page.locator("#draft-status")).toContainText("Clear this app's session storage");
     await page.locator(field).fill(value);
-    await expect(page.locator(result)).toHaveText(
-      slug === "codes" ? "https://" + value : createHash("sha256").update(value).digest("hex")
-    );
+    await expect(page.locator(result)).toHaveText("https://" + value);
     expect(await page.evaluate((slug) => sessionStorage.getItem(`tools.${slug}.draft`), slug)).toBe(
       saved
     );
@@ -846,10 +904,7 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
       await page.locator("#link-url").fill("https://example.com/");
       await expect(page.locator("#preview > svg")).toBeVisible();
     }
-    if (slug === "digests") {
-      await page.locator("#text").fill("Hello, world!");
-      await expect(page.locator("#hex")).not.toBeEmpty();
-    }
+    if (slug === "digests") await expect(page.locator("#sha-256")).not.toBeEmpty();
     await page.screenshot({ path: `test-results/${slug}-desktop.png`, fullPage: true });
   });
 }

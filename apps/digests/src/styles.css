@@ -1,8 +1,204 @@
 @import "@tools/ui/base.css";
 @import "@tools/ui/tool.css";
 
-#hex,
-#base64 {
-  height: 54px;
-  overflow: auto;
+/* Input on the left, its digests on the right; one column on a phone. */
+.digests {
+  max-width: 1200px;
+}
+.digests-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.digests-grid > .ui-card {
+  margin-top: 0;
+}
+.digests .ui-row {
+  flex-wrap: nowrap;
+}
+.digests .ui-row h2 {
+  flex: none;
+  margin-right: 0;
+}
+/* Beside a heading: the byte count, HMAC, or what is wrong. Takes the room left. */
+.digests-note {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.digests-note[data-error="true"] {
+  color: var(--danger);
+}
+
+/* The text and the file take the same room, so switching between them moves nothing below. */
+.digests-input .ui-editor,
+.digests-input .cm-editor,
+.digests-drop {
+  height: 180px;
+  min-height: 0;
+}
+.digests-input .cm-scroller {
+  max-height: none;
+}
+.digests-input .cm-gutters {
+  display: none;
+}
+.digests-input .cm-activeLine {
+  background: transparent;
+}
+.digests-input .cm-content {
+  padding: 6px 4px;
+}
+/* A tab: a line across its width. */
+.digests-input .cm-tab {
+  background: linear-gradient(var(--muted), var(--muted)) center / calc(100% - 4px) 1px no-repeat;
+}
+.digests-input .cm-specialChar {
+  margin: 0 1px;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--text);
+  font-size: 0.85em;
+}
+.digests-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+}
+.digests-drop p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.digests-drop .ui-btn svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
+/* The file input is reached through its label, which looks like the other buttons. */
+.digests-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.digests-file:focus-visible + .ui-btn {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.digests-hmac {
+  margin-top: 10px;
+}
+.digests-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.digests-key {
+  margin-top: 8px;
+}
+.digests-key-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.digests-key textarea {
+  min-height: 0;
+  resize: vertical;
+}
+
+/* One line a digest: its name, the value (wrapped, never cut), and a copy button. */
+.digests-list {
+  margin: 0 0 10px;
+}
+.digests-item {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+}
+.digests-item + .digests-item {
+  margin-top: 2px;
+}
+.digests-item dt {
+  padding-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.digests-legacy {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+}
+.digests-item dd {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  margin: 0;
+}
+.digests-value {
+  display: grid;
+  flex: 1 1 0;
+  min-width: 0;
+  padding-top: 5px;
+  font: 12px/1.5 var(--mono);
+  overflow-wrap: anywhere;
+}
+/* The value and, unseen in the same place, the other encoding: the line fits the longer. */
+.digests-value > span,
+.digests-value::after {
+  grid-area: 1 / 1;
+}
+.digests-value::after {
+  content: attr(data-other);
+  visibility: hidden;
+}
+/* Room for SHA-512 in hex before anything is hashed, so the first result moves nothing. */
+#sha-512 {
+  min-height: calc(4 * 1.5em);
+}
+.digests-item[data-match] {
+  border-color: var(--ok);
+}
+.digests-item[data-match] dt {
+  color: var(--ok);
+}
+/* Their last value while the input cannot be hashed, dimmed. */
+.digests-list[data-stale] .digests-value {
+  opacity: 0.45;
+}
+.digests-compare {
+  margin-bottom: 4px;
+}
+#compare-status {
+  min-height: 1.3em;
+}
+
+@media (max-width: 760px) {
+  .digests-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

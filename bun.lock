@@ -48,6 +48,7 @@
       "devDependencies": {
         "@tools/bytes": "workspace:*",
         "@tools/catalog": "workspace:*",
+        "@tools/editor": "workspace:*",
         "@tools/ui": "workspace:*",
       },
     },
