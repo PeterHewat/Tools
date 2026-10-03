@@ -27,14 +27,15 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "typecheck": "tsc -p . && bun run --filter '*' typecheck",
-    "check": "bun run lint && bun run typecheck && bun run format",
-    "test": "bun run --filter '*' test && bun test scripts/bundle-budget.test.ts",
+    "check": "bun run lint && bun run typecheck && bun run format && bun run links",
+    "test": "bun run --filter '*' test && bun test scripts",
     "test:browser": "bunx playwright test --config scripts/playwright.config.ts",
     "verify": "bun run check && bun run test && bun run build",
     "new-app": "bun scripts/new-app.ts",
     "outdated": "bun outdated -r",
     "update": "bun update -r",
-    "prepare": "husky"
+    "prepare": "husky",
+    "links": "bun scripts/docs-links.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [

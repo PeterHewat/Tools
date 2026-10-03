@@ -9,6 +9,15 @@
 - Run the [format gate](#format-gate) after editing, and the [verify gate](#verify-gate) before finishing
 - **Saved formats:** the SVG and JSON apps are released. JSON keeps only settings (`tools.json.prefs` in localStorage, read field by field with a default for anything missing or unknown) and a per-tab draft; a change to its settings must still read the old ones. A change to the SVG app's IndexedDB documents (`ProjectFile`) or exported SVG keeps existing files opening: bump `PROJECT_VERSION` (`types.ts`) and add the step up from the previous version in `readProject` (`project-file.ts`); the database's own `DB_VERSION` (`storage.ts`) is for its stores. Exported SVG carries no marker, so an SVG change must still import files written before it. An app that is not released yet has no migration — when its stored format changes, fail closed and tell the person to clear that app's storage.
 
+## Clean changes
+
+- **No unsolicited legacy:** no compatibility shims, deprecated aliases, dual code paths or flags for old behaviour unless the user asks. The saved formats above are the one standing exception.
+- **Iterate in place:** when a feature changes, update its types, call sites, tests, Help and docs to the new design; do not keep the old shape alongside.
+- **Breaking changes:** if work would break what people have saved or exported beyond what the saved-format rule covers, stop and report what breaks and the options before building a migration.
+- **Shared code:** keep behaviour in its app until a second app needs it, then move it to `packages/` rather than copying it.
+- **Budgets:** before raising an app's `jsBudget`, measure what grew and say why in the commit.
+- **Docs:** reference docs describe what is built; intentions go in `docs/plan/`. Markdown links resolve from the folder of the file holding them; `bun run links` (part of `check`) fails on a missing target.
+
 ## Project conventions
 
 - **Shape:** Bun workspaces. Apps in `apps/`, shared code in `packages/`, repo scripts in `scripts/`.
