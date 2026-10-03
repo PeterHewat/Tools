@@ -122,12 +122,14 @@ export const APPS: readonly ToolsApp[] = [
   {
     slug: "digests",
     name: "Digests",
+    title: "SHA Hash and HMAC Calculator",
     blurb:
       "Hash text and files with every SHA at once, check an expected digest, and compute HMAC.",
     icon: "M9 3 7 21M17 3l-2 18M3 9h18M3 15h18",
     tags: ["hash", "sha", "digest", "hmac", "files", "developer"],
     art: true,
-    compactHeader: 276,
+    compactHeader: false,
+    compactHome: 435,
     jsBudget: { entryGzip: 135, totalGzip: 135 },
     status: "stable",
     listed: true,
