@@ -26,7 +26,10 @@
         <section class="ui-card codec-field" id="text-card" aria-labelledby="text-title">
           <div class="ui-row">
             <h2 id="text-title">UTF-8 text</h2>
-            <span class="codec-note" id="text-note"></span>
+            <span class="ui-note" id="text-note"></span>
+            <a class="ui-btn ui-btn--small codec-link" id="to-digests" href="../digests/"
+              ><svg data-ui-icon="hash"></svg>Digests</a
+            >
             <button
               type="button"
               class="ui-btn ui-icon-btn"
@@ -36,12 +39,12 @@
               <svg data-ui-icon="copy"></svg>
             </button>
           </div>
-          <div class="ui-editor" id="text"></div>
+          <div class="ui-editor ui-data" id="text"></div>
         </section>
         <section class="ui-card codec-field" id="url-card" aria-labelledby="url-title">
           <div class="ui-row">
             <h2 id="url-title">URL component</h2>
-            <span class="codec-note" id="url-note"></span>
+            <span class="ui-note" id="url-note"></span>
             <button
               type="button"
               class="ui-btn ui-icon-btn"
@@ -51,12 +54,12 @@
               <svg data-ui-icon="copy"></svg>
             </button>
           </div>
-          <div class="ui-editor" id="url"></div>
+          <div class="ui-editor ui-data" id="url"></div>
         </section>
         <section class="ui-card codec-field" id="base64-card" aria-labelledby="base64-title">
           <div class="ui-row">
             <h2 id="base64-title">Base64</h2>
-            <span class="codec-note" id="base64-note"></span>
+            <span class="ui-note" id="base64-note"></span>
             <button
               type="button"
               class="ui-btn ui-icon-btn"
@@ -66,12 +69,12 @@
               <svg data-ui-icon="copy"></svg>
             </button>
           </div>
-          <div class="ui-editor" id="base64"></div>
+          <div class="ui-editor ui-data" id="base64"></div>
         </section>
         <section class="ui-card codec-field" id="base64url-card" aria-labelledby="base64url-title">
           <div class="ui-row">
             <h2 id="base64url-title">Base64url</h2>
-            <span class="codec-note" id="base64url-note"></span>
+            <span class="ui-note" id="base64url-note"></span>
             <button
               type="button"
               class="ui-btn ui-icon-btn"
@@ -81,18 +84,18 @@
               <svg data-ui-icon="copy"></svg>
             </button>
           </div>
-          <div class="ui-editor" id="base64url"></div>
+          <div class="ui-editor ui-data" id="base64url"></div>
         </section>
         <section class="ui-card codec-field" id="hex-card" aria-labelledby="hex-title">
           <div class="ui-row">
             <h2 id="hex-title">Hex</h2>
             <span class="codec-count" id="count" role="status"></span>
-            <span class="codec-note" id="hex-note"></span>
+            <span class="ui-note" id="hex-note"></span>
             <button type="button" class="ui-btn ui-icon-btn" id="hex-copy" aria-label="Copy Hex">
               <svg data-ui-icon="copy"></svg>
             </button>
           </div>
-          <div class="ui-editor" id="hex"></div>
+          <div class="ui-editor ui-data" id="hex"></div>
         </section>
       </div>
     </main>
@@ -146,6 +149,10 @@
             alphabet. Both refuse padding bits that are not zero.
           </li>
           <li>Hex accepts white space between complete byte pairs, in either case.</li>
+          <li>
+            Digests, beside UTF-8 text, opens the Digests app on the same text, to see its SHA
+            digests or HMAC.
+          </li>
         </ul>
       </div>
     </aside>

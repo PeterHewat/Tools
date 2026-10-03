@@ -94,6 +94,39 @@
   gap: var(--ui-group-gap);
   margin-left: auto;
 }
+/* Beside a card's heading: a count, or what is wrong. Takes the room left, wrapping inside it. */
+.ui-note {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ui-note[data-error="true"] {
+  color: var(--danger);
+}
+/* Text kept as data (the editor's `exact`): no gutter or active line; a tab drawn as a line
+   across its width, other invisible characters as small labels. */
+.ui-data .cm-gutters {
+  display: none;
+}
+.ui-data .cm-activeLine {
+  background: transparent;
+}
+.ui-data .cm-tab {
+  background: linear-gradient(var(--muted), var(--muted)) center / calc(100% - 4px) 1px no-repeat;
+}
+.ui-data .cm-specialChar {
+  margin: 0 1px;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--text);
+  font-size: 0.85em;
+}
 .ui-help a {
   overflow-wrap: anywhere;
 }

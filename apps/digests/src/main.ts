@@ -71,6 +71,8 @@ function fields(): void {
   byId("text").hidden = source !== "text";
   byId("file-field").hidden = source !== "file";
   byId("key-fields").hidden = !isOn(keyed);
+  for (const name of ALGORITHMS)
+    byId(name.toLowerCase() + "-title").textContent = (isOn(keyed) ? "HMAC-" : "") + name;
   byId("file-name").textContent = file
     ? file.name
     : fileName
@@ -99,24 +101,26 @@ async function fileBytes(file: File): Promise<Uint8Array<ArrayBuffer>> {
   return read.bytes;
 }
 
-/** The digests in the chosen encoding, and which line an expected digest matches. */
+/** The digests in the chosen encoding, and which card an expected digest matches. */
 function show(): void {
   const match = digests && matchDigest(expected.value, digests, { hex: toHex, base64: toBase64 });
   for (const name of ALGORITHMS) {
     const id = name.toLowerCase();
     const value = digests?.[name];
-    // Kept while the input cannot be hashed, dimmed: the lines never jump.
+    // Kept while the input cannot be hashed, dimmed: the cards never jump.
     if (value) {
       const [shown, other] =
         encoding === "hex" ? [toHex(value), toBase64(value)] : [toBase64(value), toHex(value)];
       byId(id).firstElementChild!.textContent = shown;
-      // Sized for the other encoding too, so switching moves no line.
+      // Sized for the other encoding too, so switching moves no card.
       byId(id).dataset.other = other;
     }
     byId<HTMLButtonElement>(id + "-copy").disabled = !value;
     byId(id + "-item").toggleAttribute("data-match", name === match);
+    byId(id + "-item").toggleAttribute("data-stale", !value);
+    byId(id + "-note").textContent =
+      name === match ? "Matches." : name === "SHA-1" ? "Legacy: not for security." : "";
   }
-  byId("digests").toggleAttribute("data-stale", !digests);
   const compare = byId("compare-status");
   if (!expected.value.trim()) showMessage(compare, "");
   else if (!digests) showMessage(compare, "");
@@ -132,7 +136,6 @@ async function compute(version: number): Promise<void> {
       byId(name.toLowerCase()).firstElementChild!.textContent = "";
       delete byId(name.toLowerCase()).dataset.other;
     }
-    byId("size").textContent = "";
     showMessage(byId("status"), fileName ? "Choose the file again to hash it." : "Choose a file.");
     show();
     return;
@@ -142,11 +145,10 @@ async function compute(version: number): Promise<void> {
     let bytes: Uint8Array<ArrayBuffer>;
     if (source === "text") bytes = utf8(editor.text);
     else bytes = await fileBytes(file!);
-    byId("size").textContent = formatBytes(bytes.length);
     const result = await hashAll(bytes, hmacKey);
     if (version !== revision) return;
     digests = result;
-    showMessage(byId("status"), isOn(keyed) ? "HMAC" : "");
+    showMessage(byId("status"), formatBytes(bytes.length));
   } catch (error) {
     if (version !== revision) return;
     digests = undefined;
@@ -206,6 +208,23 @@ for (const name of ALGORITHMS) {
       showMessage(byId("status"), "Clipboard unavailable. Select and copy the digest.", true);
   });
 }
+
+/** Codec opens on the same bytes: the text, or a small file as Base64. */
+const CODEC_FILE_BYTES = 1024 * 1024;
+const toCodec = byId<HTMLAnchorElement>("to-codec");
+toCodec.addEventListener("click", async (event) => {
+  event.preventDefault();
+  let value = { source: "text", value: editor.text };
+  if (source === "file") {
+    if (!file) return showMessage(byId("status"), "Choose a file first.", true);
+    if (file.size > CODEC_FILE_BYTES)
+      return showMessage(byId("status"), "Codec opens files up to 1 MiB.", true);
+    value = { source: "base64", value: toBase64(await fileBytes(file)) };
+  }
+  // Codec's own draft for this tab, so it opens on these bytes.
+  writeDraft("codec", 1, value);
+  location.href = toCodec.href;
+});
 
 byId("clear").addEventListener("click", () => {
   editor.setText("");

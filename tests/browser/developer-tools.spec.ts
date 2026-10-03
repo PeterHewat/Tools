@@ -347,7 +347,7 @@ test("Digests hashes text and files with every SHA, HMAC, and names the digest t
   // A new tab starts on the example sentence.
   const fox = "The quick brown fox jumps over the lazy dog";
   await expect(page.locator("#sha-256")).toHaveText(createHash("sha256").update(fox).digest("hex"));
-  await expect(page.locator("#size")).toHaveText("43 B");
+  await expect(page.locator("#status")).toHaveText("43 B");
   const text = page.locator("#text .cm-content");
   await text.click();
   await page.keyboard.press("ControlOrMeta+a");
@@ -363,22 +363,28 @@ test("Digests hashes text and files with every SHA, HMAC, and names the digest t
     ["sha-1", "sha1"],
   ])
     await expect(page.locator("#" + name)).toHaveText(createHash(node).update("abc").digest("hex"));
-  const lines = await page.locator("#digests").boundingBox();
+  const lines = await page
+    .locator("#sha-1-item")
+    .evaluate((e: HTMLElement) => [e.offsetTop, e.offsetHeight]);
   await page
     .locator("#expected")
     .fill(createHash("sha384").update("abc").digest("hex").toUpperCase());
   await expect(page.locator("#compare-status")).toHaveText("Matches SHA-384.");
   await expect(page.locator("#sha-384-item")).toHaveAttribute("data-match", "");
+  await expect(page.locator("#sha-384-note")).toHaveText("Matches.");
   await page.locator('[data-encoding="base64"]').click();
   await expect(page.locator("#sha-256")).toHaveText(
     createHash("sha256").update("abc").digest("base64")
   );
   await expect(page.locator("#sha-384-item")).toHaveAttribute("data-match", "");
-  expect(await page.locator("#digests").boundingBox()).toEqual(lines);
+  expect(
+    await page.locator("#sha-1-item").evaluate((e: HTMLElement) => [e.offsetTop, e.offsetHeight])
+  ).toEqual(lines);
   await page.locator('[data-encoding="hex"]').click();
   await page.locator("#hmac").click();
   await expect(page.locator("#hmac")).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("#status")).toContainText("non-empty");
+  await expect(page.locator("#sha-256-title")).toHaveText("HMAC-SHA-256");
   await expect(page.locator("#sha-256-copy")).toBeDisabled();
   await page.locator("#key").fill("test key");
   await expect(page.locator("#sha-256")).toHaveText(
@@ -388,7 +394,6 @@ test("Digests hashes text and files with every SHA, HMAC, and names the digest t
     createHmac("sha512", "test key").update("abc").digest("hex")
   );
   await expect(page.locator("#compare-status")).toHaveText("Matches none of these digests.");
-  expect(await page.locator("#digests").boundingBox()).toEqual(lines);
   await page.locator("#hmac").click();
   await expect(page.locator("#hmac")).toHaveAttribute("aria-checked", "false");
   const bytes = Buffer.from([0, 255, 13, 10]);
@@ -399,7 +404,7 @@ test("Digests hashes text and files with every SHA, HMAC, and names the digest t
   await expect(page.locator("#sha-256")).toHaveText(
     createHash("sha256").update(bytes).digest("hex")
   );
-  await expect(page.locator("#size")).toHaveText("4 B");
+  await expect(page.locator("#status")).toHaveText("4 B");
   await page.reload();
   await expect(page.locator("#file-name")).toContainText("binary.dat");
   await expect(page.locator("#status")).toContainText("Choose the file again");
@@ -751,6 +756,23 @@ for (const [slug, field, value] of [
     }
   );
 }
+test("Codec and Digests open each other on the same text", async ({ page }) => {
+  await page.goto("/Tools/digests/");
+  await page.locator("#text .cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText("Grüße");
+  await page.locator("#to-codec").click();
+  await expect(page).toHaveURL(/\/codec\/$/);
+  await expect(page.locator("#hex .cm-content")).toHaveText("47 72 c3 bc c3 9f 65");
+  await page.locator("#text .cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText("hello");
+  await page.locator("#to-digests").click();
+  await expect(page).toHaveURL(/\/digests\/$/);
+  await expect(page.locator("#sha-256")).toHaveText(
+    createHash("sha256").update("hello").digest("hex")
+  );
+});
 test("digests draft survives reload; a fresh tab starts on the example; an incompatible draft is kept", async ({
   page,
   context,

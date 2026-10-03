@@ -11,6 +11,8 @@
   background: var(--panel-2);
   color: var(--text);
   font: inherit;
+  /* A link that does a button's job looks like one. */
+  text-decoration: none;
   font-size: var(--ui-control-font);
   line-height: 1.2;
   cursor: pointer;

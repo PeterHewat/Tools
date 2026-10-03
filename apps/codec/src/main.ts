@@ -36,6 +36,8 @@ const draft = readDraft("codec", DRAFT);
 
 /** The field being edited: the others are written from its bytes. */
 let source: Format = "text";
+/** The bytes as UTF-8 text, for Digests; null while they cannot be read or are not text. */
+let asText: string | null = "";
 
 const editors = Object.fromEntries(
   FORMATS.map((format) => [
@@ -65,6 +67,7 @@ function update(): void {
     bytes = readValue(editors[source].text, source);
   } catch (error) {
     note(source, (error as Error).message, true);
+    asText = null;
     // The other fields still hold the last bytes that read: shown, but not copied as current.
     for (const format of FORMATS) {
       const stale = format !== source;
@@ -76,6 +79,7 @@ function update(): void {
     return;
   }
   const all = writeAll(bytes);
+  asText = all.text;
   for (const format of FORMATS) {
     byId(format + "-card").removeAttribute("data-stale");
     const value = all[format];
@@ -103,6 +107,25 @@ function load(value: string, from: Format): void {
   editors[from].setText(value);
   update();
 }
+
+/** Digests opens on the same text, keeping its own settings (HMAC, key, encoding). */
+const toDigests = byId<HTMLAnchorElement>("to-digests");
+toDigests.addEventListener("click", (event) => {
+  event.preventDefault();
+  if (asText === null) {
+    const status = byId("status");
+    status.hidden = false;
+    showMessage(status, "Digests hashes text: these bytes are not valid UTF-8.", true);
+    return;
+  }
+  const digests = readDraft("digests", 1);
+  writeDraft("digests", 1, {
+    ...(digests.error ? {} : digests.value),
+    text: asText,
+    source: "text",
+  });
+  location.href = toDigests.href;
+});
 
 for (const format of FORMATS) {
   const button = byId(format + "-copy");

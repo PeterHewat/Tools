@@ -79,6 +79,9 @@ export const ICONS = {
   image: line(
     '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>'
   ),
+  /** The Digests and Codec app icons, for the links between them. */
+  hash: line('<path d="M9 3 7 21M17 3l-2 18M3 9h18M3 15h18"/>'),
+  convert: line('<path d="M3 8h16l-4-4m4 4-4 4M21 16H5l4-4m-4 4 4 4"/>'),
 } as const;
 
 export type IconName = keyof typeof ICONS;
