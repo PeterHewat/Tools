@@ -4,7 +4,11 @@ import AxeBuilder from "@axe-core/playwright";
 import { createHmac, createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import jsQR from "jsqr";
-import {
+import zxing from "@zxing/library";
+import { findApp } from "../../packages/catalog/src/index.js";
+
+// A CommonJS package whose exports Node cannot list for named imports: read from its default.
+const {
   BarcodeFormat,
   BinaryBitmap,
   DecodeHintType,
@@ -12,8 +16,7 @@ import {
   MultiFormatReader,
   QRCodeReader,
   RGBLuminanceSource,
-} from "@zxing/library";
-import { findApp } from "../../packages/catalog/src/index.js";
+} = zxing;
 
 test("JWT decodes, verifies live, reads claims and decodes broken segments independently", async ({
   page,
