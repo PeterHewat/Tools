@@ -8,6 +8,7 @@ send anonymous page-view analytics to Cloudflare when you are online.
 
 The [site](https://peterhewat.github.io/Tools/) lists the tools and their capabilities.
 The [catalog](packages/catalog/src/index.ts) is the source for that list.
+The [roadmap](docs/README.md) shows each app, its place in line, and a link to its description.
 
 ## Running it
 
@@ -65,7 +66,7 @@ packages/
   json-core/   source-preserving JSON parser and formatter shared by JSON and JWT
   tsconfig/    shared TypeScript config
 scripts/       build and scaffold scripts
-docs/          decisions, reference and plans
+docs/          decisions, and a description of each app
 ```
 
 Each app is TypeScript built by Vite into plain static files, with **no runtime framework**.

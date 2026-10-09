@@ -8,7 +8,7 @@
 the shipped files keep working for years whatever happens to the toolchain.
 
 Several apps edit or show code: the JSON app's text and its converted views, the SVG app's live
-source panel, and planned apps such as Diff, JWT and Icon Check. What they need is an IDE's
+source panel, JWT's decoded JSON, and planned apps such as Diff. What they need is an IDE's
 editor: folding, bracket matching, auto-closing, indent on Enter, go to line, selection by
 syntax, errors in place, large documents drawn only where they are on screen, plus the parts
 that make an editor work for everyone: IME composition, phone keyboards and selection handles,

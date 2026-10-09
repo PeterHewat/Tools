@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 /**
- * Fails when a tracked Markdown file links to a path that does not exist. Only relative links are
+ * Fails when a working-tree Markdown file links to a path that does not exist. Only relative links are
  * checked (external URLs and `#anchor` links are not), each from the folder of the file holding
- * it, as GitHub and editors follow them. Tracked files only, from `git ls-files`.
+ * it, as GitHub and editors follow them. Includes tracked and non-ignored new files,
+ * excluding files deleted from the working tree, so checking does not require staging.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -38,9 +39,15 @@ export function brokenLinks(root: string, files: readonly string[]): string[] {
 
 if (import.meta.main) {
   const root = resolve(import.meta.dir, "..");
-  const git = Bun.spawnSync(["git", "ls-files", "-z", "*.md"], { cwd: root });
+  const git = Bun.spawnSync(
+    ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "*.md"],
+    { cwd: root }
+  );
   if (git.exitCode !== 0) throw new Error("git ls-files failed: " + git.stderr.toString());
-  const broken = brokenLinks(root, git.stdout.toString().split("\0").filter(Boolean));
+  const files = [...new Set(git.stdout.toString().split("\0").filter(Boolean))].filter((file) =>
+    existsSync(join(root, file))
+  );
+  const broken = brokenLinks(root, files);
   if (broken.length) {
     console.error(`Broken Markdown links (${broken.length}):\n  ${broken.join("\n  ")}`);
     console.error("A link resolves from the folder of the file holding it, not the repo root.");

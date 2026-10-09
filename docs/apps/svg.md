@@ -1,7 +1,7 @@
-# SVG — Reference
+# SVG
 
 What the SVG app does and how, as built. When this and the code disagree, the code is right and this
-is fixed.
+is fixed. Status is on the [roadmap](../README.md).
 
 ## 1. Purpose
 
@@ -490,3 +490,16 @@ Documents move between browsers as files (`document-files.ts`):
 - A transform stored on a group (see §8 for what is done instead).
 - Creating guides on a phone, where the rulers are hidden.
 - Dragging gradient stops along the gradient on the canvas; they are typed as percentages.
+
+## Later
+
+Source editing, on top of the live SVG panel:
+
+- **Colour swatches** beside `fill` and `stroke` values, opening the app's colour picker.
+- **Complete element and attribute names** from a small SVG schema (`lang-xml` takes one).
+- **Hover a line** to outline that shape on the canvas.
+
+Use the shared colour picker and keep CodeMirror behind `@tools/editor`
+([ADR 003](../adr/003-codemirror-for-code-editing.md)). Shared settings are in the
+[editor description](../editor.md). Keep drawing features in SVG. Preserve exported SVG
+compatibility and the byte-for-byte export → import → export invariant.

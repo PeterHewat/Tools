@@ -44,4 +44,4 @@ An app that is not released yet has no saved documents to carry forward. When it
 
 ## Docs
 
-Reference docs describe the code as it is. When a doc and the code disagree, fix the doc. Intent that is not built yet goes in [`docs/plan`](./docs/plan).
+Each app is described in [`docs/apps`](./docs/apps). When a description and the code disagree, fix the description. An app that is not built yet says so at the top. On a built app, an idea that is not built yet goes under Later in that file.
