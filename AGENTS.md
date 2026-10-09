@@ -16,7 +16,7 @@
 - **Breaking changes:** if work would break what people have saved or exported beyond what the saved-format rule covers, stop and report what breaks and the options before building a migration.
 - **Shared code:** keep behaviour in its app until a second app needs it, then move it to `packages/` rather than copying it.
 - **Budgets:** before raising an app's `jsBudget`, measure what grew and say why in the commit.
-- **Docs:** reference docs describe what is built; intentions go in `docs/plan/`. Markdown links resolve from the folder of the file holding them; `bun run links` (part of `check`) fails on a missing target.
+- **Docs:** each app is described in `docs/apps/`. An app that is not built yet says so at the top, and that file is its design. On a built app, ideas that are not built go under Later; when one ships, write it into the description and remove it from Later. When a description and the code disagree, the code is right and the description is fixed. The shared editor is `docs/editor.md`. Markdown links resolve from the folder of the file holding them; `bun run links` (part of `check`) fails on a missing target.
 
 ## Project conventions
 
