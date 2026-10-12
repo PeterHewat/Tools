@@ -5,6 +5,8 @@ test.beforeEach(async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
+    // WebKit reports the SVG app's viewport key for Android keyboards, which Safari ignores.
+    if (message.text().startsWith('Viewport argument key "interactive-widget"')) return;
     if (message.type() === "error") errors.push(message.text());
   });
   await page.addInitScript(() =>
