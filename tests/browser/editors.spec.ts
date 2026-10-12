@@ -10,7 +10,14 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() =>
     localStorage.setItem(
       "svg.demos",
-      JSON.stringify(["crab", "goldfish", "jellyfish", "octopus", "starfish"])
+      JSON.stringify([
+        "art.svg",
+        "demos/jellyfish.svg",
+        "demos/goldfish.svg",
+        "demos/starfish.svg",
+        "demos/crab.svg",
+        "demos/octopus.svg",
+      ])
     )
   );
   // Assert after each test through an automatically registered assertion hook below.
