@@ -4,7 +4,7 @@ Tools is a set of small tools that run in the browser. A change keeps each app a
 
 ## Setup
 
-Requires [Bun](https://bun.sh) 1.4.2 or newer.
+Requires [Bun](https://bun.sh) 1.4.3 or newer.
 
 ```bash
 bun install
@@ -28,11 +28,11 @@ Put a test next to the pure logic it covers, the way `model.test.ts` sits beside
 After a build, run real-browser checks with:
 
 ```bash
-bunx playwright install chromium firefox
+bunx playwright install chromium webkit
 bun run test:browser
 ```
 
-The suite uses isolated profiles and a temporary production-file server on port 5171, shut down by Playwright. It does not use or stop the development server on 5170. Chromium and Firefox cover editing, drawing, source-panel loading, keyboard menus, responsive headers, and automated WCAG A/AA checks in both themes. Chromium also covers native touch drawing/pinch and offline service-worker replacement. Automated accessibility checks complement manual keyboard and screen-reader testing; they do not certify accessibility.
+The suite uses isolated profiles and a temporary production-file server on port 5171, shut down by Playwright. It does not use or stop the development server on 5170. Chromium and WebKit (the engine of Safari and every iOS browser) cover editing, drawing, source-panel loading, keyboard menus, responsive headers, and automated WCAG A/AA checks in both themes. Chromium also covers native touch drawing/pinch and offline service-worker replacement. Automated accessibility checks complement manual keyboard and screen-reader testing; they do not certify accessibility.
 
 Builds enforce gzip JavaScript budgets from the catalog's `jsBudget`: the initial entry and static module preloads, plus all chunks including lazy ones. The SVG source editor loads when visible; all chunks are still precached for offline use. Change a budget only after measuring and explaining the additional cost.
 

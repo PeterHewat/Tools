@@ -19,7 +19,7 @@
     "./color-picker.css": "./color-picker.css"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun test"
   },
   "dependencies": {

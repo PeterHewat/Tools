@@ -53,7 +53,7 @@ const files: Record<string, string> = {
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun test"
   },
   "devDependencies": {
