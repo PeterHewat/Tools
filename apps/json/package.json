@@ -6,7 +6,7 @@
   "description": "Format, minify and validate JSON",
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun test"
   },
   "devDependencies": {

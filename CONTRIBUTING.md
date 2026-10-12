@@ -4,7 +4,7 @@ Tools is a set of small tools that run in the browser. A change keeps each app a
 
 ## Setup
 
-Requires [Bun](https://bun.sh) 1.4.2 or newer.
+Requires [Bun](https://bun.sh) 1.4.3 or newer.
 
 ```bash
 bun install

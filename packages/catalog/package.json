@@ -9,7 +9,7 @@
     "./site": "./src/site.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun test"
   }
 }
