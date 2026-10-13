@@ -58,6 +58,26 @@ a {
   border-color: var(--accent);
 }
 
+/* Typed dates and times (`time-fields.ts`): wide enough for their YYYY-MM-DD and HH:MM
+   placeholders, or for 23:59:59. */
+.ui-clock,
+.ui-date {
+  font-variant-numeric: tabular-nums;
+}
+.ui-clock {
+  width: calc(6.5ch + 22px);
+}
+.ui-clock[data-seconds] {
+  width: calc(8.5ch + 22px);
+}
+.ui-date {
+  width: calc(12ch + 22px);
+}
+.ui-clock[aria-invalid="true"],
+.ui-date[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
 /* ---------- Layout pieces ---------- */
 
 .ui-label {

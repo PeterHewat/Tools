@@ -9,7 +9,7 @@ Editing the encoded token updates the header and payload. Editing the header or 
 the token and signs it again when a key that can sign is present. The algorithm is the header's
 `alg`; choosing another rewrites the header and signs again. Known header parameters and claims are
 explained at the end of their line, with `exp`, `nbf` and `iat` as local dates. Those notes are not
-part of the JSON. A token pasted with a `Bearer` prefix, or wrapped over several lines, is made
+part of the JSON; Time opens on those claims to see them in every zone. A token pasted with a `Bearer` prefix, or wrapped over several lines, is made
 compact as it is pasted.
 
 HS256, HS384 and HS512 use a shared secret, as UTF-8 text, Base64url, Base64, hex or an oct JWK.

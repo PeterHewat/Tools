@@ -53,35 +53,6 @@ body {
 
 /* Buttons joined into one control (JSON | YAML | …, indent, path style) are @tools/ui's .ui-seg. */
 
-/* The views as one dropdown, for a phone (see the media query below); drawn as a header button
-   with its own chevron, since the native arrow differs on every platform. */
-.view-picker {
-  position: relative;
-  display: none;
-}
-.view-picker > svg {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  width: 18px;
-  height: 18px;
-  transform: translateY(-50%);
-  color: var(--text);
-  pointer-events: none;
-}
-.view-select {
-  min-height: var(--ui-control);
-  padding: 0 28px 0 10px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  background: var(--accent-dim);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--ui-control-font);
-  appearance: none;
-  cursor: pointer;
-}
-
 /* Choices that read as one scale (2, 4, Tab) take the same width, that of the widest. */
 .ui-seg.equal {
   display: inline-grid;
@@ -351,7 +322,7 @@ body:not([data-view="json"]) .text-area {
     display: none;
   }
 
-  .view-picker {
+  .json-header .ui-view-picker {
     display: block;
   }
 }

@@ -120,15 +120,16 @@ export function withIcons(html: string, sprite?: string): string {
     const [whole, tag, attrs] = open as unknown as [string, string, string];
     const name = /\sdata-ui-icon="([^"]*)"/.exec(attrs)?.[1];
     if (name === undefined) continue;
-    // Only an empty element is filled: nothing but white space before its closing tag.
+    // Only an empty element is filled: nothing but white space before its closing tag, which may
+    // hold white space itself (`</svg\n>`, as Prettier wraps a tag between inline elements).
     const start = open.index + whole.length;
     const lt = html.indexOf("<", start);
-    const close = `</${tag}>`;
-    if (lt < 0 || html.slice(start, lt).trim() || !html.startsWith(close, lt)) continue;
+    const close = lt < 0 ? null : new RegExp(`^</${tag}\\s*>`).exec(html.slice(lt, lt + 64));
+    if (!close || html.slice(start, lt).trim()) continue;
     if (!isIconName(name)) throw new Error(`Unknown icon "${name}" in ${ICON_ATTR}`);
     const box = /\sviewBox=/.test(attrs) ? "" : ' viewBox="0 0 24 24"';
-    out += `${html.slice(done, open.index)}<${tag}${attrs}${box}>${ICONS[name]}${close}`;
-    done = lt + close.length;
+    out += `${html.slice(done, open.index)}<${tag}${attrs}${box}>${ICONS[name]}</${tag}>`;
+    done = lt + close[0].length;
   }
   return out + html.slice(done);
 }

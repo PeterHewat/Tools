@@ -18,8 +18,8 @@ under way; **Planned** is a later proposal. Future rows are ordered by build pri
 | [Codes](apps/codes.md)     | Stable  | QR codes for links, Wi-Fi, contacts, events and more, with your colours, shapes, logo and frame; plus Code 128, EAN-13 and UPC-A barcodes.                |
 | [Codec](apps/codec.md)     | Stable  | Convert UTF-8 text, Base64, Base64url, URL components and hex, with every byte visible.                                                                   |
 | [Digests](apps/digests.md) | Stable  | Hash text and files with every SHA at once, check an expected digest, and compute HMAC.                                                                   |
-| [Time](apps/time.md)       | Next    | Convert timestamps, compare availability and measure durations.                                                                                           |
-| [Diff](apps/diff.md)       | Planned | Compare two texts or JSON documents, with clear changes and navigation.                                                                                   |
+| [Time](apps/time.md)       | Stable  | Convert Unix timestamps and ISO dates across time zones, find a call time for people in several zones, and measure durations and ages.                    |
+| [Diff](apps/diff.md)       | Next    | Compare two texts or JSON documents, with clear changes and navigation.                                                                                   |
 | [Certs](apps/certs.md)     | Planned | Inspect X.509 certificates, chains and related data.                                                                                                      |
 | [Notes](apps/notes.md)     | Planned | Write Markdown and organise a small local collection of notes.                                                                                            |
 | [Magnet](apps/magnet.md)   | Planned | Inspect torrent metadata and convert infohashes and magnet links.                                                                                         |

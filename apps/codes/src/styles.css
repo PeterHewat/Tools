@@ -94,6 +94,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* A date and a time on one line. */
+.codes-when {
+  display: flex;
+  gap: 6px;
+}
+.codes-when .ui-date {
+  flex: 1;
+  min-width: 0;
+}
 .codes .codes-short {
   min-height: 72px;
 }

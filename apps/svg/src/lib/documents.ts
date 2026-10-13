@@ -147,9 +147,11 @@ function renderDocList(): void {
     li.dataset.docId = d.id;
     const open = expandedDocs.has(d.id);
     li.className = `acc-item doc-row${isCurrent ? " current" : ""}${open ? " expanded" : ""}`;
+    // On the 24-hour clock whatever the language, as across the site.
     const when = new Date(d.updated).toLocaleString([], {
       dateStyle: "short",
       timeStyle: "short",
+      hourCycle: "h23",
     });
     li.title = isCurrent ? `Open since ${when}` : `Open (last saved ${when})`;
     li.innerHTML = `<div class="acc-header-row">
@@ -211,7 +213,11 @@ async function fillStats(li: HTMLElement, d: DocumentMeta): Promise<void> {
   const content = li.querySelector<HTMLElement>(".doc-stats-content");
   const file = li.querySelector<HTMLElement>(".doc-stats-file");
   if (!content || !file) return;
-  const when = new Date(d.updated).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  const when = new Date(d.updated).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+    hourCycle: "h23",
+  });
   let details: Details;
   if (d.id === currentDoc.id) {
     details = detailsOf(getState());

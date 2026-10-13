@@ -1,6 +1,9 @@
 import {
+  bindTimeFields,
   bindColorSwatch,
   bindToolHelp,
+  formatClock,
+  parseClock,
   debounce,
   byId,
   contrast,
@@ -116,8 +119,10 @@ const ids = [
   "vc-country",
   "vc-note",
   "ev-title",
-  "ev-start",
-  "ev-end",
+  "ev-start-date",
+  "ev-start-time",
+  "ev-end-date",
+  "ev-end-time",
   "ev-location",
   "ev-description",
   "symbology",
@@ -171,6 +176,16 @@ function showDesign(fields: Record<string, string | boolean>): void {
 
 const input = (id: string) => byId<HTMLInputElement>(id);
 const value = (id: string) => input(id).value;
+/**
+ * A date field and a 24-hour time field as one moment, in the browser's time zone; an invalid
+ * Date, which the event reports, when either is missing or unreadable.
+ */
+function localTime(date: string, time: string): Date {
+  const clock = parseClock(time);
+  return date && clock
+    ? new Date(`${date}T${formatClock(clock.minutes, clock.second)}`)
+    : new Date(NaN);
+}
 const checked = (id: string) => isOn(byId(id));
 const oneOf = <T extends string>(options: readonly T[], candidate: string, fallback: T): T =>
   options.includes(candidate as T) ? (candidate as T) : fallback;
@@ -283,9 +298,11 @@ function content(kind: Exclude<ContentType, "barcode">): string {
         title: value("ev-title"),
         location: value("ev-location"),
         description: value("ev-description"),
-        // A datetime-local value is read in the browser's time zone.
-        start: new Date(value("ev-start")),
-        ...(value("ev-end") ? { end: new Date(value("ev-end")) } : {}),
+        start: localTime(value("ev-start-date"), value("ev-start-time")),
+        // An end time alone is on the day the event starts.
+        ...(value("ev-end-time").trim()
+          ? { end: localTime(value("ev-end-date") || value("ev-start-date"), value("ev-end-time")) }
+          : {}),
       });
   }
 }
@@ -641,6 +658,8 @@ function morph(shown: Element, next: Element): void {
 }
 
 // ---------- Controls ----------
+
+bindTimeFields();
 
 for (const id of ids) {
   const element = byId(id);

@@ -48,7 +48,7 @@ The scaffold includes the shared theme toggle and Help dock. Put help content in
 using the catalog name. `bindToolHelp(slug)` wires both header buttons and remembers the
 Help dock's open state for the tab.
 
-JWT, Codec, Codes and Digests keep versioned session drafts with `readDraft` / `writeDraft`
+JWT, Codec, Codes, Digests and Time keep versioned session drafts with `readDraft` / `writeDraft`
 from `@tools/ui`. These restore the current tab on reload, including entered keys, but a
 fresh tab starts with defaults. Drafts are limited to 2 MB; an incompatible format asks
 the user to clear that app's session storage. Native file selections must be made again

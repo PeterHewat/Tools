@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <!-- Runs while the head is parsed, from the tab's draft: a reload shows the view this tab was
+         on, and Suggestions folded or not, from the first paint rather than a moment after.
+         main.ts keeps both attributes from then on. -->
+    <script>
+      try {
+        var draft = JSON.parse(sessionStorage.getItem("tools.time.draft") || "{}").value || {};
+        var view = location.hash.indexOf("#plan=") === 0 ? "meet" : draft.view;
+        if (view === "convert" || view === "duration")
+          document.documentElement.setAttribute("data-time-view", view);
+        // Folded until opened: the call is already placed on the best one.
+        if (draft.suggestionsOpen !== true)
+          document.documentElement.setAttribute("data-time-folded", "");
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <!-- "‹ Tools" and the name are written in at build time, from the catalog. -->
+    <header class="ui-header time-header" data-tools-header>
+      <div class="ui-seg time-views" role="group" aria-label="View">
+        <button type="button" class="ui-btn" data-view="meet" aria-pressed="true">
+          Find a time</button
+        ><button type="button" class="ui-btn" data-view="convert" aria-pressed="false">
+          Convert</button
+        ><button type="button" class="ui-btn" data-view="duration" aria-pressed="false">
+          Duration
+        </button>
+      </div>
+      <!-- The same choice on a phone, where three buttons would not fit beside the others. -->
+      <div class="ui-view-picker">
+        <select class="ui-view-select" id="view-select" aria-label="View">
+          <option value="meet">Find a time</option>
+          <option value="convert">Convert</option>
+          <option value="duration">Duration</option>
+        </select>
+        <svg data-ui-icon="chevron-down" aria-hidden="true"></svg>
+      </div>
+      <div class="ui-header-end">
+        <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button
+        ><button
+          type="button"
+          class="ui-btn ui-icon-btn"
+          id="help-toggle"
+          aria-label="Help"
+          aria-controls="help"
+        >
+          <svg data-ui-icon="help"></svg>
+        </button>
+      </div>
+    </header>
+    <!-- The view the head chose, pressed in the header from the first paint too. -->
+    <script>
+      (function (view) {
+        var buttons = document.querySelectorAll(".time-views [data-view]");
+        for (var i = 0; i < buttons.length; i++)
+          buttons[i].setAttribute("aria-pressed", String(buttons[i].dataset.view === view));
+        document.getElementById("view-select").value = view;
+      })(document.documentElement.getAttribute("data-time-view") || "meet");
+    </script>
+
+    <main class="ui-workbench time">
+      <p class="ui-message" id="draft-status" role="status" hidden></p>
+      <datalist id="zone-list"></datalist>
+
+      <!-- Convert: one value, or one a line. -->
+      <div class="time-view" id="view-convert">
+        <section class="ui-card" aria-labelledby="input-title">
+          <div class="ui-row">
+            <h2 id="input-title"><label for="input">Time</label></h2>
+            <span class="ui-note" id="input-note" role="status"></span>
+            <button type="button" class="ui-btn ui-btn--small" id="now">Now</button>
+            <button type="button" class="ui-btn ui-icon-btn" id="input-clear" aria-label="Clear">
+              <svg data-ui-icon="trash"></svg>
+            </button>
+          </div>
+          <textarea
+            class="ui-input time-input"
+            id="input"
+            rows="1"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="1760264100, 2026-10-12T14:30 or Mon, 12 Oct 2026 14:30:00 GMT; one a line to convert many"
+          ></textarea>
+          <div class="time-options">
+            <div class="time-option">
+              <span id="unit-label">Unix unit</span>
+              <div class="ui-seg" role="group" aria-labelledby="unit-label">
+                <button
+                  type="button"
+                  class="ui-btn ui-btn--small"
+                  data-unit="auto"
+                  aria-pressed="true"
+                >
+                  Auto</button
+                ><button
+                  type="button"
+                  class="ui-btn ui-btn--small"
+                  data-unit="s"
+                  aria-pressed="false"
+                >
+                  Seconds</button
+                ><button
+                  type="button"
+                  class="ui-btn ui-btn--small"
+                  data-unit="ms"
+                  aria-pressed="false"
+                >
+                  Milliseconds
+                </button>
+              </div>
+            </div>
+            <div class="time-option">
+              <label for="input-zone">Without an offset, read in</label>
+              <input class="ui-input time-zone" id="input-zone" list="zone-list" />
+            </div>
+            <div class="time-option">
+              <span id="pick-label">Or pick</span>
+              <input
+                class="ui-input ui-date"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="YYYY-MM-DD"
+                maxlength="10"
+                id="pick-date"
+                aria-label="Date to convert"
+                aria-describedby="pick-label"
+              />
+              <input
+                class="ui-input ui-clock"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="HH:MM"
+                maxlength="8"
+                id="pick-time"
+                data-seconds
+                aria-label="Time to convert"
+                aria-describedby="pick-label"
+              />
+            </div>
+          </div>
+          <div class="time-choice" id="choice" hidden>
+            <p id="choice-text"></p>
+            <div class="ui-seg" role="group" aria-label="Which time" id="choice-buttons"></div>
+          </div>
+        </section>
+
+        <section class="ui-card" id="results-card" aria-labelledby="results-title">
+          <div class="ui-row">
+            <h2 id="results-title">Results</h2>
+            <span class="ui-note" id="relative" role="status"></span>
+          </div>
+          <div class="time-results" id="results"></div>
+          <div class="time-pin">
+            <label for="pin-zone">Pin a zone</label>
+            <input
+              class="ui-input time-zone"
+              id="pin-zone"
+              list="zone-list"
+              placeholder="e.g. Asia/Tokyo or tokyo"
+            />
+            <button type="button" class="ui-btn ui-btn--small" id="pin">
+              <svg data-ui-icon="plus"></svg>Pin
+            </button>
+          </div>
+        </section>
+
+        <section class="ui-card" id="batch-card" aria-labelledby="batch-title" hidden>
+          <div class="ui-row">
+            <h2 id="batch-title">Results</h2>
+            <span class="ui-note" id="batch-note" role="status"></span>
+            <button type="button" class="ui-btn ui-btn--small" id="batch-copy">
+              <svg data-ui-icon="copy"></svg>Copy table
+            </button>
+          </div>
+          <div class="time-table-wrap">
+            <table class="time-table" id="batch"></table>
+          </div>
+        </section>
+      </div>
+
+      <!-- Find a time: people, the search, what fits, and a day's timeline. -->
+      <div class="time-view meet" id="view-meet">
+        <div class="meet-side">
+          <section class="ui-card" aria-labelledby="people-title">
+            <div class="ui-row">
+              <h2 id="people-title">People</h2>
+              <span class="ui-note" id="people-note" role="status"></span>
+              <button type="button" class="ui-btn ui-btn--small" id="share">
+                <svg data-ui-icon="link"></svg>Share link
+              </button>
+              <button type="button" class="ui-btn ui-btn--small" id="add-person">
+                <svg data-ui-icon="plus"></svg>Person
+              </button>
+            </div>
+            <div class="time-snapshot" id="snapshot" role="region" aria-label="Shared link" hidden>
+              <p id="snapshot-text"></p>
+              <div class="time-actions">
+                <button type="button" class="ui-btn ui-btn--small" id="snapshot-replace">
+                  Replace mine
+                </button>
+                <button type="button" class="ui-btn ui-btn--small" id="snapshot-add">
+                  Add to mine
+                </button>
+                <button type="button" class="ui-btn ui-btn--small" id="snapshot-dismiss">
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            <div class="meet-people" id="people"></div>
+          </section>
+        </div>
+        <div class="meet-main">
+          <section class="ui-card" aria-labelledby="search-title">
+            <div class="ui-row">
+              <h2 id="search-title">Search</h2>
+              <span class="ui-note" id="search-note" role="status"></span>
+            </div>
+            <div class="time-options">
+              <div class="time-option">
+                <label for="call-length">Call</label>
+                <select class="ui-input" id="call-length">
+                  <option value="15">15 min</option>
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60" selected>1 h</option>
+                  <option value="90">1 h 30 min</option>
+                  <option value="120">2 h</option>
+                  <option value="180">3 h</option>
+                </select>
+              </div>
+              <div class="time-option">
+                <label for="range-from">From</label>
+                <input
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
+                  id="range-from"
+                />
+                <label for="range-to">to</label>
+                <input
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
+                  id="range-to"
+                />
+              </div>
+              <div class="time-option">
+                <label for="meet-zone">Show times in</label>
+                <input class="ui-input time-zone" id="meet-zone" list="zone-list" />
+              </div>
+            </div>
+          </section>
+
+          <!-- Folds to its heading and count: the heading is the button, and the whole row takes
+               a click. Folded is <html data-time-folded>, set in the head before the first paint. -->
+          <section class="ui-card time-fold" aria-labelledby="suggestions-title">
+            <div class="ui-row time-fold-row" id="suggestions-row">
+              <h2 id="suggestions-title">
+                <button
+                  type="button"
+                  class="time-fold-toggle"
+                  id="suggestions-toggle"
+                  aria-expanded="false"
+                  aria-controls="suggestions-body"
+                >
+                  Suggestions
+                </button>
+              </h2>
+              <span class="ui-note" id="suggestions-note" role="status"></span>
+              <span class="time-chevron" aria-hidden="true"
+                ><svg data-ui-icon="chevron-down"></svg
+              ></span>
+            </div>
+            <div class="time-fold-body" id="suggestions-body">
+              <ol class="time-suggestions" id="suggestions"></ol>
+              <button type="button" class="ui-btn ui-btn--small" id="more" hidden>Show more</button>
+            </div>
+            <!-- Why nothing fits shows folded or not. -->
+            <div class="time-diagnosis" id="diagnosis" hidden></div>
+          </section>
+
+          <section class="ui-card" aria-labelledby="timeline-title">
+            <div class="ui-row">
+              <h2 id="timeline-title">Timeline</h2>
+              <span class="ui-note" id="timeline-day"></span>
+              <div class="ui-seg" role="group" aria-label="Day">
+                <button
+                  type="button"
+                  class="ui-btn ui-icon-btn"
+                  id="day-prev"
+                  aria-label="Previous day"
+                >
+                  <svg data-ui-icon="chevron-right" class="time-flip"></svg></button
+                ><button
+                  type="button"
+                  class="ui-btn ui-icon-btn"
+                  id="day-next"
+                  aria-label="Next day"
+                >
+                  <svg data-ui-icon="chevron-right"></svg>
+                </button>
+              </div>
+            </div>
+            <div class="time-timeline" id="timeline"></div>
+            <div class="time-legend" aria-hidden="true">
+              <span class="level-preferred">Preferred</span>
+              <span class="level-acceptable">Acceptable</span>
+              <span class="level-unavailable">Unavailable</span>
+              <span class="legend-call">The call: drag it, or click to place it</span>
+              <span class="legend-now">Now</span>
+            </div>
+            <div class="time-picked" id="picked">
+              <div class="time-option">
+                <label for="picked-time">Call at</label>
+                <input
+                  class="ui-input ui-clock"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="HH:MM"
+                  maxlength="8"
+                  id="picked-time"
+                />
+                <span class="ui-note" id="picked-zone"></span>
+                <button type="button" class="ui-btn ui-btn--small" id="picked-copy" disabled>
+                  <svg data-ui-icon="copy"></svg>Copy summary
+                </button>
+              </div>
+              <p class="time-picked-text" id="picked-text" role="status"></p>
+              <pre class="time-summary" id="picked-summary"></pre>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Duration: between two dates, or from or to now. -->
+      <div class="time-view" id="view-duration">
+        <section class="ui-card" aria-labelledby="measure-title">
+          <div class="ui-row">
+            <h2 id="measure-title">Measure</h2>
+          </div>
+          <div class="dur-ends">
+            <fieldset class="dur-end">
+              <legend id="start-legend">From</legend>
+              <div class="time-option">
+                <input
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
+                  id="start-date"
+                  aria-labelledby="start-legend start-date-label"
+                />
+                <span id="start-date-label" hidden>date</span>
+                <input
+                  class="ui-input ui-clock"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="HH:MM"
+                  maxlength="8"
+                  id="start-time"
+                  data-seconds
+                  aria-labelledby="start-legend start-time-label"
+                />
+                <span id="start-time-label" hidden>time (optional)</span>
+                <label class="time-switch"
+                  ><button
+                    type="button"
+                    class="ui-switch"
+                    id="start-now"
+                    role="switch"
+                    aria-checked="false"
+                  ></button>
+                  Now</label
+                >
+              </div>
+            </fieldset>
+            <fieldset class="dur-end">
+              <legend id="end-legend">To</legend>
+              <div class="time-option">
+                <input
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
+                  id="end-date"
+                  aria-labelledby="end-legend end-date-label"
+                />
+                <span id="end-date-label" hidden>date</span>
+                <input
+                  class="ui-input ui-clock"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="HH:MM"
+                  maxlength="8"
+                  id="end-time"
+                  data-seconds
+                  aria-labelledby="end-legend end-time-label"
+                />
+                <span id="end-time-label" hidden>time (optional)</span>
+                <label class="time-switch"
+                  ><button
+                    type="button"
+                    class="ui-switch"
+                    id="end-now"
+                    role="switch"
+                    aria-checked="true"
+                  ></button>
+                  Now</label
+                >
+              </div>
+            </fieldset>
+          </div>
+          <div class="time-options">
+            <div class="time-option">
+              <label for="dur-zone">Dates and times in</label>
+              <input class="ui-input time-zone" id="dur-zone" list="zone-list" />
+            </div>
+          </div>
+          <p class="time-assume" id="dur-assume" role="status"></p>
+          <div class="time-choice" id="start-choice" hidden>
+            <p id="start-choice-text"></p>
+            <div
+              class="ui-seg"
+              role="group"
+              aria-label="Which first time"
+              id="start-choice-buttons"
+            ></div>
+          </div>
+          <div class="time-choice" id="end-choice" hidden>
+            <p id="end-choice-text"></p>
+            <div
+              class="ui-seg"
+              role="group"
+              aria-label="Which second time"
+              id="end-choice-buttons"
+            ></div>
+          </div>
+        </section>
+
+        <section class="ui-card" aria-labelledby="span-title">
+          <div class="ui-row">
+            <h2 id="span-title">Calendar</h2>
+            <span class="ui-note" id="span-note" role="status"></span>
+            <button
+              type="button"
+              class="ui-btn ui-icon-btn"
+              id="span-copy"
+              aria-label="Copy calendar duration"
+              disabled
+            >
+              <svg data-ui-icon="copy"></svg>
+            </button>
+          </div>
+          <p class="dur-span" id="span"></p>
+          <p class="dur-extra" id="span-extra"></p>
+        </section>
+
+        <section class="ui-card" aria-labelledby="totals-title">
+          <div class="ui-row">
+            <h2 id="totals-title">Elapsed</h2>
+            <span class="ui-note">The whole span in each unit; a day is 24 hours.</span>
+            <div class="ui-seg" role="group" aria-label="Rounding">
+              <button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-rounding="down"
+                aria-pressed="true"
+              >
+                Completed</button
+              ><button
+                type="button"
+                class="ui-btn ui-btn--small"
+                data-rounding="nearest"
+                aria-pressed="false"
+              >
+                Nearest
+              </button>
+            </div>
+          </div>
+          <div class="time-results" id="totals"></div>
+          <label class="time-switch dur-live"
+            ><button
+              type="button"
+              class="ui-switch"
+              id="live"
+              role="switch"
+              aria-checked="true"
+            ></button>
+            Count live while one end is now</label
+          >
+        </section>
+      </div>
+    </main>
+
+    <aside class="ui-dock help" id="help" aria-label="Help" hidden>
+      <div class="ui-dock-head">
+        <h2 class="ui-dock-title">Help</h2>
+      </div>
+      <div class="ui-dock-body ui-help">
+        <div data-tools-about></div>
+        <ul>
+          <li>
+            Time zones are the browser's copy of the IANA database, named like Europe/Paris: an
+            offset depends on the date, because of daylight-saving time. Type a zone's name or just
+            its city. "Now" is this device's clock, as exact as its setting.
+          </li>
+          <li>
+            Dates are YYYY-MM-DD and times are on the 24-hour clock. Type a date as 2026-10-13 or
+            20261013, a time as 14:30, 1430 or 9:30; a field that cannot be read is outlined in red.
+          </li>
+          <li>
+            What you type stays in this tab; reloading restores it. People and pinned zones are kept
+            in this browser. Light / dark applies to every tool.
+          </li>
+        </ul>
+        <h3>Find a time</h3>
+        <ul>
+          <li>
+            Each person has a zone and windows on their own clock: preferred, acceptable or
+            unavailable. Outside every window is unavailable. Where windows overlap, unavailable
+            wins over preferred, and preferred over acceptable. A window ending at or before its
+            start runs past midnight.
+          </li>
+          <li>
+            Weekly windows apply on the days ticked. A date exception replaces the windows that
+            start on that date; with no windows, the person is unavailable that day. The chevron
+            beside a name folds or opens that person; the red bin removes them.
+          </li>
+          <li>
+            The whole call must fit, within the dates searched and from now on. On a night the
+            clocks change, a window in a repeated hour counts both times, and a skipped hour does
+            not exist. Times that are preferred by everyone come first. Compromises then rank by the
+            most minutes any one person spends outside their preferred hours, then by everyone's
+            total, then the earliest. A run of starts that cost the same is one suggestion.
+          </li>
+          <li>
+            Unavailable time is never used unless that person's "Allow unavailable time" is on;
+            those times rank after every other. When nothing fits, the search says whose windows
+            stand in the way.
+          </li>
+          <li>
+            The call starts on the best suggestion. Suggestions start folded: click their heading
+            row to see them all. The timeline shows one day in the zone you choose, with each
+            person's own hours above their row; the red line is now. Click or drag on it to move the
+            call, or choose another suggestion; Copy summary gives everyone's own date and time.
+          </li>
+          <li>
+            Share link copies a link holding the people and their windows. It is a snapshot of what
+            was entered, not live answers. Opening one asks before replacing or adding to yours.
+          </li>
+        </ul>
+        <h3>Convert</h3>
+        <ul>
+          <li>
+            Type a Unix timestamp, an ISO 8601 date (2026-10-12T14:30, with or without an offset),
+            or an HTTP or email date. A number from 100,000,000,000 up is read as milliseconds,
+            below that as seconds. Seconds or Milliseconds rewrites the timestamp in that unit, the
+            same moment, and reads what you type next in it.
+          </li>
+          <li>
+            A date or time without an offset is read in the zone you choose, and a date alone at
+            00:00 there; the result says so. Where clocks go back, a time happens twice: choose
+            which. Where they go forward, it never happens: it is read as the time on the clock
+            after the change, and the result says so.
+          </li>
+          <li>
+            Results show Unix seconds and milliseconds, UTC, this device's zone, the zone it was
+            read in and your pinned zones, each with its offset at that date, plus an HTTP date and
+            how long ago or ahead it is. Each has a copy button.
+          </li>
+          <li>
+            Several lines convert together into a table. A line may start with a label, as in
+            <code>exp: 1760264100</code> or a JSON line <code>"exp": 1760264100,</code>. A time that
+            happens twice is not guessed in a table: give it an offset.
+          </li>
+        </ul>
+        <h3>Duration</h3>
+        <ul>
+          <li>
+            From and To are each a date, with an optional time, or Now. To starts on Now: give a
+            birth date for an age, or the day you met. For a countdown, switch From to Now, which
+            switches To back to a date. Without a time, 00:00 in the chosen zone is assumed, and the
+            result says so.
+          </li>
+          <li>
+            Calendar counts whole years, months and days on the wall clock, so a day of 23 or 25
+            hours at a clock change is still one day. A month too short for the day ends at its last
+            day: 29 February birthdays count on 28 February in other years. From a past date to now,
+            it says when that date next comes round.
+          </li>
+          <li>
+            Elapsed gives the whole span in days, in hours, in minutes and in seconds, a day being
+            24 hours. Completed counts only whole units; Nearest rounds to the nearest whole unit.
+            It counts live, every second, while one end is now.
+          </li>
+        </ul>
+      </div>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
