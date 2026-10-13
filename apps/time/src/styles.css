@@ -35,7 +35,7 @@
 .time [aria-invalid="true"] {
   border-color: var(--danger);
 }
-.time input[type="date"],
+.time .ui-date,
 .time .ui-clock {
   min-height: 32px;
   padding: 4px 8px;
@@ -216,7 +216,6 @@
 }
 
 .time-person {
-  margin-top: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg);
@@ -234,12 +233,42 @@
 .time-person summary::-webkit-details-marker {
   display: none;
 }
+/* The remove button sits over the summary row, in the room left for it beside the chevron. */
+.time-person-box {
+  position: relative;
+  margin-top: 8px;
+}
+.time-person-room {
+  flex: none;
+  width: 28px;
+  margin-left: auto;
+}
+.time-person-remove.ui-icon-btn {
+  position: absolute;
+  top: 9px;
+  right: 49px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--danger);
+}
+.time-person-remove.ui-icon-btn:hover,
+.time-person-remove.ui-icon-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.time-person-remove svg {
+  width: 18px;
+  height: 18px;
+}
 .time-person-chevron {
   display: grid;
   place-items: center;
   width: 28px;
   height: 28px;
-  margin-left: auto;
   border-radius: var(--radius);
   color: var(--muted);
   transition: transform 0.15s ease;
@@ -391,7 +420,7 @@
 }
 .time-suggestion[aria-pressed="true"] {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
 }
 .time-suggestion-when {
   font-size: 14px;

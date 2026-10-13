@@ -1,5 +1,5 @@
 import {
-  bindClockFields,
+  bindTimeFields,
   bindColorSwatch,
   bindToolHelp,
   formatClock,
@@ -659,7 +659,7 @@ function morph(shown: Element, next: Element): void {
 
 // ---------- Controls ----------
 
-bindClockFields();
+bindTimeFields();
 
 for (const id of ids) {
   const element = byId(id);

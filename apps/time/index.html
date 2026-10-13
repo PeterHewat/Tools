@@ -9,9 +9,10 @@
     <!-- "‹ Tools" and the name are written in at build time, from the catalog. -->
     <header class="ui-header time-header" data-tools-header>
       <div class="ui-seg time-views" role="group" aria-label="View">
-        <button type="button" class="ui-btn" data-view="convert" aria-pressed="true">Convert</button
-        ><button type="button" class="ui-btn" data-view="meet" aria-pressed="false">
+        <button type="button" class="ui-btn" data-view="meet" aria-pressed="true">
           Find a time</button
+        ><button type="button" class="ui-btn" data-view="convert" aria-pressed="false">
+          Convert</button
         ><button type="button" class="ui-btn" data-view="duration" aria-pressed="false">
           Duration
         </button>
@@ -19,8 +20,8 @@
       <!-- The same choice on a phone, where three buttons would not fit beside the others. -->
       <div class="ui-view-picker">
         <select class="ui-view-select" id="view-select" aria-label="View">
-          <option value="convert">Convert</option>
           <option value="meet">Find a time</option>
+          <option value="convert">Convert</option>
           <option value="duration">Duration</option>
         </select>
         <svg data-ui-icon="chevron-down" aria-hidden="true"></svg>
@@ -44,7 +45,7 @@
       <datalist id="zone-list"></datalist>
 
       <!-- Convert: one value, or one a line. -->
-      <div class="time-view" id="view-convert">
+      <div class="time-view" id="view-convert" hidden>
         <section class="ui-card" aria-labelledby="input-title">
           <div class="ui-row">
             <h2 id="input-title"><label for="input">Time</label></h2>
@@ -97,8 +98,13 @@
             <div class="time-option">
               <span id="pick-label">Or pick</span>
               <input
-                class="ui-input"
-                type="date"
+                class="ui-input ui-date"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="YYYY-MM-DD"
+                maxlength="10"
                 id="pick-date"
                 aria-label="Date to convert"
                 aria-describedby="pick-label"
@@ -159,7 +165,7 @@
       </div>
 
       <!-- Find a time: people, the search, what fits, and a day's timeline. -->
-      <div class="time-view meet" id="view-meet" hidden>
+      <div class="time-view meet" id="view-meet">
         <div class="meet-side">
           <section class="ui-card" aria-labelledby="people-title">
             <div class="ui-row">
@@ -210,9 +216,27 @@
               </div>
               <div class="time-option">
                 <label for="range-from">From</label>
-                <input class="ui-input" type="date" id="range-from" />
+                <input
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
+                  id="range-from"
+                />
                 <label for="range-to">to</label>
-                <input class="ui-input" type="date" id="range-to" />
+                <input
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
+                  id="range-to"
+                />
               </div>
               <div class="time-option">
                 <label for="meet-zone">Show times in</label>
@@ -295,8 +319,13 @@
               <legend id="start-legend">From</legend>
               <div class="time-option">
                 <input
-                  class="ui-input"
-                  type="date"
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
                   id="start-date"
                   aria-labelledby="start-legend start-date-label"
                 />
@@ -330,8 +359,13 @@
               <legend id="end-legend">To</legend>
               <div class="time-option">
                 <input
-                  class="ui-input"
-                  type="date"
+                  class="ui-input ui-date"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
                   id="end-date"
                   aria-labelledby="end-legend end-date-label"
                 />
@@ -457,12 +491,48 @@
             its city. "Now" is this device's clock, as exact as its setting.
           </li>
           <li>
-            Times are on the 24-hour clock. Type them as 14:30, or 1430 or 9:30; a field that cannot
-            be read is outlined in red.
+            Dates are YYYY-MM-DD and times are on the 24-hour clock. Type a date as 2026-10-13 or
+            20261013, a time as 14:30, 1430 or 9:30; a field that cannot be read is outlined in red.
           </li>
           <li>
             What you type stays in this tab; reloading restores it. People and pinned zones are kept
             in this browser. Light / dark applies to every tool.
+          </li>
+        </ul>
+        <h3>Find a time</h3>
+        <ul>
+          <li>
+            Each person has a zone and windows on their own clock: preferred, acceptable or
+            unavailable. Outside every window is unavailable. Where windows overlap, unavailable
+            wins over preferred, and preferred over acceptable. A window ending at or before its
+            start runs past midnight.
+          </li>
+          <li>
+            Weekly windows apply on the days ticked. A date exception replaces the windows that
+            start on that date; with no windows, the person is unavailable that day. The chevron
+            beside a name folds or opens that person; the red bin removes them.
+          </li>
+          <li>
+            The whole call must fit, within the dates searched. On a night the clocks change, a
+            window in a repeated hour counts both times, and a skipped hour does not exist. Times
+            that are preferred by everyone come first. Compromises then rank by the most minutes any
+            one person spends outside their preferred hours, then by everyone's total, then the
+            earliest. A run of starts that cost the same is one suggestion.
+          </li>
+          <li>
+            Unavailable time is never used unless that person's "Allow unavailable time" is on;
+            those times rank after every other. When nothing fits, the search says whose windows
+            stand in the way.
+          </li>
+          <li>
+            The call starts on the best suggestion. The timeline shows one day in the zone you
+            choose, with each person's own hours above their row. Click it, or choose another
+            suggestion, to place the call elsewhere; Copy summary gives everyone's own date and
+            time.
+          </li>
+          <li>
+            Share link copies a link holding the people and their windows. It is a snapshot of what
+            was entered, not live answers. Opening one asks before replacing or adding to yours.
           </li>
         </ul>
         <h3>Convert</h3>
@@ -470,7 +540,8 @@
           <li>
             Type a Unix timestamp, an ISO 8601 date (2026-10-12T14:30, with or without an offset),
             or an HTTP or email date. A number from 100,000,000,000 up is read as milliseconds,
-            below that as seconds; Seconds or Milliseconds overrides it.
+            below that as seconds. Seconds or Milliseconds rewrites the timestamp in that unit, the
+            same moment, and reads what you type next in it.
           </li>
           <li>
             A date or time without an offset is read in the zone you choose, and a date alone at
@@ -489,47 +560,13 @@
             happens twice is not guessed in a table: give it an offset.
           </li>
         </ul>
-        <h3>Find a time</h3>
-        <ul>
-          <li>
-            Each person has a zone and windows on their own clock: preferred, acceptable or
-            unavailable. Outside every window is unavailable. Where windows overlap, unavailable
-            wins over preferred, and preferred over acceptable. A window ending at or before its
-            start runs past midnight.
-          </li>
-          <li>
-            Weekly windows apply on the days ticked. A date exception replaces the windows that
-            start on that date; with no windows, the person is unavailable that day. The chevron
-            beside a name folds or opens that person.
-          </li>
-          <li>
-            The whole call must fit, within the dates searched. On a night the clocks change, a
-            window in a repeated hour counts both times, and a skipped hour does not exist. Times
-            that are preferred by everyone come first. Compromises then rank by the most minutes any
-            one person spends outside their preferred hours, then by everyone's total, then the
-            earliest. A run of starts that cost the same is one suggestion.
-          </li>
-          <li>
-            Unavailable time is never used unless that person's "Allow unavailable time" is on;
-            those times rank after every other. When nothing fits, the search says whose windows
-            stand in the way.
-          </li>
-          <li>
-            The timeline shows one day in the zone you choose, with each person's own hours above
-            their row. Click it, or choose a suggestion, to place the call; Copy summary gives
-            everyone's own date and time.
-          </li>
-          <li>
-            Share link copies a link holding the people and their windows. It is a snapshot of what
-            was entered, not live answers. Opening one asks before replacing or adding to yours.
-          </li>
-        </ul>
         <h3>Duration</h3>
         <ul>
           <li>
             From and To are each a date, with an optional time, or Now. To starts on Now: give a
-            birth date for an age, or the day you met. For a countdown, switch From to Now. Without
-            a time, 00:00 in the chosen zone is assumed, and the result says so.
+            birth date for an age, or the day you met. For a countdown, switch From to Now, which
+            switches To back to a date. Without a time, 00:00 in the chosen zone is assumed, and the
+            result says so.
           </li>
           <li>
             Calendar counts whole years, months and days on the wall clock, so a day of 23 or 25

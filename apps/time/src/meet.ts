@@ -5,6 +5,7 @@ import {
   byId,
   CLOCK_FIELD,
   copyText,
+  DATE_FIELD,
   debounce,
   formatClock,
   iconSvg,
@@ -66,15 +67,12 @@ const LEVEL_NAMES: Record<Level, string> = {
 export const SHARE_PREFIX = "#plan=";
 
 /**
- * First visit: two people in two zones, one window each, overlapping for three hours (19:00 to
- * 22:00 in Paris is 13:00 to 16:00 in New York): enough for every part of the view to show.
+ * First visit: two people in business hours, 09:00 to 17:00 on weekdays, in Paris and New York.
+ * They overlap for two hours (15:00 to 17:00 in Paris is 09:00 to 11:00 in New York).
  */
 function examplePlan(): Plan {
   return {
-    people: [
-      newPerson("Alex", "Europe/Paris", 18, 22),
-      newPerson("Sam", "America/New_York", 13, 17),
-    ],
+    people: [newPerson("Alex", "Europe/Paris"), newPerson("Sam", "America/New_York")],
     duration: DEFAULT_DURATION,
   };
 }
@@ -123,6 +121,8 @@ export function meetView(app: App): View {
   let suggestions: Suggestion[] = [];
   let selected: number | undefined =
     typeof saved.selected === "number" ? saved.selected : undefined;
+  /** Whether the call was placed by the person, rather than on the best suggestion. */
+  let placedByHand = saved.placedByHand === true;
   let day: PlainDate | undefined = parseDate(text(saved.day));
   let visible = false;
 
@@ -256,6 +256,8 @@ export function meetView(app: App): View {
         h("span", { class: "time-person-name" }, person.name || "Unnamed"),
         h("span", { class: "time-person-meta" }, meta),
         person.relaxed && h("span", { class: "time-badge" }, "Relaxed"),
+        // Room for the remove button, which sits over the row beside the chevron.
+        h("span", { class: "time-person-room", "aria-hidden": "true" }),
         h("span", { class: "time-person-chevron", "aria-hidden": "true" }, iconSvg("chevron-down"))
       ),
       h(
@@ -295,8 +297,7 @@ export function meetView(app: App): View {
               "div",
               { class: "time-exception-head" },
               h("input", {
-                class: "ui-input",
-                type: "date",
+                ...DATE_FIELD,
                 "data-field": "date",
                 value: x.date,
                 "aria-label": "Date",
@@ -339,13 +340,7 @@ export function meetView(app: App): View {
         h(
           "div",
           { class: "time-person-foot" },
-          h("label", { class: "time-switch" }, relaxed, "Allow unavailable time"),
-          h(
-            "button",
-            { type: "button", class: "ui-btn ui-btn--small", "data-action": "remove-person" },
-            iconSvg("trash"),
-            "Remove"
-          )
+          h("label", { class: "time-switch" }, relaxed, "Allow unavailable time")
         )
       )
     );
@@ -355,15 +350,32 @@ export function meetView(app: App): View {
       refreshSummary(person);
     });
     if (!valid) zoneInput.setAttribute("aria-invalid", "true");
-    return card;
+    // Outside the summary, where a button would be one control inside another, and outside the
+    // card's body, so it stays in reach while the card is folded.
+    const remove = h(
+      "button",
+      {
+        type: "button",
+        class: "ui-btn ui-icon-btn time-person-remove",
+        "data-action": "remove-person",
+        "aria-label": `Remove ${person.name || "this person"}`,
+        title: "Remove person",
+      },
+      iconSvg("trash")
+    );
+    return h("div", { class: "time-person-box", "data-person": person.id }, card, remove);
   }
 
   function refreshSummary(person: Person): void {
-    const card = peopleBox.querySelector<HTMLDetailsElement>(`[data-person="${person.id}"]`);
-    if (!card) return;
-    const old = card.querySelector("summary")!;
-    const fresh = personCard(person).querySelector("summary")!;
-    old.replaceChildren(...fresh.childNodes);
+    const box = peopleBox.querySelector<HTMLElement>(
+      `.time-person-box[data-person="${person.id}"]`
+    );
+    if (!box) return;
+    const fresh = personCard(person);
+    box.querySelector("summary")!.replaceChildren(...fresh.querySelector("summary")!.childNodes);
+    box
+      .querySelector(".time-person-remove")!
+      .replaceWith(fresh.querySelector(".time-person-remove")!);
   }
 
   function renderPeople(): void {
@@ -677,6 +689,11 @@ export function meetView(app: App): View {
       renderDiagnosis(search);
       if (!day) day = wallAt(suggestions[0]?.start ?? search.from, zone());
     }
+    // Until someone places the call themselves, it is on the best suggestion.
+    if (!placedByHand) {
+      selected = suggestions[0]?.start;
+      if (selected !== undefined) day = wallAt(selected, zone());
+    }
     shownCount = PAGE;
     renderSuggestions();
     renderTimeline();
@@ -844,6 +861,7 @@ export function meetView(app: App): View {
   }
 
   function pick(start: number): void {
+    placedByHand = true;
     selected = start;
     day = wallAt(start, zone());
     renderSuggestions();
@@ -886,9 +904,11 @@ export function meetView(app: App): View {
     changed();
   });
   for (const input of [rangeFrom, rangeTo])
-    input.addEventListener("change", () => {
+    // Typed dates: searched once the typing pauses.
+    input.addEventListener("input", () => {
       day = undefined;
-      research();
+      placedByHand = false;
+      researchSoon();
     });
 
   // ---------- Sharing ----------
@@ -918,6 +938,7 @@ export function meetView(app: App): View {
     pending = undefined;
     showSnapshot();
     selected = undefined;
+    placedByHand = false;
     day = undefined;
     renderPeople();
     savePlan();
@@ -959,6 +980,7 @@ export function meetView(app: App): View {
       rangeFrom: rangeFrom.value,
       rangeTo: rangeTo.value,
       selected,
+      placedByHand,
       day: day ? formatDate(day) : "",
       folded: [...folded],
     }),

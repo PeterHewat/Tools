@@ -317,9 +317,26 @@ export function convertView(app: App): View {
     choice = undefined;
     update();
   });
+  /**
+   * Seconds and Milliseconds write each timestamp typed in that unit, the same instant: 1760264100
+   * becomes 1760264100000, not 21 January 1970. What is typed after is read in the unit chosen.
+   */
+  function rewriteIn(next: Unit): void {
+    input.value = input.value
+      .split("\n")
+      .map((line) => {
+        const { value } = splitLabel(line);
+        const parsed = value ? parseTime(value, requested()) : undefined;
+        if (parsed?.kind !== "unix" || parsed.unit === next) return line;
+        return line.replace(value, next === "ms" ? String(parsed.ms) : unixSeconds(parsed.ms));
+      })
+      .join("\n");
+  }
   for (const button of unitButtons)
     button.addEventListener("click", () => {
-      unit = button.dataset.unit as UnitChoice;
+      const next = button.dataset.unit as UnitChoice;
+      if (next !== "auto") rewriteIn(next);
+      unit = next;
       update();
     });
   const fromPicker = () => {

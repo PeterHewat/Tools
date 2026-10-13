@@ -3,42 +3,19 @@
 Convert Unix timestamps and ISO dates across time zones, find a call time for people in several
 zones, and measure durations and ages.
 
-Three views share the same time-zone field and date controls: **Convert**, **Find a time** and
-**Duration**. Zones are named IANA zones (`Europe/Paris`), read from the browser's own copy of
+Three views share the same time-zone field and date controls: **Find a time**, which a new tab
+opens on, **Convert** and **Duration**. Zones are named IANA zones (`Europe/Paris`), read from the browser's own copy of
 the [time-zone database](https://www.iana.org/time-zones) through `Intl`, so every offset is the
 one at that date, fractional hours and daylight-saving time included. A zone can be typed by
 name in any case or by its city alone. "Now" is the device clock, as exact as its setting; it is
 not an independently synchronised clock like [Time.is](https://time.is/).
 
-Times of day are on the 24-hour clock, shown and typed, whatever the browser's language: a time is
-typed as `14:30` (or `1430`, `9:30`) in a field of its own, since a native time field would follow
-the language into AM and PM. Dates keep the browser's date picker. What is typed stays in the
-tab's draft. People, windows and pinned zones are kept in the browser. The calendar is the
+Dates are `YYYY-MM-DD` and times of day are on the 24-hour clock, shown and typed, whatever the
+browser's language. Each is typed in a field of its own, a date as `2026-10-13` (or `2026-10-5`,
+`20261013`) and a time as `14:30` (or `1430`, `9:30`), since native date and time fields would
+follow the language into `10/13/2026` and AM/PM; a field is written out in full when it is left,
+and marked while it cannot be read. What is typed stays in the tab's draft. People, windows and pinned zones are kept in the browser. The calendar is the
 proleptic Gregorian one, with year 0 for 1 BC.
-
-## Convert
-
-The input takes a Unix timestamp, an ISO 8601 / RFC 3339 date (extended or basic, with an
-optional `[Zone/Name]` suffix), or an HTTP or email date (RFC 9110, RFC 2822). A number from
-100,000,000,000 up is read as milliseconds and below that as seconds; the note says which, and
-Seconds or Milliseconds overrides it. Digits past milliseconds are dropped, and the note says so.
-
-A date or time without an offset is read in the chosen zone, and a date alone at 00:00 there; the
-note states the assumption. Where clocks go back, a time happens twice and nothing is shown until
-the person chooses the first or second; where they go forward, it never happens, and it is read
-as the time on the clock after the change (02:30 in a one-hour gap is 03:30), with the reason.
-A date picker and a time field write the input as they change, and follow it. Now writes the
-current time in the unit chosen: Unix seconds, or milliseconds when Milliseconds is pressed.
-
-Results give Unix seconds and milliseconds, UTC, the device's zone, the zone the input was read in
-and each pinned zone (New York, London and Tokyo until changed), as ISO 8601 with the offset and
-abbreviation at that instant and as the reader's language writes it, plus an HTTP date and a
-relative time ("in 3 hours") that keeps up with the clock. Each has a copy button.
-
-Several lines convert together into a table (label, input, Unix seconds, UTC, the chosen zone, a
-note), copied as tab-separated text. A line may start with a label, `exp: 1760264100`, or be a
-JSON member, `"exp": 1760264100,`. A time that happens twice is not guessed in a table: the line
-asks for an offset. JWT's payload card opens Time on the token's `exp`, `iat` and `nbf`.
 
 ## Find a time
 
@@ -49,9 +26,9 @@ after its start runs past midnight; one that ends where it starts is the whole d
 apply on the weekdays ticked; a date exception replaces the windows that start on that date, and
 with none the person is unavailable that day. A window is two lines: its days, with the button
 that removes it in the corner, then its hours and level. A person's card folds to their name and
-zone with the chevron at the end of its row. A new person prefers 09:00 to 17:00 every day; the
-first visit opens on two example people, Alex in Paris (18:00 to 22:00) and Sam in New York (13:00
-to 17:00).
+zone with the chevron at the end of its row; the red bin beside the chevron removes them, folded
+or not. A new person keeps business hours, preferred from 09:00 to 17:00 on weekdays; the first
+visit opens on two such people, Alex in Paris and Sam in New York, who overlap for two hours.
 
 The search covers up to 31 days, from midnight to midnight in the zone the results are shown in,
 for a call of 15 minutes to 3 hours. Windows are resolved date by date in each person's zone, so a
@@ -77,9 +54,11 @@ others would find times, with a button to allow that person's unavailable time.
 The timeline shows one day in the chosen zone: a row for everyone combined and one a person, all
 aligned to the same instants, each with that person's own hours and date changes above it.
 Preferred and acceptable are coloured, unavailable is hatched, and each row also reads as text
-for a screen reader. Choosing a suggestion, clicking the timeline or typing a time places the call;
-it then says how it sits with everyone and gives a summary to copy, with each person's own date
-and time.
+for a screen reader. The call is placed on the best suggestion, and stays there as people and
+windows change, until someone places it themselves: choosing a suggestion, clicking the timeline
+or typing a time. New dates to search or an opened share link put it back on the best suggestion.
+The placed call says how it sits with everyone and gives a summary to copy, with each person's
+own date and time.
 
 Share link copies a link holding the people, their windows and the call length: JSON, compressed
 with `deflate-raw` where the browser can, in Base64url after `#plan=`. Nothing is sent to a
@@ -89,12 +68,39 @@ the share link are one format, read field by field, and versioned for a change t
 A plan or link from a later version of Time is not read as this one: the page says so, and leaves
 the saved people as they are.
 
+## Convert
+
+The input takes a Unix timestamp, an ISO 8601 / RFC 3339 date (extended or basic, with an
+optional `[Zone/Name]` suffix), or an HTTP or email date (RFC 9110, RFC 2822). A number from
+100,000,000,000 up is read as milliseconds and below that as seconds; the note says which.
+Seconds or Milliseconds writes each timestamp typed in that unit, the same instant (1760264100
+becomes 1760264100000), and reads what is typed after in it. Digits past milliseconds are dropped,
+and the note says so.
+
+A date or time without an offset is read in the chosen zone, and a date alone at 00:00 there; the
+note states the assumption. Where clocks go back, a time happens twice and nothing is shown until
+the person chooses the first or second; where they go forward, it never happens, and it is read
+as the time on the clock after the change (02:30 in a one-hour gap is 03:30), with the reason.
+A date field and a time field write the input as they are typed, and follow it. Now writes the
+current time in the unit chosen: Unix seconds, or milliseconds when Milliseconds is pressed.
+
+Results give Unix seconds and milliseconds, UTC, the device's zone, the zone the input was read in
+and each pinned zone (New York, London and Tokyo until changed), as ISO 8601 with the offset and
+abbreviation at that instant and as the reader's language writes it, plus an HTTP date and a
+relative time ("in 3 hours") that keeps up with the clock. Each has a copy button.
+
+Several lines convert together into a table (label, input, Unix seconds, UTC, the chosen zone, a
+note), copied as tab-separated text. A line may start with a label, `exp: 1760264100`, or be a
+JSON member, `"exp": 1760264100,`. A time that happens twice is not guessed in a table: the line
+asks for an offset. JWT's payload card opens Time on the token's `exp`, `iat` and `nbf`.
+
 ## Duration
 
 From and To are each a date, with an optional time, or Now; To starts on Now, so "how old am I?"
 and "how long since we met?" need only the first date, and "how long until my holiday?" switches
-From to Now. A time is optional: without one, 00:00 in the chosen zone is assumed, and the note
-says so. Ambiguous and skipped times are resolved as in Convert.
+From to Now. Only one end can be now: switching one on switches the other back to its date. A
+time is optional: without one, 00:00 in the chosen zone is assumed, and the note says so.
+Ambiguous and skipped times are resolved as in Convert.
 
 Calendar counts whole years, months and days on the wall clock, then the time left when every
 dated end has a time. A day of 23 or 25 hours at a clock change is still one day. A month too

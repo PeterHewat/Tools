@@ -191,7 +191,14 @@ export function durationView(app: App): View {
         delete choices[end];
         update();
       });
-    bindSwitch(now(end), () => update());
+    bindSwitch(now(end), () => {
+      // Now to now is no span: the other end goes back to a date, ready to be typed.
+      const other = end === "start" ? "end" : "start";
+      const freed = isOn(now(end)) && isOn(now(other));
+      if (freed) setOn(now(other), false);
+      update();
+      if (freed && !field(other, "date").value) field(other, "date").focus();
+    });
   }
   bindSwitch(live, () => update());
   byId("span-copy").addEventListener("click", async () => {

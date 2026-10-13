@@ -116,15 +116,13 @@ export function sharePlan(plan: Plan): Record<string, unknown> {
   };
 }
 
-/** A new person: one window, preferred every day, from 09:00 to 17:00 unless other hours are given. */
-export function newPerson(name: string, zone: string, from = 9, until = 17): Person {
+/** A new person: business hours, preferred from 09:00 to 17:00 on weekdays. */
+export function newPerson(name: string, zone: string): Person {
   return {
     id: newId(),
     name,
     zone,
-    windows: [
-      { days: [1, 2, 3, 4, 5, 6, 7], start: from * 60, end: until * 60, level: "preferred" },
-    ],
+    windows: [{ days: [1, 2, 3, 4, 5], start: 9 * 60, end: 17 * 60, level: "preferred" }],
     exceptions: [],
     relaxed: false,
   };

@@ -1,5 +1,5 @@
 import {
-  bindClockFields,
+  bindTimeFields,
   bindToolHelp,
   byId,
   debounce,
@@ -19,7 +19,7 @@ bindToolHelp("time");
 registerServiceWorker();
 
 type ViewName = "convert" | "meet" | "duration";
-const NAMES: readonly ViewName[] = ["convert", "meet", "duration"];
+const NAMES: readonly ViewName[] = ["meet", "convert", "duration"];
 
 /** The tab's draft: every view's fields, and which view is open. Other apps may write it too. */
 const DRAFT = 1;
@@ -30,7 +30,7 @@ const views = {} as Record<ViewName, View>;
 // A share link opens on the people it holds.
 let current: ViewName = location.hash.startsWith(SHARE_PREFIX)
   ? "meet"
-  : (NAMES.find((name) => name === draft.value.view) ?? "convert");
+  : (NAMES.find((name) => name === draft.value.view) ?? "meet");
 
 function save(): void {
   // An incompatible draft stays as it was: this tab works without saving over it.
@@ -48,6 +48,8 @@ function save(): void {
   }
 }
 const saveSoon = debounce(save, 300);
+// A reload or a closed tab just after an edit still keeps it.
+window.addEventListener("pagehide", save);
 
 const app: App = {
   prefs,
@@ -86,7 +88,7 @@ for (const button of viewButtons)
   button.addEventListener("click", () => show(button.dataset.view as ViewName));
 viewSelect.addEventListener("change", () => show(viewSelect.value as ViewName));
 
-bindClockFields();
+bindTimeFields();
 
 if (draft.error) {
   const status = byId("draft-status");

@@ -31,7 +31,8 @@ const PEOPLE = [
 ];
 
 async function open(page: Page, people: unknown[], draft: Record<string, unknown> = {}) {
-  await page.goto("/Tools/time/");
+  // Written from another page of the site: Time keeps its own draft as it is left.
+  await page.goto("/Tools/");
   await page.evaluate(
     ([people, draft]) => {
       localStorage.setItem("tools.time.plan", JSON.stringify({ version: 1, duration: 60, people }));
@@ -39,7 +40,7 @@ async function open(page: Page, people: unknown[], draft: Record<string, unknown
     },
     [people, draft] as const
   );
-  await page.reload();
+  await page.goto("/Tools/time/");
 }
 
 const row = (page: Page, label: string) =>
@@ -51,6 +52,9 @@ test("Time converts both ways, asks which of a doubled time and explains a skipp
   page,
 }) => {
   await page.goto("/Tools/time/");
+  // A new tab opens on Find a time, the first view.
+  await expect(page.locator("#view-meet")).toBeVisible();
+  await page.locator('[data-view="convert"]').click();
   const input = page.locator("#input");
   await input.fill("1760264100");
   await expect(page.locator("#input-note")).toHaveText("Unix seconds, by its size.");
@@ -58,10 +62,17 @@ test("Time converts both ways, asks which of a doubled time and explains a skipp
   await expect(row(page, "This device").locator("code")).toHaveText("2025-10-12T12:15:00+02:00");
   await expect(row(page, "Unix milliseconds").locator("code")).toHaveText("1760264100000");
   await expect(row(page, "HTTP date").locator("code")).toHaveText("Sun, 12 Oct 2025 10:15:00 GMT");
+  // A unit writes the timestamp in it, the same instant; what is typed after is read in it.
   await page.locator('[data-unit="ms"]').click();
+  await expect(input).toHaveValue("1760264100000");
   await expect(page.locator("#input-note")).toHaveText("Unix milliseconds.");
-  await expect(row(page, "UTC").locator("code")).toHaveText("1970-01-21T08:57:44.100Z");
+  await expect(row(page, "UTC").locator("code")).toHaveText("2025-10-12T10:15:00Z");
+  await page.locator('[data-unit="s"]').click();
+  await expect(input).toHaveValue("1760264100");
+  await input.fill("1760264100123");
+  await expect(row(page, "UTC").locator("code")).not.toContainText("2025-");
   await page.locator('[data-unit="auto"]').click();
+  await expect(row(page, "UTC").locator("code")).toHaveText("2025-10-12T10:15:00.123Z");
 
   // Paris turns its clocks back on 25 October 2026: 02:30 happens twice.
   await input.fill("2026-10-25T02:30");
@@ -124,7 +135,8 @@ test("Time finds a call time, explains compromises, relaxes on request and share
   await expect(first).toContainText("or start any time until 20:00");
   await expect(first).toContainText("Everyone: preferred hours.");
   await expect(first).toHaveAttribute("data-tier", "preferred");
-  await first.click();
+  // The call is on the best suggestion before anyone chooses.
+  await expect(first).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#picked-summary")).toHaveText(
     [
       "Call, 1 h",
@@ -181,6 +193,10 @@ test("Time finds a call time, explains compromises, relaxes on request and share
   await other.locator("#snapshot-replace").click();
   await expect(other.locator(".time-person")).toHaveCount(3);
   await expect(other.locator(".time-person summary").first()).toContainText("Relaxed");
+  // The bin beside a person's chevron removes them, without folding or opening the card.
+  await other.getByRole("button", { name: "Remove Cy" }).click();
+  await expect(other.locator(".time-person")).toHaveCount(2);
+  await expect(other.locator(".time-person").first()).toHaveAttribute("open", "");
 });
 
 test("Time measures ages and spans on the calendar and in elapsed units", async ({ page }) => {
@@ -215,7 +231,10 @@ test("Time measures ages and spans on the calendar and in elapsed units", async 
 
   // An age: a birth date to now, and when it next comes round.
   await page.locator("#end-now").click();
-  await page.locator("#start-date").fill("1990-05-20");
+  // A date is typed year first, however short, and written out in full.
+  await page.locator("#start-date").fill("1990-5-20");
+  await page.locator("#start-date").blur();
+  await expect(page.locator("#start-date")).toHaveValue("1990-05-20");
   await page.locator("#start-time").fill("");
   await expect(page.locator("#span")).toHaveText(/^\d+ years, /);
   await expect(page.locator("#span")).not.toContainText("hour");
@@ -230,6 +249,11 @@ test("Time measures ages and spans on the calendar and in elapsed units", async 
   await expect(page.locator("#start-time")).toHaveAttribute("aria-invalid", "true");
   await expect(page.locator("#dur-assume")).toContainText("type the time as HH:MM");
   await expect(page.locator("#span")).toHaveText("—");
+  // Only one end is now: switching From to now switches To back to its date.
+  await page.locator("#start-now").click();
+  await expect(page.locator("#start-now")).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("#end-now")).toHaveAttribute("aria-checked", "false");
+  await expect(page.locator("#end-date")).toBeEnabled();
 });
 
 test.describe("in American English", () => {
@@ -258,6 +282,7 @@ test.describe("in American English", () => {
     await expect(page.locator("#view-convert")).not.toContainText(/\d (AM|PM)\b/);
     // Now writes the unit chosen: milliseconds once Milliseconds is pressed.
     await page.locator('[data-unit="ms"]').click();
+    await expect(page.locator("#input")).toHaveValue("1760264100000");
     await page.locator("#now").click();
     await expect(page.locator("#input")).toHaveValue(/^\d{13}$/);
     // The time field writes the input as it is typed.

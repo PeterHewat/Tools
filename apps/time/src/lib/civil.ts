@@ -122,7 +122,7 @@ export function formatDate(date: PlainDate): string {
   return `${formatYear(date.year)}-${pad(date.month)}-${pad(date.day)}`;
 }
 
-/** A date as an `<input type="date">` holds it, `YYYY-MM-DD`; undefined when it is not one. */
+/** A date as stored and as a date field writes it out, `YYYY-MM-DD`; undefined when it is not one. */
 export function parseDate(value: string): PlainDate | undefined {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
   if (!match) return undefined;

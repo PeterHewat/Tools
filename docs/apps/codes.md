@@ -8,10 +8,11 @@ hold does not change.
 
 A code can hold a link (`https://` is added when it is missing), plain text, an email, a call, an
 SMS, a WhatsApp chat, Wi-Fi credentials, a vCard contact or a calendar event in the local time
-zone, its start and end each a date and a time on the 24-hour clock (an end time alone is on the
-start's date; with no end, the event lasts an hour). A barcode is Code 128 (printable ASCII, up to 80 characters), EAN-13 or UPC-A. Enter one
-digit less and the check digit is calculated; enter all of them and it is checked. A Wi-Fi password
-is readable by anyone who scans the code.
+zone, its start and end each a date (`YYYY-MM-DD`) and a time on the 24-hour clock (an end time
+alone is on the start's date; with no end, the event lasts an hour). A barcode is Code 128
+(printable ASCII, up to 80 characters), EAN-13 or UPC-A. Enter one digit less and the check digit
+is calculated; enter all of them and it is checked. A Wi-Fi password is readable by anyone who
+scans the code.
 
 Colours, shapes, a logo and a frame change how a QR code looks. A barcode takes the colours only.
 Every colour has an opacity; a background at 0% is transparent. A logo can cover the middle, with
