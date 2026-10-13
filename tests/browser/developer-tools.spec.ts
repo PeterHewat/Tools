@@ -841,7 +841,7 @@ for (const [slug, field, value, result] of [
   });
 }
 
-for (const slug of ["jwt", "codec", "codes", "digests"]) {
+for (const slug of ["jwt", "codec", "codes", "digests", "time"]) {
   test(`${slug} fits narrow headers, shares theme and has accessible controls`, async ({
     page,
   }) => {
@@ -934,7 +934,7 @@ for (const slug of ["jwt", "codec", "codes", "digests"]) {
   });
 }
 
-test("catalog links, install shortcuts and offline cache contain all four tools", async ({
+test("catalog links, install shortcuts and offline cache contain every developer tool", async ({
   page,
   context,
 }) => {
@@ -942,10 +942,10 @@ test("catalog links, install shortcuts and offline cache contain all four tools"
   await page.setViewportSize({ width: 1440, height: 1000 });
   expect((await page.locator(".grid").boundingBox())!.width).toBeGreaterThan(1300);
   await page.screenshot({ path: "test-results/home-desktop.png", fullPage: true });
-  for (const slug of ["jwt", "codec", "codes", "digests"])
+  for (const slug of ["jwt", "codec", "codes", "digests", "time"])
     await expect(page.locator(`a[href="/Tools/${slug}/"]`)).toBeVisible();
   const manifest = await (await page.request.get("/Tools/manifest.webmanifest")).json();
-  for (const slug of ["jwt", "codec", "codes", "digests"])
+  for (const slug of ["jwt", "codec", "codes", "digests", "time"])
     expect(
       manifest.shortcuts.some((shortcut: { url: string }) => shortcut.url === `${slug}/`)
     ).toBe(true);
@@ -960,7 +960,7 @@ test("catalog links, install shortcuts and offline cache contain all four tools"
     });
   });
   await context.setOffline(true);
-  for (const slug of ["jwt", "codec", "codes", "digests"]) {
+  for (const slug of ["jwt", "codec", "codes", "digests", "time"]) {
     await page.goto(`/Tools/${slug}/`);
     await expect(page.locator(".ui-app-name")).toHaveText(findApp(slug)!.name);
     await expect(page.locator("main")).toBeVisible();

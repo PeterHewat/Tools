@@ -88,6 +88,15 @@
         "@tools/ui": "workspace:*",
       },
     },
+    "apps/time": {
+      "name": "@tools/time",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@tools/bytes": "workspace:*",
+        "@tools/catalog": "workspace:*",
+        "@tools/ui": "workspace:*",
+      },
+    },
     "packages/bytes": {
       "name": "@tools/bytes",
       "version": "0.0.0",
@@ -255,6 +264,8 @@
     "@tools/jwt": ["@tools/jwt@workspace:apps/jwt"],
 
     "@tools/svg": ["@tools/svg@workspace:apps/svg"],
+
+    "@tools/time": ["@tools/time@workspace:apps/time"],
 
     "@tools/tsconfig": ["@tools/tsconfig@workspace:packages/tsconfig"],
 

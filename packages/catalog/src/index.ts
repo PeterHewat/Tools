@@ -134,6 +134,19 @@ export const APPS: readonly ToolsApp[] = [
     status: "stable",
     listed: true,
   },
+  {
+    slug: "time",
+    name: "Time",
+    blurb:
+      "Convert Unix timestamps and ISO dates across time zones, find a call time for people in several zones, and measure durations and ages.",
+    icon: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2",
+    tags: ["time", "timestamp", "timezone", "iso-8601", "meeting", "duration", "age"],
+    art: true,
+    compactHeader: 500,
+    jsBudget: { entryGzip: 24, totalGzip: 24 },
+    status: "stable",
+    listed: true,
+  },
 ];
 
 export function findApp(slug: string): ToolsApp | undefined {

@@ -185,6 +185,8 @@ function decorateToken(inspection: Inspection): void {
   if (!text.trim()) {
     state("token-state", "");
     state("time-state", "");
+    timeClaims = [];
+    byId("to-time").hidden = true;
     note("token-status", "Paste a token, or type a payload to start a new one.");
     return;
   }
@@ -201,9 +203,16 @@ function decorateToken(inspection: Inspection): void {
   note("token-status", problem, Boolean(problem));
   showTimes(inspection);
 }
+/** The payload's time claims as Time reads them, one a line: `exp: 1760264100`. */
+let timeClaims: string[] = [];
 /** Whether the token is current: not yet valid, expired, or when it expires. */
 function showTimes(inspection: Inspection): void {
-  const times = inspection.payload.object ? claimTimes(inspection.payload.object) : [];
+  const object = inspection.payload.object;
+  const times = object ? claimTimes(object) : [];
+  timeClaims = times
+    .filter((time) => Number.isFinite(object![time.claim]))
+    .map((time) => `${time.claim}: ${object![time.claim] as number}`);
+  byId("to-time").hidden = !timeClaims.length;
   const exp = times.find((time) => time.claim === "exp"),
     nbf = times.find((time) => time.claim === "nbf");
   if (nbf?.problem) state("time-state", nbf.description, "warn");
@@ -661,6 +670,14 @@ for (const [id, text] of [
     if (!(await copyText(text(), byId(id))))
       note("token-status", "Clipboard unavailable. Select and copy the text.", true);
   });
+/** Time opens on the payload's time claims, one a line, in every zone. */
+const toTime = byId<HTMLAnchorElement>("to-time");
+toTime.addEventListener("click", (event) => {
+  event.preventDefault();
+  // Time's own draft for this tab, so it opens on these claims.
+  writeDraft("time", 1, { view: "convert", input: timeClaims.join("\n"), unit: "s" });
+  location.href = toTime.href;
+});
 /** "Expires in 2 min" and the notes' "expired 3 min ago" keep up with the clock. */
 function refreshTimes(): void {
   if (document.hidden || !token.text.trim()) return;

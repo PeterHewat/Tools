@@ -75,6 +75,11 @@
 .jwt-payload {
   color: var(--jwt-payload);
 }
+/* An icon and a word, like the buttons beside it in height. */
+.jwt-link svg {
+  width: 14px;
+  height: 14px;
+}
 .jwt-title-payload {
   color: var(--jwt-payload-title);
 }

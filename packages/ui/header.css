@@ -173,3 +173,35 @@
 /* On a narrow screen "‹ Tools  Name" reduces to "‹", its words kept for screen readers. The
    build writes that rule into each page, at the width the catalog gives the app
    (`compactHeader`, `compactHeaderTag` in src/vite.ts). */
+
+/* An app's views as one dropdown, for when its .ui-seg of view buttons no longer fits: hidden
+   until the app's own media query shows it in place of the buttons. Drawn as a pressed header
+   button with its own chevron, since the native arrow differs on every platform. */
+.ui-view-picker {
+  position: relative;
+  display: none;
+}
+
+.ui-view-picker > svg {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--text);
+  pointer-events: none;
+}
+
+.ui-view-select {
+  min-height: var(--ui-control);
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius, 6px);
+  background: var(--accent-dim);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--ui-control-font);
+  appearance: none;
+  cursor: pointer;
+}
