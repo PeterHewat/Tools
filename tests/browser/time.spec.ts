@@ -260,14 +260,17 @@ test("a reload shows the view and the folds the tab had, from the first paint", 
   page,
 }) => {
   await open(page, PEOPLE, { view: "meet", rangeFrom: "2026-10-12", rangeTo: "2026-10-12" });
-  // Suggestions fold from their heading, or anywhere on its row, and open again.
+  // Suggestions start folded to their heading and count; the call is already on the best one.
   const toggle = page.locator("#suggestions-toggle");
-  await expect(page.locator("#suggestions")).toBeVisible();
-  await expect(page.locator("#suggestions-row .time-chevron svg path")).toHaveCount(1);
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("#suggestions")).toBeHidden();
-  await expect(page.locator("#suggestions-note")).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#suggestions-note")).toContainText("preferred by everyone");
+  await expect(page.locator("#suggestions-row .time-chevron svg path")).toHaveCount(1);
+  await expect(page.locator("#picked-time")).toHaveValue("18:00");
+  // They open from their heading, or anywhere on its row.
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#suggestions")).toBeVisible();
   await page.locator('[data-view="convert"]').click();
 
   // With the app's script blocked, what shows is what the page paints before it runs.
@@ -281,11 +284,39 @@ test("a reload shows the view and the folds the tab had, from the first paint", 
 
   await page.reload();
   await page.locator('[data-view="meet"]').click();
-  await expect(page.locator("#suggestions")).toBeHidden();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await page.locator("#suggestions-row").click({ position: { x: 300, y: 10 } });
   await expect(page.locator("#suggestions")).toBeVisible();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await page.locator("#suggestions-row").click({ position: { x: 300, y: 10 } });
+  await expect(page.locator("#suggestions")).toBeHidden();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+});
+
+test("dragging the call along the timeline moves it as the pointer moves", async ({ page }) => {
+  await open(page, PEOPLE, {
+    view: "meet",
+    rangeFrom: "2026-10-12",
+    rangeTo: "2026-10-12",
+    meetZone: "Europe/Paris",
+  });
+  const picked = page.locator("#picked-time");
+  await expect(picked).toHaveValue("18:00");
+  const bar = (await page.locator(".tl-all .tl-bar").boundingBox())!;
+  const hour = bar.width / 24;
+  const y = bar.y + bar.height / 2;
+  // Grabbed in its middle, the call keeps that hold as it moves, an hour at a time here.
+  await page.mouse.move(bar.x + 18.5 * hour, y);
+  await page.mouse.down();
+  await page.mouse.move(bar.x + 19.5 * hour, y, { steps: 4 });
+  await expect(picked).toHaveValue("19:00");
+  await page.mouse.move(bar.x + 20.5 * hour, y, { steps: 4 });
+  await expect(picked).toHaveValue("20:00");
+  await page.mouse.move(bar.x + 21.5 * hour, y, { steps: 4 });
+  await expect(picked).toHaveValue("21:00");
+  await page.mouse.up();
+  await expect(page.locator("#picked-text")).toContainText("Ana: 1 h outside preferred hours");
+  // A press away from the call places it there.
+  await page.mouse.click(bar.x + 9.2 * hour, y);
+  await expect(picked).toHaveValue("09:00");
 });
 
 test.describe("in American English", () => {

@@ -869,15 +869,45 @@ export function meetView(app: App): View {
     app.save();
   }
 
-  byId("timeline").addEventListener("click", (event) => {
-    const bar = (event.target as HTMLElement).closest(".tl-track");
-    if (!bar) return;
-    const box = bar.getBoundingClientRect();
+  // A press on the timeline places the call there; a drag moves it as the pointer moves. Pressed
+  // on the call itself, the call keeps its place under the pointer rather than jumping to start
+  // there. Starts snap to the quarter hour, within the day shown.
+  const timeline = byId("timeline");
+  let drag: { box: DOMRect; from: number; to: number; offset: number } | undefined;
+  let frame = 0;
+  function dragTo(clientX: number): void {
+    if (!drag) return;
+    const { box, from, to, offset } = drag;
+    const t = from + ((clientX - box.left) / box.width) * (to - from) - offset;
+    const steps = Math.floor((t - from) / (STEP * MINUTE));
+    const start =
+      from + Math.min(Math.max(0, steps), (to - from) / (STEP * MINUTE) - 1) * STEP * MINUTE;
+    if (start !== selected) pick(start);
+  }
+  timeline.addEventListener("pointerdown", (event) => {
+    const track = (event.target as HTMLElement).closest(".tl-track");
+    if (!track || event.button !== 0) return;
+    const box = track.querySelector(".tl-bar")!.getBoundingClientRect();
     const [from, to] = dayBounds();
     const t = from + ((event.clientX - box.left) / box.width) * (to - from);
-    // Snapped to a quarter hour, the call starting where it was clicked.
-    pick(from + Math.max(0, Math.floor((t - from) / (STEP * MINUTE))) * STEP * MINUTE);
+    const onCall = selected !== undefined && t >= selected && t < selected + plan.duration * MINUTE;
+    drag = { box, from, to, offset: onCall ? t - selected! : 0 };
+    // The timeline is drawn again as the call moves: the capture stays with its container.
+    timeline.setPointerCapture(event.pointerId);
+    timeline.classList.add("dragging");
+    dragTo(event.clientX);
   });
+  timeline.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => dragTo(event.clientX));
+  });
+  const endDrag = () => {
+    drag = undefined;
+    timeline.classList.remove("dragging");
+  };
+  timeline.addEventListener("pointerup", endDrag);
+  timeline.addEventListener("pointercancel", endDrag);
   byId("picked-time").addEventListener("change", () => {
     const clock = parseClock(byId<HTMLInputElement>("picked-time").value);
     if (!clock) return;

@@ -48,8 +48,9 @@ gives up, and in total; then the most minutes any one person spends outside pref
 nobody bears a large compromise to spare the group a small one; then the group's total; then the
 earliest. Each suggestion gives everyone's own clock at the start, with their date where it is
 not the one shown, and says why: "Sam: 1 h outside preferred hours; everyone else: preferred."
-Suggestions are open to begin with and fold to their heading and count, from the heading's button
-or anywhere on its row.
+Suggestions start folded to their heading and count, since the call is already placed on the best
+one, and open from the heading's button or anywhere on its row; opened, they stay open in that
+tab. Why nothing fits shows below the heading, folded or not.
 
 Unavailable time is used only for someone whose "Allow unavailable time" is on. When nothing fits,
 the search names anyone with no stretch long enough of their own, and each person without whom the
@@ -58,9 +59,11 @@ others would find times, with a button to allow that person's unavailable time.
 The timeline shows one day in the chosen zone: a row for everyone combined and one a person, all
 aligned to the same instants, each with that person's own hours and date changes above it.
 Preferred and acceptable are coloured, unavailable is hatched, and each row also reads as text
-for a screen reader. The call is placed on the best suggestion, and stays there as people and
-windows change, until someone places it themselves: choosing a suggestion, clicking the timeline
-or typing a time. New dates to search or an opened share link put it back on the best suggestion.
+for a screen reader. The call is the outlined box and the red line is now; the legend says so.
+The call is placed on the best suggestion, and stays there as people and windows change, until
+someone places it themselves: choosing a suggestion, typing a time, or pressing on the timeline,
+which places the call there and moves it live while the pointer is dragged, a quarter hour at a
+time. Pressed on the call itself, it keeps its hold rather than jumping to start there. New dates to search or an opened share link put it back on the best suggestion.
 The placed call says how it sits with everyone and gives a summary to copy, with each person's
 own date and time.
 

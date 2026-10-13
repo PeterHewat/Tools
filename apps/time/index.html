@@ -13,7 +13,8 @@
         var view = location.hash.indexOf("#plan=") === 0 ? "meet" : draft.view;
         if (view === "convert" || view === "duration")
           document.documentElement.setAttribute("data-time-view", view);
-        if (draft.suggestionsOpen === false)
+        // Folded until opened: the call is already placed on the best one.
+        if (draft.suggestionsOpen !== true)
           document.documentElement.setAttribute("data-time-folded", "");
       } catch (e) {}
     </script>
@@ -276,7 +277,7 @@
                   type="button"
                   class="time-fold-toggle"
                   id="suggestions-toggle"
-                  aria-expanded="true"
+                  aria-expanded="false"
                   aria-controls="suggestions-body"
                 >
                   Suggestions
@@ -289,9 +290,10 @@
             </div>
             <div class="time-fold-body" id="suggestions-body">
               <ol class="time-suggestions" id="suggestions"></ol>
-              <div class="time-diagnosis" id="diagnosis" hidden></div>
               <button type="button" class="ui-btn ui-btn--small" id="more" hidden>Show more</button>
             </div>
+            <!-- Why nothing fits shows folded or not. -->
+            <div class="time-diagnosis" id="diagnosis" hidden></div>
           </section>
 
           <section class="ui-card" aria-labelledby="timeline-title">
@@ -321,6 +323,8 @@
               <span class="level-preferred">Preferred</span>
               <span class="level-acceptable">Acceptable</span>
               <span class="level-unavailable">Unavailable</span>
+              <span class="legend-call">The call: drag it, or click to place it</span>
+              <span class="legend-now">Now</span>
             </div>
             <div class="time-picked" id="picked">
               <div class="time-option">
@@ -564,10 +568,10 @@
             stand in the way.
           </li>
           <li>
-            Suggestions fold to their heading: click anywhere on its row. The call starts on the
-            best suggestion. The timeline shows one day in the zone you choose, with each person's
-            own hours above their row. Click it, or choose another suggestion, to place the call
-            elsewhere; Copy summary gives everyone's own date and time.
+            The call starts on the best suggestion. Suggestions start folded: click their heading
+            row to see them all. The timeline shows one day in the zone you choose, with each
+            person's own hours above their row; the red line is now. Click or drag on it to move the
+            call, or choose another suggestion; Copy summary gives everyone's own date and time.
           </li>
           <li>
             Share link copies a link holding the people and their windows. It is a snapshot of what

@@ -477,6 +477,7 @@
   margin-top: 8px;
 }
 .time-diagnosis {
+  margin-top: 8px;
   font-size: 13px;
 }
 .time-diagnosis p {
@@ -510,8 +511,18 @@
   color: var(--muted);
   font-size: 11px;
 }
+/* A press places the call and a drag moves it, live; touch still scrolls the page up and down. */
 .tl-track {
   cursor: crosshair;
+  touch-action: pan-y;
+  user-select: none;
+}
+.tl-call {
+  cursor: grab;
+}
+.time-timeline.dragging,
+.time-timeline.dragging .tl-call {
+  cursor: grabbing;
 }
 .tl-hours {
   position: relative;
@@ -600,6 +611,16 @@
     transparent 0 2px,
     color-mix(in srgb, var(--muted) 40%, transparent) 2px 3px
   );
+}
+.time-legend .legend-call::before {
+  border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.time-legend .legend-now::before {
+  width: 2px;
+  border: 0;
+  border-radius: 0;
+  background: var(--danger);
 }
 .time-picked {
   margin-top: 10px;

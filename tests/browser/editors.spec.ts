@@ -52,6 +52,19 @@ test("JSON preserves exact numbers through formatting, conversion, undo and relo
   await expect(editor).toContainText("9223372036854775807");
 });
 
+test("JSON reloads with the view it was on pressed from the first paint", async ({ page }) => {
+  await page.goto("/Tools/json/");
+  await page.locator('[data-view="yaml"]').click();
+  // With the app's script blocked, what shows is what the page paints before it runs.
+  await page.route(/\/json\/assets\/.*\.js$/, (route) => route.abort());
+  await page.reload();
+  await expect(page.locator('.views [data-view="yaml"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('.views [data-view="json"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#view-select")).toHaveValue("yaml");
+  // The blocked script is reported as a failed load: expected here, not an error of the page.
+  errorLists.get(page)!.length = 0;
+});
+
 test("SVG draws, undoes, redoes and restores a rectangle", async ({ page }) => {
   await page.goto("/Tools/svg/");
   await page.locator("#menu-document-btn").click();
