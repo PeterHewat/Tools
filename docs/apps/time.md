@@ -33,7 +33,10 @@ or not. A new person keeps business hours, preferred from 09:00 to 17:00 on week
 visit opens on two such people, Alex in Paris and Sam in New York, who overlap for two hours.
 
 The search covers up to 31 days, from midnight to midnight in the zone the results are shown in,
-for a call of 15 minutes to 3 hours. Windows are resolved date by date in each person's zone, so a
+for a call of 15 minutes to 3 hours. A time already past is never suggested: the search starts at
+the next quarter hour from now when its first day is today, says so when no time is left in its
+dates, and searches again as each quarter hour passes while the page is open. A call placed in the
+past by hand says that it has passed. Windows are resolved date by date in each person's zone, so a
 recurring evening follows that person's daylight-saving changes. A window covers the real time when
 that person's clock reads inside it: where the clocks go back, a window in the repeated hour is
 there twice and the time between is not; where they go forward, the part in the skipped hour does

@@ -539,15 +539,16 @@ export function meetView(app: App): View {
     if (days < 1) return { problem: "The last date is before the first." };
     if (days > MAX_SEARCH_DAYS)
       return { problem: `Search up to ${MAX_SEARCH_DAYS} days at a time.` };
-    return {
-      search: {
-        from: instantOf(atMinutes(from, 0), zone()),
-        to: instantOf(atMinutes(addDays(to, 1), 0), zone()),
-        duration: plan.duration,
-        step: STEP,
-      },
-    };
+    const end = instantOf(atMinutes(addDays(to, 1), 0), zone());
+    // A time already past is no time to meet: starts begin at the next quarter hour from now.
+    const soonest = Math.max(instantOf(atMinutes(from, 0), zone()), nextStart());
+    if (soonest + plan.duration * MINUTE > end)
+      return { problem: "No time is left in these dates: search from today on." };
+    return { search: { from: soonest, to: end, duration: plan.duration, step: STEP } };
   }
+
+  /** The next quarter hour from now: every zone in use is a whole number of them from UTC. */
+  const nextStart = () => Math.ceil(Date.now() / (STEP * MINUTE)) * STEP * MINUTE;
 
   const usable = () => plan.people.filter((p) => canonicalZone(p.zone) !== undefined);
 
@@ -662,6 +663,7 @@ export function meetView(app: App): View {
   function research(): void {
     const note = byId("search-note");
     const { search, problem } = range();
+    searchedFrom = search?.from;
     const people = usable();
     const broken = plan.people.filter((p) => !people.includes(p)).map((p) => p.name || "Unnamed");
     showMessage(
@@ -700,6 +702,13 @@ export function meetView(app: App): View {
     app.save();
   }
   const researchSoon = debounce(research, 150);
+
+  // A page left open searches again as the next quarter hour comes, while the search starts now,
+  // so its suggestions never fall behind the clock.
+  let searchedFrom: number | undefined;
+  setInterval(() => {
+    if (visible && !document.hidden && range().search?.from !== searchedFrom) research();
+  }, 30_000);
 
   function changed(): void {
     savePlan();
@@ -849,12 +858,15 @@ export function meetView(app: App): View {
     const blocked = people
       .filter((p, i) => !p.relaxed && costs[i].unavailable > 0)
       .map((p) => p.name || "Unnamed");
+    const passed = selected < Date.now();
     showMessage(
       byId("picked-text"),
-      (blocked.length
-        ? `Does not fit: ${blocked.join(", ")} ${blocked.length === 1 ? "is" : "are"} unavailable for part of it. `
-        : "") + explain(people, costs),
-      blocked.length > 0
+      (passed ? "That time has passed. " : "") +
+        (blocked.length
+          ? `Does not fit: ${blocked.join(", ")} ${blocked.length === 1 ? "is" : "are"} unavailable for part of it. `
+          : "") +
+        explain(people, costs),
+      passed || blocked.length > 0
     );
     byId("picked-summary").textContent = summary(people, selected, plan.duration);
     copy.disabled = false;

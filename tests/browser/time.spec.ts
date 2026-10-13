@@ -30,7 +30,17 @@ const PEOPLE = [
   },
 ];
 
-async function open(page: Page, people: unknown[], draft: Record<string, unknown> = {}) {
+/**
+ * Time on a plan and a draft, at a fixed moment: by default 22:00 in Paris on Sunday 11 October
+ * 2026, the evening before the day the tests search, since times already past are never suggested.
+ */
+async function open(
+  page: Page,
+  people: unknown[],
+  draft: Record<string, unknown> = {},
+  now = "2026-10-11T20:00:00Z"
+) {
+  await page.clock.setFixedTime(new Date(now));
   // Written from another page of the site: Time keeps its own draft as it is left.
   await page.goto("/Tools/");
   await page.evaluate(
@@ -289,6 +299,31 @@ test("a reload shows the view and the folds the tab had, from the first paint", 
   await page.locator("#suggestions-row").click({ position: { x: 300, y: 10 } });
   await expect(page.locator("#suggestions")).toBeHidden();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
+});
+
+test("times already past are never suggested", async ({ page }) => {
+  const day = {
+    view: "meet",
+    rangeFrom: "2026-10-12",
+    rangeTo: "2026-10-12",
+    meetZone: "Europe/Paris",
+  };
+  // 18:20 in Paris: the overlap from 18:00 has begun, so the soonest start is 18:30.
+  await open(page, PEOPLE, day, "2026-10-12T16:20:00Z");
+  const first = page.locator(".time-suggestion").first();
+  await expect(first).toContainText("Mon 12 Oct, 18:30–19:30");
+  await expect(first).toContainText("or start any time until 20:00");
+  await expect(page.locator("#picked-time")).toHaveValue("18:30");
+  // A call placed in the past by hand says so.
+  await page.locator("#picked-time").fill("10:00");
+  await page.locator("#picked-time").dispatchEvent("change");
+  await expect(page.locator("#picked-text")).toContainText("That time has passed.");
+  // Dates wholly past leave nothing to search.
+  await open(page, PEOPLE, day, "2026-10-13T06:00:00Z");
+  await expect(page.locator("#search-note")).toHaveText(
+    "No time is left in these dates: search from today on."
+  );
+  await expect(page.locator(".time-suggestion")).toHaveCount(0);
 });
 
 test("dragging the call along the timeline moves it as the pointer moves", async ({ page }) => {
