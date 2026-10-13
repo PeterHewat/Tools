@@ -15,7 +15,7 @@ export const MAX_MS = 8.64e15;
 
 export type Parsed =
   /** A Unix timestamp, in the unit given or, failing that, the one its size suggests. */
-  | { kind: "unix"; ms: number; unit: Unit; detected: boolean }
+  | { kind: "unix"; ms: number; unit: Unit; detected: boolean; dropped: boolean }
   /** A date and time with an offset: one instant. */
   | { kind: "instant"; ms: number; offset: number; zone?: string; dropped?: boolean }
   /** A date, or a date and time, with no offset: a wall time in a zone still to be chosen. */
@@ -111,13 +111,24 @@ export function parseTime(input: string, unit?: Unit): Parsed {
   const text = input.trim();
   if (!text) return { kind: "error", message: "Empty." };
 
-  if (/^[+-]?\d+(\.\d+)?$/.test(text)) {
-    const value = Number(text);
-    const chosen = unit ?? detectUnit(value);
-    const ms = chosen === "s" ? value * 1000 : value;
-    if (Math.abs(ms) > MAX_MS) return { kind: "error", message: "Out of range for a date." };
-    // Below a millisecond is beyond what a Date holds.
-    return { kind: "unix", ms: Math.trunc(ms), unit: chosen, detected: unit === undefined };
+  const number = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text);
+  if (number) {
+    const [, sign, whole, fraction = ""] = number;
+    const chosen = unit ?? detectUnit(Number(text));
+    // Milliseconds from the digits themselves: 1.001 seconds times 1000 is 1000.9999… in
+    // floating point. Below a millisecond is beyond what a Date holds.
+    const kept = chosen === "s" ? 3 : 0;
+    const size =
+      Number(whole) * (chosen === "s" ? 1000 : 1) +
+      Number(fraction.slice(0, kept).padEnd(kept, "0") || 0);
+    if (size > MAX_MS) return { kind: "error", message: "Out of range for a date." };
+    return {
+      kind: "unix",
+      ms: sign === "-" && size ? -size : size,
+      unit: chosen,
+      detected: unit === undefined,
+      dropped: /[1-9]/.test(fraction.slice(kept)),
+    };
   }
 
   const iso = ISO.exec(text) ?? ISO_BASIC.exec(text);

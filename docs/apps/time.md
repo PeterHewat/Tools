@@ -61,7 +61,8 @@ Ranking: a person's cost is the minutes of the call outside their preferred wind
 need nobody's unavailable time come first; then the fewest unavailable minutes any one person
 gives up, and in total; then the most minutes any one person spends outside preferred hours, so
 nobody bears a large compromise to spare the group a small one; then the group's total; then the
-earliest. Each suggestion says why: "Sam: 1 h outside preferred hours; everyone else: preferred."
+earliest. Each suggestion gives everyone's own clock at the start, with their date where it is
+not the one shown, and says why: "Sam: 1 h outside preferred hours; everyone else: preferred."
 
 Unavailable time is used only for someone whose "Allow unavailable time" is on. When nothing fits,
 the search names anyone with no stretch long enough of their own, and each person without whom the

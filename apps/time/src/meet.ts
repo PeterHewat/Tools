@@ -581,6 +581,20 @@ export function meetView(app: App): View {
               { class: "time-suggestion-range" },
               `or start any time until ${clockTime(s.last, zone(), options)}`
             ),
+          // Everyone's own clock at the start, and their date where it is not the one above.
+          h(
+            "span",
+            { class: "time-suggestion-local" },
+            people
+              .map((p) => {
+                const theirDay = shortDate(s.start, p.zone);
+                return (
+                  `${p.name || "Unnamed"} ${clockTime(s.start, p.zone, options)}` +
+                  (theirDay === startDay ? "" : ` (${theirDay})`)
+                );
+              })
+              .join(" · ")
+          ),
           h("span", { class: "time-suggestion-why" }, explain(people, s.costs))
         );
         button.addEventListener("click", () => pick(s.start));

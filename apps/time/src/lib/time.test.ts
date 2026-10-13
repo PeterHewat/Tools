@@ -140,12 +140,14 @@ describe("parsing", () => {
       ms: 1760264100000,
       unit: "s",
       detected: true,
+      dropped: false,
     });
     expect(parseTime("1760264100000")).toEqual({
       kind: "unix",
       ms: 1760264100000,
       unit: "ms",
       detected: true,
+      dropped: false,
     });
     expect(parseTime("1760264100000000", "s")).toEqual({
       kind: "error",
@@ -156,9 +158,21 @@ describe("parsing", () => {
       ms: 1760264100,
       unit: "ms",
       detected: false,
+      dropped: false,
     });
     expect(parseTime("-1.5")).toMatchObject({ kind: "unix", ms: -1500 });
     expect(detectUnit(99_999_999_999)).toBe("s");
+  });
+  test("a Unix time keeps every millisecond it is given, and says when it drops more", () => {
+    // In floating point, 1.001 × 1000 is 1000.9999…
+    for (let i = 0; i < 1000; i++) {
+      const text = `1.${String(i).padStart(3, "0")}`;
+      expect(parseTime(text)).toMatchObject({ ms: 1000 + i, dropped: false });
+      expect(parseTime(`-${text}`)).toMatchObject({ ms: -1000 - i });
+    }
+    expect(parseTime("1760264100.1234567")).toMatchObject({ ms: 1760264100123, dropped: true });
+    expect(parseTime("1760264100123.5", "ms")).toMatchObject({ ms: 1760264100123, dropped: true });
+    expect(parseTime("-0.0004")).toMatchObject({ ms: 0, dropped: true });
   });
   test("ISO 8601 with an offset is one instant", () => {
     expect(parseTime("2026-10-12T10:15:00Z")).toMatchObject({

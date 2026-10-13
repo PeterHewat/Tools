@@ -366,6 +366,9 @@
   color: var(--muted);
   font-size: 12px;
 }
+.time-suggestion-local {
+  font-size: 13px;
+}
 #more {
   margin-top: 8px;
 }

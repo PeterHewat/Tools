@@ -189,7 +189,9 @@ export function convertView(app: App): View {
       case "unix":
         return {
           ms: parsed.ms,
-          note: `Unix ${parsed.unit === "s" ? "seconds" : "milliseconds"}${parsed.detected ? ", by its size" : ""}.`,
+          note:
+            `Unix ${parsed.unit === "s" ? "seconds" : "milliseconds"}${parsed.detected ? ", by its size" : ""}.` +
+            (parsed.dropped ? " Digits past milliseconds dropped." : ""),
         };
       case "instant":
         return {
