@@ -2,7 +2,8 @@
  * The people and patterns Find a time keeps, as stored in the browser and carried in a share
  * link. This is a saved format: it is read field by field, keeping what is valid and giving a
  * default for anything missing or unknown, so what someone saved still opens after a change.
- * `version` is for a later change that cannot be read that way.
+ * `version` is for a later change that cannot be read that way. A plan with a higher version than
+ * this page knows was written by a later Time: it is not read, and the page says so.
  */
 
 import { parseDate } from "./civil.js";
@@ -79,9 +80,14 @@ function readPerson(raw: unknown, ids: Set<string>): Person | undefined {
   };
 }
 
-/** A plan from whatever was stored or shared; undefined when it is not one at all. */
+/** Whether a later Time wrote this, in a form this one does not know. */
+export function isNewerPlan(raw: unknown): boolean {
+  return isRecord(raw) && typeof raw.version === "number" && raw.version > PLAN_VERSION;
+}
+
+/** A plan from whatever was stored or shared; undefined when it is not one this page can read. */
 export function readPlan(raw: unknown): Plan | undefined {
-  if (!isRecord(raw) || !Array.isArray(raw.people)) return undefined;
+  if (!isRecord(raw) || !Array.isArray(raw.people) || isNewerPlan(raw)) return undefined;
   const ids = new Set<string>();
   const people = raw.people
     .slice(0, MAX_PEOPLE)

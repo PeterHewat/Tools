@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
   addMonths,
+  DAY,
+  HOUR,
   civilFromDays,
   daysFromCivil,
   parseClock,
@@ -11,7 +13,7 @@ import {
 import { calendarSpan, describeSpan, nextAnniversary, totalIn } from "./duration.js";
 import { formatOffset, httpDate, isoString, relativeTime } from "./format.js";
 import { detectUnit, parseTime } from "./parse.js";
-import { canonicalZone, findZone, offsetAt, resolveWall, wallAt } from "./zone.js";
+import { canonicalZone, findZone, offsetAt, offsetSpans, resolveWall, wallAt } from "./zone.js";
 
 const wall = (iso: string) => {
   const p = parseTime(iso);
@@ -110,6 +112,20 @@ describe("zones", () => {
       kind: "exact",
       ms: utc("2026-10-12T14:30:00Z"),
     });
+  });
+  test("a stretch of time is cut where the offset changes, to the millisecond", () => {
+    // Lord Howe Island moves its clocks by half an hour.
+    expect(
+      offsetSpans(utc("2026-04-04T00:00:00Z"), utc("2026-04-05T00:00:00Z"), "Australia/Lord_Howe")
+    ).toEqual([
+      { start: utc("2026-04-04T00:00:00Z"), end: utc("2026-04-04T15:00:00Z"), offset: 11 * HOUR },
+      {
+        start: utc("2026-04-04T15:00:00Z"),
+        end: utc("2026-04-05T00:00:00Z"),
+        offset: 10.5 * HOUR,
+      },
+    ]);
+    expect(offsetSpans(0, DAY, "UTC")).toEqual([{ start: 0, end: DAY, offset: 0 }]);
   });
   test("years before 1 are counted with year 0", () => {
     expect(wallAt(utc("0000-06-01T00:00:00Z"), "UTC").year).toBe(0);

@@ -4,7 +4,7 @@
  * and the zone's history, so every question here is asked at an instant.
  */
 
-import { DAY, wallFromMs, wallMs } from "./civil.js";
+import { DAY, HOUR, wallFromMs, wallMs } from "./civil.js";
 import type { WallTime } from "./civil.js";
 
 export const UTC = "UTC";
@@ -124,6 +124,42 @@ export function wallAt(ms: number, zone: string): WallTime {
 /** How far the zone's clocks are ahead of UTC at an instant, in milliseconds. */
 export function offsetAt(ms: number, zone: string): number {
   return zone === UTC ? 0 : wallMs(wallAt(ms, zone)) - ms;
+}
+
+/** A stretch of real time over which a zone's clocks keep one offset. */
+export interface OffsetSpan {
+  start: number;
+  end: number;
+  offset: number;
+}
+
+/**
+ * `from` to `to` cut where the zone's offset changes, in order. Zones change offset a few times
+ * a year at most, so an hourly look finds every change, and a halving search finds its
+ * millisecond.
+ */
+export function offsetSpans(from: number, to: number, zone: string): OffsetSpan[] {
+  const spans: OffsetSpan[] = [];
+  let start = from;
+  let offset = offsetAt(from, zone);
+  let cursor = from;
+  while (zone !== UTC && cursor < to) {
+    const next = Math.min(cursor + HOUR, to);
+    if (offsetAt(next, zone) === offset) {
+      cursor = next;
+      continue;
+    }
+    let [low, high] = [cursor, next];
+    while (high - low > 1) {
+      const mid = Math.floor((low + high) / 2);
+      if (offsetAt(mid, zone) === offset) low = mid;
+      else high = mid;
+    }
+    spans.push({ start, end: high, offset });
+    [start, cursor, offset] = [high, high, offsetAt(high, zone)];
+  }
+  spans.push({ start, end: to, offset });
+  return spans.filter((span) => span.end > span.start);
 }
 
 /**

@@ -49,9 +49,13 @@ prefers weekday evenings and weekend days; the first visit opens on three exampl
 
 The search covers up to 31 days, from midnight to midnight in the zone the results are shown in,
 for a call of 15 minutes to 3 hours. Windows are resolved date by date in each person's zone, so a
-recurring evening follows that person's daylight-saving changes. Starts are a quarter hour apart,
-and the whole call must fit. A run of starts that cost everyone the same is one suggestion ("or
-start any time until 20:00").
+recurring evening follows that person's daylight-saving changes. A window covers the real time when
+that person's clock reads inside it: where the clocks go back, a window in the repeated hour is
+there twice and the time between is not; where they go forward, the part in the skipped hour does
+not exist. Starts are a quarter hour apart, and the whole call must fit, both in everyone's windows
+and before the end of the last day. A run of starts that cost everyone the same is one suggestion
+("or start any time until 20:00"). While anyone's zone is unknown, no times are suggested: they
+would read as times that suit everyone.
 
 Ranking: a person's cost is the minutes of the call outside their preferred windows. Times that
 need nobody's unavailable time come first; then the fewest unavailable minutes any one person
@@ -75,6 +79,8 @@ with `deflate-raw` where the browser can, in Base64url after `#plan=`. Nothing i
 server. Opening one asks whether to replace the saved people, add to them, or dismiss it, and says
 it is a snapshot of what was entered, not live answers. The saved people (`tools.time.plan`) and
 the share link are one format, read field by field, and versioned for a change that cannot be.
+A plan or link from a later version of Time is not read as this one: the page says so, and leaves
+the saved people as they are.
 
 ## Duration
 

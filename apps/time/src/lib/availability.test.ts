@@ -9,7 +9,7 @@ import {
   summary,
 } from "./availability.js";
 import type { Person, Search } from "./availability.js";
-import { readPlan, sharePlan, writePlan } from "./plan.js";
+import { isNewerPlan, PLAN_VERSION, readPlan, sharePlan, writePlan } from "./plan.js";
 
 const utc = (iso: string) => Date.parse(iso);
 const hours = (h: number, m = 0) => h * 60 + m;
@@ -44,6 +44,37 @@ describe("segments", () => {
     const after = personSegments(paris, utc("2026-10-26T00:00:00Z"), utc("2026-10-27T00:00:00Z"));
     expect(before.find((s) => s.level === "preferred")!.start).toBe(utc("2026-10-24T16:00:00Z"));
     expect(after.find((s) => s.level === "preferred")!.start).toBe(utc("2026-10-26T17:00:00Z"));
+  });
+  test("a window in an hour the clocks repeat is there twice, not once from first to last", () => {
+    // Paris goes back from 03:00 to 02:00 on 25 October 2026: 02:30 is 00:30Z, then 01:30Z.
+    const paris = person("Ana", "Europe/Paris", [
+      { days: EVERY_DAY, start: hours(2, 30), end: hours(2, 45), level: "preferred" },
+    ]);
+    const from = utc("2026-10-25T00:00:00Z");
+    const preferred = personSegments(paris, from, utc("2026-10-25T03:00:00Z")).filter(
+      (s) => s.level === "preferred"
+    );
+    expect(preferred).toEqual([
+      { start: utc("2026-10-25T00:30:00Z"), end: utc("2026-10-25T00:45:00Z"), level: "preferred" },
+      { start: utc("2026-10-25T01:30:00Z"), end: utc("2026-10-25T01:45:00Z"), level: "preferred" },
+    ]);
+    const anyone = person("Al", "UTC", [{ days: EVERY_DAY, start: 0, end: 0, level: "preferred" }]);
+    const search = { from, to: utc("2026-10-25T03:00:00Z"), duration: 30, step: 15 };
+    expect(findTimes([paris, anyone], search)).toEqual([]);
+  });
+  test("the part of a window in an hour the clocks skip is left out, and the rest kept", () => {
+    // Paris goes forward from 02:00 to 03:00 on 29 March 2026: 03:00 is 01:00Z.
+    const paris = person("Ana", "Europe/Paris", [
+      { days: EVERY_DAY, start: hours(2, 30), end: hours(3, 30), level: "preferred" },
+    ]);
+    const preferred = personSegments(
+      paris,
+      utc("2026-03-29T00:00:00Z"),
+      utc("2026-03-29T03:00:00Z")
+    ).filter((s) => s.level === "preferred");
+    expect(preferred).toEqual([
+      { start: utc("2026-03-29T01:00:00Z"), end: utc("2026-03-29T01:30:00Z"), level: "preferred" },
+    ]);
   });
   test("windows past midnight run into the next day; unavailable wins where windows overlap", () => {
     const owl = person("Owl", "UTC", [
@@ -129,6 +160,17 @@ describe("finding a time", () => {
       ],
     });
     expect(explain([ana, ben], found[0].costs)).toBe("Everyone: preferred hours.");
+  });
+
+  test("the whole call ends within the search", () => {
+    const late = person("Lee", "UTC", [
+      { days: EVERY_DAY, start: hours(22), end: hours(2), level: "preferred" },
+    ]);
+    const found = findTimes([late], day);
+    expect(found.map((s) => [s.start, s.last])).toEqual([
+      [utc("2026-10-12T00:00:00Z"), utc("2026-10-12T01:00:00Z")],
+      [utc("2026-10-12T22:00:00Z"), utc("2026-10-12T23:00:00Z")],
+    ]);
   });
 
   test("compromises minimise the worst person's minutes before the total", () => {
@@ -286,5 +328,11 @@ describe("saved plans", () => {
     const shared = sharePlan(plan);
     expect(JSON.stringify(shared)).not.toContain('"id"');
     expect(readPlan(shared)!.people[0]).toMatchObject({ name: "Ana", zone: "UTC" });
+  });
+  test("a plan from a later version is not read as this one", () => {
+    const later = { version: PLAN_VERSION + 1, people: [{ name: "Ana", zone: "UTC" }] };
+    expect(isNewerPlan(later)).toBe(true);
+    expect(readPlan(later)).toBeUndefined();
+    expect(isNewerPlan(writePlan({ people: [], duration: 30 }))).toBe(false);
   });
 });

@@ -9,13 +9,23 @@
  * ends where it starts lasts the whole day.
  *
  * Windows are read on each person's wall clock, date by date, so an evening window follows that
- * person's daylight-saving changes rather than a frozen UTC offset.
+ * person's daylight-saving changes rather than a frozen UTC offset. A window covers the real time
+ * when that clock reads inside it: both passes of an hour the clocks repeat, and nothing of an
+ * hour they skip.
  */
 
-import { atMinutes, civilFromDays, dayNumber, formatDate, MINUTE, weekday } from "./civil.js";
+import {
+  atMinutes,
+  civilFromDays,
+  dayNumber,
+  formatDate,
+  MINUTE,
+  wallMs,
+  weekday,
+} from "./civil.js";
 import { clockTime, formatMinutes, shortDate } from "./format.js";
 import type { ReadableOptions } from "./format.js";
-import { instantOf, wallAt } from "./zone.js";
+import { offsetSpans, wallAt } from "./zone.js";
 
 export type Level = "preferred" | "acceptable" | "unavailable";
 export const LEVELS: readonly Level[] = ["preferred", "acceptable", "unavailable"];
@@ -75,19 +85,23 @@ export function windowsOn(person: Person, date: string, isoWeekday: number): Tim
  */
 export function personSegments(person: Person, from: number, to: number): Segment[] {
   const raw: Segment[] = [];
+  // A window covers the instants whose wall clock reads inside it, taken one offset at a time:
+  // where the clocks go back, a window in the repeated hour is there twice, with the time between
+  // left out; where they go forward, the part of a window in the skipped hour does not exist.
+  const spans = offsetSpans(from, to, person.zone);
   // A window from the evening before can still be running at `from`.
   const first = dayNumber(wallAt(from, person.zone)) - 1;
   const last = dayNumber(wallAt(to, person.zone));
   for (let day = first; day <= last; day++) {
     const date = civilFromDays(day);
     for (const window of windowsOn(person, formatDate(date), weekday(date))) {
-      const start = instantOf(atMinutes(date, window.start), person.zone, "earlier");
-      const end = instantOf(
-        atMinutes(date, window.start + windowLength(window)),
-        person.zone,
-        "later"
-      );
-      if (end > from && start < to && end > start) raw.push({ start, end, level: window.level });
+      const wallStart = wallMs(atMinutes(date, window.start));
+      const wallEnd = wallStart + windowLength(window) * MINUTE;
+      for (const span of spans) {
+        const start = Math.max(span.start, wallStart - span.offset);
+        const end = Math.min(span.end, wallEnd - span.offset);
+        if (end > start) raw.push({ start, end, level: window.level });
+      }
     }
   }
   const edges = [...new Set([from, to, ...raw.flatMap((s) => [s.start, s.end])])]
@@ -140,7 +154,7 @@ export function costOf(segments: Segment[], start: number, end: number): Cost {
 export interface Search {
   /** The first start considered. */
   from: number;
-  /** Starts are before this; the call may run past it. */
+  /** The end of the search: the whole call ends by then. */
   to: number;
   /** Call length in minutes. */
   duration: number;
@@ -191,10 +205,10 @@ export function findTimes(people: Person[], search: Search, segments?: Segment[]
   if (!people.length) return [];
   const length = search.duration * MINUTE;
   const step = search.step * MINUTE;
-  const all = segments ?? people.map((p) => personSegments(p, search.from, search.to + length));
+  const all = segments ?? people.map((p) => personSegments(p, search.from, search.to));
   const found: Suggestion[] = [];
   let open: Suggestion | undefined;
-  for (let start = search.from; start < search.to; start += step) {
+  for (let start = search.from; start + length <= search.to; start += step) {
     const costs = all.map((s) => costOf(s, start, start + length));
     const fits = costs.every((c, i) => people[i].relaxed || c.unavailable === 0);
     if (!fits) {

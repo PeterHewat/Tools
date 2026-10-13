@@ -45,7 +45,14 @@ import {
 } from "./lib/civil.js";
 import type { PlainDate } from "./lib/civil.js";
 import { clockTime, formatMinutes, shortDate, utcOffset } from "./lib/format.js";
-import { DEFAULT_DURATION, newPerson, readPlan, sharePlan, writePlan } from "./lib/plan.js";
+import {
+  DEFAULT_DURATION,
+  isNewerPlan,
+  newPerson,
+  readPlan,
+  sharePlan,
+  writePlan,
+} from "./lib/plan.js";
 import type { Plan } from "./lib/plan.js";
 import { canonicalZone, instantOf, localZone, offsetAt, wallAt } from "./lib/zone.js";
 import { readable } from "./prefs.js";
@@ -90,14 +97,16 @@ export async function encodeShare(plan: Plan): Promise<string> {
   return "z" + toBase64(new Uint8Array(await new Response(stream).arrayBuffer()), true);
 }
 
-export async function decodeShare(value: string): Promise<Plan | undefined> {
+/** The plan in a link; "newer" when a later Time made it, undefined when it cannot be read. */
+export async function decodeShare(value: string): Promise<Plan | "newer" | undefined> {
   try {
     let bytes: Uint8Array<ArrayBuffer> = fromBase64(value.slice(1), true);
     if (value[0] === "z") {
       const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
       bytes = new Uint8Array(await new Response(stream).arrayBuffer());
     } else if (value[0] !== "j") return undefined;
-    return readPlan(JSON.parse(textFromBytes(bytes)));
+    const raw: unknown = JSON.parse(textFromBytes(bytes));
+    return isNewerPlan(raw) ? "newer" : readPlan(raw);
   } catch {
     return undefined;
   }
@@ -105,7 +114,10 @@ export async function decodeShare(value: string): Promise<Plan | undefined> {
 
 export function meetView(app: App): View {
   const saved = app.saved;
-  const stored = readPlan(readStored(PLAN_KEY));
+  const raw = readStored(PLAN_KEY);
+  // People a later Time saved stay as they are: this page neither reads nor replaces them.
+  const newer = isNewerPlan(raw);
+  const stored = readPlan(raw);
   let plan: Plan = stored ?? examplePlan();
   let pending: Plan | undefined;
   /** People whose card is folded. */
@@ -139,8 +151,14 @@ export function meetView(app: App): View {
   rangeTo.value = text(saved.rangeTo) || formatDate(addDays(today, 6));
 
   function savePlan(): void {
-    writeStored(PLAN_KEY, writePlan(plan));
+    if (!newer) writeStored(PLAN_KEY, writePlan(plan));
   }
+  if (newer)
+    showMessage(
+      byId("people-note"),
+      "These people were saved by a newer version of Time. Reload the page to see them; changes made here are not kept.",
+      true
+    );
 
   function setLength(minutes: number): void {
     if (![...length.options].some((o) => o.value === String(minutes)))
@@ -633,10 +651,14 @@ export function meetView(app: App): View {
     const broken = plan.people.filter((p) => !people.includes(p)).map((p) => p.name || "Unnamed");
     showMessage(
       note,
-      problem ?? (broken.length ? `Unknown time zone for ${broken.join(", ")}: left out.` : ""),
+      problem ??
+        (broken.length
+          ? `Unknown time zone for ${broken.join(", ")}: choose one to see times for everyone.`
+          : ""),
       Boolean(problem || broken.length)
     );
-    if (!search || !people.length) {
+    // Times found without someone would read as times that suit everyone.
+    if (!search || !people.length || broken.length) {
       suggestions = [];
       byId("diagnosis").hidden = true;
       showMessage(byId("suggestions-note"), people.length ? "" : "Add people to compare.");
@@ -922,7 +944,13 @@ export function meetView(app: App): View {
     // The link has been read: a reload must not ask again.
     history.replaceState(null, "", location.pathname + location.search);
     void decodeShare(value).then((shared) => {
-      if (shared?.people.length) pending = shared;
+      if (shared === "newer")
+        showMessage(
+          byId("people-note"),
+          "That link was made by a newer version of Time. Reload the page, then open the link again.",
+          true
+        );
+      else if (shared?.people.length) pending = shared;
       else showMessage(byId("people-note"), "That link holds no people that can be read.", true);
       showSnapshot();
     });
