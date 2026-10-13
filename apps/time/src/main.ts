@@ -77,9 +77,10 @@ const viewSelect = byId<HTMLSelectElement>("view-select");
 function show(name: ViewName): void {
   current = name;
   press(viewButtons, "view", name);
+  // The page's styles show this view (see the head of index.html).
+  document.documentElement.dataset.timeView = name;
   viewSelect.value = name;
   for (const view of NAMES) {
-    byId(`view-${view}`).hidden = view !== name;
     views[view].shown(view === name);
   }
   saveSoon();

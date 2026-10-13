@@ -181,15 +181,28 @@
 
 /* ---------- Find a time ---------- */
 
-.meet {
+/* One view shows: the one the page's data-time-view names, set in the head from the tab's draft
+   before the first paint, then by main.ts; Find a time when none is named. */
+.time-view {
+  display: none;
+}
+:root:not([data-time-view]) #view-meet,
+:root[data-time-view="meet"] #view-meet {
   display: grid;
+}
+:root[data-time-view="convert"] #view-convert,
+:root[data-time-view="duration"] #view-duration {
+  display: block;
+}
+
+.meet {
   gap: 10px;
 }
 .meet .ui-card + .ui-card {
   margin-top: 10px;
 }
 @media (width >= 1000px) {
-  .meet:not([hidden]) {
+  .meet {
     grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
     align-items: start;
   }
@@ -264,7 +277,7 @@
   width: 18px;
   height: 18px;
 }
-.time-person-chevron {
+.time-chevron {
   display: grid;
   place-items: center;
   width: 28px;
@@ -273,16 +286,42 @@
   color: var(--muted);
   transition: transform 0.15s ease;
 }
-.time-person-chevron svg {
+.time-chevron svg {
   width: 18px;
   height: 18px;
 }
-.time-person summary:hover .time-person-chevron {
+.time-person summary:hover .time-chevron,
+.time-fold-row:hover .time-chevron {
   background: var(--panel);
   color: var(--text);
 }
-.time-person:not([open]) .time-person-chevron {
+.time-person:not([open]) .time-chevron,
+:root[data-time-folded] .time-fold .time-chevron {
   transform: rotate(-90deg);
+}
+
+/* A card that folds to its heading row (Suggestions): the heading is its button. */
+.time-fold-row {
+  cursor: pointer;
+}
+.time-fold-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.time-fold-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+:root[data-time-folded] .time-fold-body {
+  display: none;
+}
+:root[data-time-folded] .time-fold .ui-row {
+  margin-bottom: 0;
 }
 .time-person summary:focus-visible {
   outline: 2px solid var(--accent);

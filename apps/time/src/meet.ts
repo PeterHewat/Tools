@@ -258,7 +258,7 @@ export function meetView(app: App): View {
         person.relaxed && h("span", { class: "time-badge" }, "Relaxed"),
         // Room for the remove button, which sits over the row beside the chevron.
         h("span", { class: "time-person-room", "aria-hidden": "true" }),
-        h("span", { class: "time-person-chevron", "aria-hidden": "true" }, iconSvg("chevron-down"))
+        h("span", { class: "time-chevron", "aria-hidden": "true" }, iconSvg("chevron-down"))
       ),
       h(
         "div",
@@ -899,6 +899,19 @@ export function meetView(app: App): View {
     renderSuggestions();
   });
 
+  // Suggestions fold to their heading: the page's styles hide them while <html> is marked folded,
+  // which the head of index.html sets from the draft before the first paint.
+  const root = document.documentElement;
+  const foldToggle = byId("suggestions-toggle");
+  const suggestionsOpen = () => !root.hasAttribute("data-time-folded");
+  foldToggle.setAttribute("aria-expanded", String(suggestionsOpen()));
+  // The heading's button, or anywhere else on its row.
+  byId("suggestions-row").addEventListener("click", () => {
+    root.toggleAttribute("data-time-folded", suggestionsOpen());
+    foldToggle.setAttribute("aria-expanded", String(suggestionsOpen()));
+    app.save();
+  });
+
   length.addEventListener("change", () => {
     plan.duration = Number(length.value);
     changed();
@@ -981,6 +994,7 @@ export function meetView(app: App): View {
       rangeTo: rangeTo.value,
       selected,
       placedByHand,
+      suggestionsOpen: suggestionsOpen(),
       day: day ? formatDate(day) : "",
       folded: [...folded],
     }),

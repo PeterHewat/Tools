@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/src/styles.css" />
+    <!-- Runs while the head is parsed, from the tab's draft: a reload shows the view this tab was
+         on, and Suggestions folded or not, from the first paint rather than a moment after.
+         main.ts keeps both attributes from then on. -->
+    <script>
+      try {
+        var draft = JSON.parse(sessionStorage.getItem("tools.time.draft") || "{}").value || {};
+        var view = location.hash.indexOf("#plan=") === 0 ? "meet" : draft.view;
+        if (view === "convert" || view === "duration")
+          document.documentElement.setAttribute("data-time-view", view);
+        if (draft.suggestionsOpen === false)
+          document.documentElement.setAttribute("data-time-folded", "");
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <!-- "‹ Tools" and the name are written in at build time, from the catalog. -->
@@ -39,13 +52,22 @@
         </button>
       </div>
     </header>
+    <!-- The view the head chose, pressed in the header from the first paint too. -->
+    <script>
+      (function (view) {
+        var buttons = document.querySelectorAll(".time-views [data-view]");
+        for (var i = 0; i < buttons.length; i++)
+          buttons[i].setAttribute("aria-pressed", String(buttons[i].dataset.view === view));
+        document.getElementById("view-select").value = view;
+      })(document.documentElement.getAttribute("data-time-view") || "meet");
+    </script>
 
     <main class="ui-workbench time">
       <p class="ui-message" id="draft-status" role="status" hidden></p>
       <datalist id="zone-list"></datalist>
 
       <!-- Convert: one value, or one a line. -->
-      <div class="time-view" id="view-convert" hidden>
+      <div class="time-view" id="view-convert">
         <section class="ui-card" aria-labelledby="input-title">
           <div class="ui-row">
             <h2 id="input-title"><label for="input">Time</label></h2>
@@ -245,14 +267,31 @@
             </div>
           </section>
 
-          <section class="ui-card" aria-labelledby="suggestions-title">
-            <div class="ui-row">
-              <h2 id="suggestions-title">Suggestions</h2>
+          <!-- Folds to its heading and count: the heading is the button, and the whole row takes
+               a click. Folded is <html data-time-folded>, set in the head before the first paint. -->
+          <section class="ui-card time-fold" aria-labelledby="suggestions-title">
+            <div class="ui-row time-fold-row" id="suggestions-row">
+              <h2 id="suggestions-title">
+                <button
+                  type="button"
+                  class="time-fold-toggle"
+                  id="suggestions-toggle"
+                  aria-expanded="true"
+                  aria-controls="suggestions-body"
+                >
+                  Suggestions
+                </button>
+              </h2>
               <span class="ui-note" id="suggestions-note" role="status"></span>
+              <span class="time-chevron" aria-hidden="true"
+                ><svg data-ui-icon="chevron-down"></svg
+              ></span>
             </div>
-            <ol class="time-suggestions" id="suggestions"></ol>
-            <div class="time-diagnosis" id="diagnosis" hidden></div>
-            <button type="button" class="ui-btn ui-btn--small" id="more" hidden>Show more</button>
+            <div class="time-fold-body" id="suggestions-body">
+              <ol class="time-suggestions" id="suggestions"></ol>
+              <div class="time-diagnosis" id="diagnosis" hidden></div>
+              <button type="button" class="ui-btn ui-btn--small" id="more" hidden>Show more</button>
+            </div>
           </section>
 
           <section class="ui-card" aria-labelledby="timeline-title">
@@ -309,7 +348,7 @@
       </div>
 
       <!-- Duration: between two dates, or from or to now. -->
-      <div class="time-view" id="view-duration" hidden>
+      <div class="time-view" id="view-duration">
         <section class="ui-card" aria-labelledby="measure-title">
           <div class="ui-row">
             <h2 id="measure-title">Measure</h2>
@@ -525,10 +564,10 @@
             stand in the way.
           </li>
           <li>
-            The call starts on the best suggestion. The timeline shows one day in the zone you
-            choose, with each person's own hours above their row. Click it, or choose another
-            suggestion, to place the call elsewhere; Copy summary gives everyone's own date and
-            time.
+            Suggestions fold to their heading: click anywhere on its row. The call starts on the
+            best suggestion. The timeline shows one day in the zone you choose, with each person's
+            own hours above their row. Click it, or choose another suggestion, to place the call
+            elsewhere; Copy summary gives everyone's own date and time.
           </li>
           <li>
             Share link copies a link holding the people and their windows. It is a snapshot of what

@@ -19,6 +19,13 @@ describe("withIcons", () => {
     );
   });
 
+  test("fills an svg whose closing tag Prettier wrapped", () => {
+    const html = withIcons('<span\n  ><svg data-ui-icon="help"></svg\n></span>');
+    expect(html).toBe(
+      `<span\n  ><svg data-ui-icon="help" viewBox="0 0 24 24">${ICONS.help}</svg></span>`
+    );
+  });
+
   test("fills a sprite symbol, and leaves a viewBox it already has", () => {
     const html = withIcons(
       '<symbol id="icon-copy" viewBox="0 0 24 24" data-ui-icon="copy">\n</symbol>'

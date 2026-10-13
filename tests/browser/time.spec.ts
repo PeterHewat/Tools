@@ -256,6 +256,38 @@ test("Time measures ages and spans on the calendar and in elapsed units", async 
   await expect(page.locator("#end-date")).toBeEnabled();
 });
 
+test("a reload shows the view and the folds the tab had, from the first paint", async ({
+  page,
+}) => {
+  await open(page, PEOPLE, { view: "meet", rangeFrom: "2026-10-12", rangeTo: "2026-10-12" });
+  // Suggestions fold from their heading, or anywhere on its row, and open again.
+  const toggle = page.locator("#suggestions-toggle");
+  await expect(page.locator("#suggestions")).toBeVisible();
+  await expect(page.locator("#suggestions-row .time-chevron svg path")).toHaveCount(1);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#suggestions")).toBeHidden();
+  await expect(page.locator("#suggestions-note")).toBeVisible();
+  await page.locator('[data-view="convert"]').click();
+
+  // With the app's script blocked, what shows is what the page paints before it runs.
+  await page.route(/\/time\/assets\/.*\.js$/, (route) => route.abort());
+  await page.reload();
+  await expect(page.locator("#view-convert")).toBeVisible();
+  await expect(page.locator("#view-meet")).toBeHidden();
+  await expect(page.locator('[data-view="convert"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-view="meet"]')).toHaveAttribute("aria-pressed", "false");
+  await page.unroute(/\/time\/assets\/.*\.js$/);
+
+  await page.reload();
+  await page.locator('[data-view="meet"]').click();
+  await expect(page.locator("#suggestions")).toBeHidden();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await page.locator("#suggestions-row").click({ position: { x: 300, y: 10 } });
+  await expect(page.locator("#suggestions")).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+});
+
 test.describe("in American English", () => {
   test.use({ locale: "en-US" });
   test("times are on the 24-hour clock, shown and typed", async ({ page }) => {

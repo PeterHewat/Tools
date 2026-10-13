@@ -14,7 +14,9 @@ Dates are `YYYY-MM-DD` and times of day are on the 24-hour clock, shown and type
 browser's language. Each is typed in a field of its own, a date as `2026-10-13` (or `2026-10-5`,
 `20261013`) and a time as `14:30` (or `1430`, `9:30`), since native date and time fields would
 follow the language into `10/13/2026` and AM/PM; a field is written out in full when it is left,
-and marked while it cannot be read. What is typed stays in the tab's draft. People, windows and pinned zones are kept in the browser. The calendar is the
+and marked while it cannot be read. What is typed stays in the tab's draft, saved as typing pauses
+and as the page is left; a reload shows the view it was on, and Suggestions folded or not, from
+the first paint (a script in the page's head reads the draft before the body is drawn). People, windows and pinned zones are kept in the browser. The calendar is the
 proleptic Gregorian one, with year 0 for 1 BC.
 
 ## Find a time
@@ -46,6 +48,8 @@ gives up, and in total; then the most minutes any one person spends outside pref
 nobody bears a large compromise to spare the group a small one; then the group's total; then the
 earliest. Each suggestion gives everyone's own clock at the start, with their date where it is
 not the one shown, and says why: "Sam: 1 h outside preferred hours; everyone else: preferred."
+Suggestions are open to begin with and fold to their heading and count, from the heading's button
+or anywhere on its row.
 
 Unavailable time is used only for someone whose "Allow unavailable time" is on. When nothing fits,
 the search names anyone with no stretch long enough of their own, and each person without whom the
