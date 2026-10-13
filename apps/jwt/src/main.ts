@@ -249,6 +249,8 @@ const dateFormat = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
+  // On the 24-hour clock whatever the language, as across the site.
+  hourCycle: "h23",
   timeZoneName: "short",
 });
 /** Says beside each known member what it means, with time claims as local dates. */

@@ -237,13 +237,50 @@
               ><span>Title</span><input class="ui-input" id="ev-title" autocomplete="off"
             /></label>
             <div class="codes-pair">
-              <label class="ui-field"
-                ><span>Starts</span><input class="ui-input" id="ev-start" type="datetime-local"
-              /></label>
-              <label class="ui-field"
-                ><span>Ends · an hour later if empty</span
-                ><input class="ui-input" id="ev-end" type="datetime-local"
-              /></label>
+              <div class="ui-field">
+                <span id="ev-start-label">Starts</span>
+                <div class="codes-when">
+                  <input
+                    class="ui-input"
+                    id="ev-start-date"
+                    type="date"
+                    aria-labelledby="ev-start-label"
+                  />
+                  <input
+                    class="ui-input ui-clock"
+                    id="ev-start-time"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="HH:MM"
+                    maxlength="8"
+                    aria-label="Start time, 24-hour"
+                  />
+                </div>
+              </div>
+              <div class="ui-field">
+                <span id="ev-end-label">Ends · an hour later if empty</span>
+                <div class="codes-when">
+                  <input
+                    class="ui-input"
+                    id="ev-end-date"
+                    type="date"
+                    aria-labelledby="ev-end-label"
+                  />
+                  <input
+                    class="ui-input ui-clock"
+                    id="ev-end-time"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="HH:MM"
+                    maxlength="8"
+                    aria-label="End time, 24-hour"
+                  />
+                </div>
+              </div>
             </div>
             <label class="ui-field"
               ><span>Location · optional</span

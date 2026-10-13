@@ -25,33 +25,6 @@
         </select>
         <svg data-ui-icon="chevron-down" aria-hidden="true"></svg>
       </div>
-      <button
-        type="button"
-        class="ui-btn ui-icon-btn"
-        id="settings-btn"
-        title="Settings"
-        aria-label="Settings"
-      >
-        <svg data-ui-icon="settings" aria-hidden="true"></svg>
-      </button>
-      <div class="ui-menu time-settings" id="settings" aria-label="Settings">
-        <div class="ui-menu-label">Clock</div>
-        <div class="ui-menu-row">
-          <span>Hours</span>
-          <div class="ui-seg" role="group" aria-label="Clock">
-            <button type="button" class="ui-btn ui-btn--small" data-clock="24" aria-pressed="true">
-              24-hour</button
-            ><button
-              type="button"
-              class="ui-btn ui-btn--small"
-              data-clock="12"
-              aria-pressed="false"
-            >
-              12-hour
-            </button>
-          </div>
-        </div>
-      </div>
       <div class="ui-header-end">
         <button type="button" class="ui-btn ui-icon-btn ui-theme-toggle" id="theme-toggle"></button
         ><button
@@ -131,10 +104,15 @@
                 aria-describedby="pick-label"
               />
               <input
-                class="ui-input"
-                type="time"
+                class="ui-input ui-clock"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="HH:MM"
+                maxlength="8"
                 id="pick-time"
-                step="1"
+                data-seconds
                 aria-label="Time to convert"
                 aria-describedby="pick-label"
               />
@@ -284,7 +262,16 @@
             <div class="time-picked" id="picked">
               <div class="time-option">
                 <label for="picked-time">Call at</label>
-                <input class="ui-input" type="time" id="picked-time" step="900" />
+                <input
+                  class="ui-input ui-clock"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="HH:MM"
+                  maxlength="8"
+                  id="picked-time"
+                />
                 <span class="ui-note" id="picked-zone"></span>
                 <button type="button" class="ui-btn ui-btn--small" id="picked-copy" disabled>
                   <svg data-ui-icon="copy"></svg>Copy summary
@@ -302,41 +289,10 @@
         <section class="ui-card" aria-labelledby="measure-title">
           <div class="ui-row">
             <h2 id="measure-title">Measure</h2>
-            <div class="ui-seg" role="group" aria-label="Preset">
-              <button
-                type="button"
-                class="ui-btn ui-btn--small"
-                data-preset="age"
-                aria-pressed="true"
-              >
-                Age</button
-              ><button
-                type="button"
-                class="ui-btn ui-btn--small"
-                data-preset="since"
-                aria-pressed="false"
-              >
-                Since</button
-              ><button
-                type="button"
-                class="ui-btn ui-btn--small"
-                data-preset="until"
-                aria-pressed="false"
-              >
-                Until</button
-              ><button
-                type="button"
-                class="ui-btn ui-btn--small"
-                data-preset="between"
-                aria-pressed="false"
-              >
-                Between
-              </button>
-            </div>
           </div>
           <div class="dur-ends">
             <fieldset class="dur-end">
-              <legend id="start-legend">Born</legend>
+              <legend id="start-legend">From</legend>
               <div class="time-option">
                 <input
                   class="ui-input"
@@ -346,10 +302,15 @@
                 />
                 <span id="start-date-label" hidden>date</span>
                 <input
-                  class="ui-input"
-                  type="time"
+                  class="ui-input ui-clock"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="HH:MM"
+                  maxlength="8"
                   id="start-time"
-                  step="1"
+                  data-seconds
                   aria-labelledby="start-legend start-time-label"
                 />
                 <span id="start-time-label" hidden>time (optional)</span>
@@ -366,7 +327,7 @@
               </div>
             </fieldset>
             <fieldset class="dur-end">
-              <legend id="end-legend">Until</legend>
+              <legend id="end-legend">To</legend>
               <div class="time-option">
                 <input
                   class="ui-input"
@@ -376,10 +337,15 @@
                 />
                 <span id="end-date-label" hidden>date</span>
                 <input
-                  class="ui-input"
-                  type="time"
+                  class="ui-input ui-clock"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="HH:MM"
+                  maxlength="8"
                   id="end-time"
-                  step="1"
+                  data-seconds
                   aria-labelledby="end-legend end-time-label"
                 />
                 <span id="end-time-label" hidden>time (optional)</span>
@@ -444,7 +410,7 @@
         <section class="ui-card" aria-labelledby="totals-title">
           <div class="ui-row">
             <h2 id="totals-title">Elapsed</h2>
-            <span class="ui-note">A day is 24 hours.</span>
+            <span class="ui-note">The whole span in each unit; a day is 24 hours.</span>
             <div class="ui-seg" role="group" aria-label="Rounding">
               <button
                 type="button"
@@ -491,6 +457,10 @@
             its city. "Now" is this device's clock, as exact as its setting.
           </li>
           <li>
+            Times are on the 24-hour clock. Type them as 14:30, or 1430 or 9:30; a field that cannot
+            be read is outlined in red.
+          </li>
+          <li>
             What you type stays in this tab; reloading restores it. People and pinned zones are kept
             in this browser. Light / dark applies to every tool.
           </li>
@@ -529,7 +499,8 @@
           </li>
           <li>
             Weekly windows apply on the days ticked. A date exception replaces the windows that
-            start on that date; with no windows, the person is unavailable that day.
+            start on that date; with no windows, the person is unavailable that day. The chevron
+            beside a name folds or opens that person.
           </li>
           <li>
             The whole call must fit, within the dates searched. On a night the clocks change, a
@@ -556,18 +527,20 @@
         <h3>Duration</h3>
         <ul>
           <li>
-            Age, Since, Until and Between set which end is now; either can be switched. A time is
-            optional: without one, 00:00 in the chosen zone is assumed, and the result says so.
+            From and To are each a date, with an optional time, or Now. To starts on Now: give a
+            birth date for an age, or the day you met. For a countdown, switch From to Now. Without
+            a time, 00:00 in the chosen zone is assumed, and the result says so.
           </li>
           <li>
             Calendar counts whole years, months and days on the wall clock, so a day of 23 or 25
             hours at a clock change is still one day. A month too short for the day ends at its last
-            day: 29 February birthdays count on 28 February in other years.
+            day: 29 February birthdays count on 28 February in other years. From a past date to now,
+            it says when that date next comes round.
           </li>
           <li>
-            Elapsed counts exact time, a day being 24 hours. Completed counts only whole units;
-            Nearest rounds to the nearest whole unit. It counts live, every second, while one end is
-            now.
+            Elapsed gives the whole span in days, in hours, in minutes and in seconds, a day being
+            24 hours. Completed counts only whole units; Nearest rounds to the nearest whole unit.
+            It counts live, every second, while one end is now.
           </li>
         </ul>
       </div>

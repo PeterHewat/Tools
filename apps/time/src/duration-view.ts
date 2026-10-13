@@ -1,13 +1,12 @@
 /** Duration: calendar age and elapsed time between two dates, either of which can be now. */
 
-import { bindSwitch, byId, copyText, isOn, setOn, showMessage } from "@tools/ui";
-import { dayNumber, parseClock, parseDate } from "./lib/civil.js";
+import { bindSwitch, byId, copyText, isOn, parseClock, setOn, showMessage } from "@tools/ui";
+import { dayNumber, parseDate } from "./lib/civil.js";
 import type { WallTime } from "./lib/civil.js";
 import { calendarSpan, describeSpan, nextAnniversary, totalIn } from "./lib/duration.js";
 import type { Rounding, TotalUnit } from "./lib/duration.js";
-import { readableDate, relativeTime } from "./lib/format.js";
+import { formatDay, readableDate, relativeTime } from "./lib/format.js";
 import { localZone, wallAt } from "./lib/zone.js";
-import { readable } from "./prefs.js";
 import { text } from "./app.js";
 import type { App, View } from "./app.js";
 import { copyButton, h, press } from "./dom.js";
@@ -15,23 +14,11 @@ import { resolveShown } from "./resolution.js";
 import type { Choice } from "./resolution.js";
 import { bindZoneField } from "./zone-field.js";
 
-type Preset = "age" | "since" | "until" | "between";
 type End = "start" | "end";
 
-const LEGENDS: Record<Preset, [string, string]> = {
-  age: ["Born", "Age on"],
-  since: ["Since", "Until"],
-  until: ["From", "Until"],
-  between: ["From", "To"],
-};
-const NOW: Record<Preset, [boolean, boolean]> = {
-  age: [false, true],
-  since: [false, true],
-  until: [true, false],
-  between: [false, false],
-};
+/** Each end is a date, or now; until someone says otherwise, from a date to now. */
+const NOW: Record<End, boolean> = { start: false, end: true };
 const UNITS: [TotalUnit, string][] = [
-  ["weeks", "Weeks"],
   ["days", "Days"],
   ["hours", "Hours"],
   ["minutes", "Minutes"],
@@ -40,7 +27,6 @@ const UNITS: [TotalUnit, string][] = [
 
 export function durationView(app: App): View {
   const saved = app.saved;
-  const presetButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-preset]")];
   const roundingButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-rounding]")];
   const field = (end: End, part: "date" | "time") => byId<HTMLInputElement>(`${end}-${part}`);
   const now = (end: End) => byId(`${end}-now`);
@@ -52,8 +38,6 @@ export function durationView(app: App): View {
   });
   const live = byId("live");
 
-  let preset: Preset =
-    (["age", "since", "until", "between"] as const).find((p) => p === saved.preset) ?? "age";
   let rounding: Rounding = saved.rounding === "nearest" ? "nearest" : "down";
   const choices: Partial<Record<End, Choice>> = {};
   let visible = false;
@@ -61,12 +45,14 @@ export function durationView(app: App): View {
     field(end, "date").value = text(saved[`${end}Date`]);
     field(end, "time").value = text(saved[`${end}Time`]);
     const on = saved[`${end}Now`];
-    setOn(now(end), typeof on === "boolean" ? on : NOW[preset][end === "start" ? 0 : 1]);
+    setOn(now(end), typeof on === "boolean" ? on : NOW[end]);
   }
   if (typeof saved.live === "boolean") setOn(live, saved.live);
   const zoneField = bindZoneField(byId("dur-zone"), text(saved.durZone) || localZone(), () =>
     update()
   );
+
+  const legend = (end: End) => (end === "start" ? "From" : "To");
 
   /** One end as an instant, or what is missing; `timed` when it has a time of day. */
   /** `timed` is undefined for now, which has every time of day. */
@@ -76,42 +62,31 @@ export function durationView(app: App): View {
     const date = parseDate(field(end, "date").value);
     if (!date)
       return { timed: false, note: `Choose the ${end === "start" ? "first" : "second"} date.` };
-    const clock = field(end, "time").value;
-    const minutes = clock ? parseClock(clock) : 0;
-    const second = Number(/:\d{2}:(\d{2})/.exec(clock)?.[1] ?? 0);
+    const clock = field(end, "time").value.trim();
+    const time = clock ? parseClock(clock) : { minutes: 0, second: 0 };
+    if (!time)
+      return { timed: true, note: `${legend(end)}: type the time as HH:MM, on the 24-hour clock.` };
     const wall: WallTime = {
       ...date,
-      hour: Math.floor((minutes ?? 0) / 60),
-      minute: (minutes ?? 0) % 60,
-      second,
+      hour: Math.floor(time.minutes / 60),
+      minute: time.minutes % 60,
+      second: time.second,
       ms: 0,
     };
-    const resolved = resolveShown(
-      wall,
-      zone,
-      readable(app.prefs),
-      choiceUi(end),
-      choices[end],
-      (choice) => {
-        choices[end] = choice;
-        update();
-      }
-    );
-    const legend = byId(`${end}-legend`).textContent;
-    const note = clock ? resolved.note : `${legend}: 00:00 assumed. ${resolved.note}`.trim();
+    const resolved = resolveShown(wall, zone, choiceUi(end), choices[end], (choice) => {
+      choices[end] = choice;
+      update();
+    });
+    const note = clock ? resolved.note : `${legend(end)}: 00:00 assumed. ${resolved.note}`.trim();
     return { ms: resolved.ms, timed: Boolean(clock), note };
   }
 
   function show(): void {
     const zone = zoneField.zone;
-    const [startLegend, endLegend] = LEGENDS[preset];
-    byId("start-legend").textContent = startLegend;
-    byId("end-legend").textContent = endLegend;
     for (const end of ["start", "end"] as const) {
       field(end, "date").disabled = isOn(now(end));
       field(end, "time").disabled = isOn(now(end));
     }
-    press(presetButtons, "preset", preset);
     press(roundingButtons, "rounding", rounding);
     const start = instant("start", zone);
     const end = instant("end", zone);
@@ -142,21 +117,25 @@ export function durationView(app: App): View {
     }
   }
 
-  /** The age to come, or the date being counted to or from. */
+  /**
+   * From a date in the past to now: when it next comes round (a birthday, the day two people met).
+   * With one end now otherwise: the other end, and how far off it is.
+   */
   function extraLine(start: number, end: number, zone: string): string {
-    const options = readable(app.prefs);
-    if (preset === "age" && !isOn(now("start"))) {
-      const birth = parseDate(field("start", "date").value)!;
-      const today = wallAt(isOn(now("end")) ? Date.now() : end, zone);
-      const next = nextAnniversary(birth, today);
-      const days = dayNumber(next.date) - dayNumber(today);
+    const startNow = isOn(now("start"));
+    const endNow = isOn(now("end"));
+    if (!startNow && endNow && start < end) {
+      const from = parseDate(field("start", "date").value)!;
+      const today = wallAt(end, zone);
+      const next = nextAnniversary(from, today);
       if (next.years === 0) return "";
+      const days = dayNumber(next.date) - dayNumber(today);
       const when = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
-      return `Turns ${next.years} ${when}.`;
+      return `${next.years} ${next.years === 1 ? "year" : "years"} on ${formatDay(next.date)}, ${when}.`;
     }
-    const other = isOn(now("start")) ? end : start;
-    if (isOn(now("start")) || isOn(now("end")))
-      return `${readableDate(other, zone, options)} · ${relativeTime(other, Date.now())}`;
+    const other = startNow ? end : start;
+    if (startNow || endNow)
+      return `${readableDate(other, zone)} · ${relativeTime(other, Date.now())}`;
     return "";
   }
 
@@ -201,15 +180,6 @@ export function durationView(app: App): View {
     app.save();
   }
 
-  for (const button of presetButtons)
-    button.addEventListener("click", () => {
-      preset = button.dataset.preset as Preset;
-      setOn(now("start"), NOW[preset][0]);
-      setOn(now("end"), NOW[preset][1]);
-      update();
-      const first = (["start", "end"] as const).find((end) => !isOn(now(end)));
-      if (first) field(first, "date").focus();
-    });
   for (const button of roundingButtons)
     button.addEventListener("click", () => {
       rounding = button.dataset.rounding as Rounding;
@@ -228,12 +198,10 @@ export function durationView(app: App): View {
     if (!(await copyText(byId("span").textContent ?? "", byId("span-copy"))))
       app.clipboardFailed(byId("span-note"));
   });
-  app.onPrefs(show);
 
   show();
   return {
     values: () => ({
-      preset,
       rounding,
       live: isOn(live),
       durZone: zoneField.zone,

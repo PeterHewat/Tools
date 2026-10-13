@@ -249,19 +249,14 @@ describe("finding a time", () => {
     });
   });
 
-  test("a summary gives each person their own date and time", () => {
+  test("a summary gives each person their own date and time, on the 24-hour clock", () => {
     const tokyo = person("Kai", "Asia/Tokyo", []);
-    expect(
-      summary([ana, ben, tokyo], utc("2026-10-12T18:00:00Z"), 60, {
-        locale: "en-GB",
-        hour12: false,
-      })
-    ).toBe(
+    expect(summary([ana, ben, tokyo], utc("2026-10-12T18:00:00Z"), 60, { locale: "en-US" })).toBe(
       [
         "Call, 1 h",
-        "Ana (Europe/Paris): Mon 12 Oct, 20:00–21:00",
-        "Ben (America/New_York): Mon 12 Oct, 14:00–15:00",
-        "Kai (Asia/Tokyo): Tue 13 Oct, 03:00–04:00",
+        "Ana (Europe/Paris): Mon, Oct 12, 20:00–21:00",
+        "Ben (America/New_York): Mon, Oct 12, 14:00–15:00",
+        "Kai (Asia/Tokyo): Tue, Oct 13, 03:00–04:00",
       ].join("\n")
     );
   });

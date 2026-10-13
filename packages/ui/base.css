@@ -58,6 +58,19 @@ a {
   border-color: var(--accent);
 }
 
+/* A time of day on the 24-hour clock (`clock.ts`): wide enough for its HH:MM placeholder, or for
+   23:59:59. */
+.ui-clock {
+  width: calc(6.5ch + 22px);
+  font-variant-numeric: tabular-nums;
+}
+.ui-clock[data-seconds] {
+  width: calc(8.5ch + 22px);
+}
+.ui-clock[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
 /* ---------- Layout pieces ---------- */
 
 .ui-label {

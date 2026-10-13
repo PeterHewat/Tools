@@ -1,6 +1,7 @@
 /** Instants written out: ISO 8601, HTTP dates, offsets, a reader's own format, and "in 3 hours". */
 
-import { formatDate, formatYear, HOUR, MINUTE } from "./civil.js";
+import { DAY, dayNumber, formatDate, formatYear, HOUR, MINUTE } from "./civil.js";
+import type { PlainDate } from "./civil.js";
 import { offsetAt, UTC, wallAt } from "./zone.js";
 
 const pad = (value: number, width = 2) => String(value).padStart(width, "0");
@@ -47,9 +48,11 @@ export function httpDate(ms: number): string {
   );
 }
 
+/**
+ * How a reader sees a date: in their language, the browser's by default. Times of day are on the
+ * 24-hour clock whatever the language, as across the site.
+ */
 export interface ReadableOptions {
-  hour12?: boolean;
-  /** The reader's language; the browser's by default. */
   locale?: string;
 }
 
@@ -62,17 +65,25 @@ function reader(key: string, make: () => Intl.DateTimeFormat): Intl.DateTimeForm
 
 /** The date and time as the reader's language writes them, e.g. "Monday 12 October 2026 at 10:15:00". */
 export function readableDate(ms: number, zone: string, options: ReadableOptions = {}): string {
-  const { locale, hour12 } = options;
+  const { locale } = options;
   return reader(
-    `full|${locale}|${zone}|${hour12}`,
+    `full|${locale}|${zone}`,
     () =>
       new Intl.DateTimeFormat(locale, {
         timeZone: zone,
         dateStyle: "full",
         timeStyle: "medium",
-        hour12,
+        hourCycle: "h23",
       })
   ).format(ms);
+}
+
+/** A calendar date, with no time or zone, as the reader's language writes it: "14 Mar 2027". */
+export function formatDay(date: PlainDate, locale?: string): string {
+  return reader(
+    `day|${locale}`,
+    () => new Intl.DateTimeFormat(locale, { timeZone: UTC, dateStyle: "medium" })
+  ).format(dayNumber(date) * DAY);
 }
 
 /** A short weekday and date, e.g. "Sat 14 Nov". */
@@ -89,17 +100,17 @@ export function shortDate(ms: number, zone: string, locale?: string): string {
   ).format(ms);
 }
 
-/** A clock time, e.g. "20:00" or "8:00 PM". */
+/** A clock time, e.g. "08:00" or "20:00". */
 export function clockTime(ms: number, zone: string, options: ReadableOptions = {}): string {
-  const { locale, hour12 } = options;
+  const { locale } = options;
   return reader(
-    `clock|${locale}|${zone}|${hour12}`,
+    `clock|${locale}|${zone}`,
     () =>
       new Intl.DateTimeFormat(locale, {
         timeZone: zone,
-        hour: hour12 === false ? "2-digit" : "numeric",
+        hour: "2-digit",
         minute: "2-digit",
-        hour12,
+        hourCycle: "h23",
       })
   ).format(ms);
 }

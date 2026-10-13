@@ -1,5 +1,5 @@
 import {
-  bindMenu,
+  bindClockFields,
   bindToolHelp,
   byId,
   debounce,
@@ -25,7 +25,6 @@ const NAMES: readonly ViewName[] = ["convert", "meet", "duration"];
 const DRAFT = 1;
 const draft = readDraft("time", DRAFT);
 const prefs = readPrefs();
-const listeners: (() => void)[] = [];
 /** Filled once every view is made; a save asked for while they are being made waits for it. */
 const views = {} as Record<ViewName, View>;
 // A share link opens on the people it holds.
@@ -63,9 +62,6 @@ const app: App = {
     if (views.duration) show(view);
     else current = view;
   },
-  onPrefs(listener) {
-    listeners.push(listener);
-  },
 };
 
 Object.assign(views, {
@@ -90,16 +86,7 @@ for (const button of viewButtons)
   button.addEventListener("click", () => show(button.dataset.view as ViewName));
 viewSelect.addEventListener("change", () => show(viewSelect.value as ViewName));
 
-const clockButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-clock]")];
-press(clockButtons, "clock", prefs.clock);
-bindMenu(byId("settings-btn"), byId("settings"), { align: "end" });
-for (const button of clockButtons)
-  button.addEventListener("click", () => {
-    prefs.clock = button.dataset.clock === "12" ? "12" : "24";
-    press(clockButtons, "clock", prefs.clock);
-    writePrefs(prefs);
-    for (const listener of listeners) listener();
-  });
+bindClockFields();
 
 if (draft.error) {
   const status = byId("draft-status");

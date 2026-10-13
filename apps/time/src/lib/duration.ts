@@ -82,7 +82,6 @@ export function describeSpan(span: CalendarSpan, withTime: boolean): string {
 export type Rounding = "down" | "nearest";
 
 export const UNIT_MS = {
-  weeks: 7 * DAY,
   days: DAY,
   hours: HOUR,
   minutes: MINUTE,

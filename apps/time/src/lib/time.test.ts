@@ -5,7 +5,6 @@ import {
   HOUR,
   civilFromDays,
   daysFromCivil,
-  parseClock,
   weekday,
   wallFromMs,
   wallMs,
@@ -56,11 +55,6 @@ describe("civil dates", () => {
       month: 12,
       day: 15,
     });
-  });
-  test("clock times", () => {
-    expect(parseClock("09:30")).toBe(570);
-    expect(parseClock("23:59:59")).toBe(1439);
-    expect(parseClock("24:00")).toBeUndefined();
   });
 });
 

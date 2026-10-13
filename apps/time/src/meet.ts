@@ -3,9 +3,12 @@
 import { fromBase64, toBase64, utf8, textFromBytes } from "@tools/bytes";
 import {
   byId,
+  CLOCK_FIELD,
   copyText,
   debounce,
+  formatClock,
   iconSvg,
+  parseClock,
   readStored,
   setOn,
   showMessage,
@@ -32,17 +35,7 @@ import type {
   TimeWindow,
   WeeklyWindow,
 } from "./lib/availability.js";
-import {
-  addDays,
-  atMinutes,
-  dayNumber,
-  DAY,
-  formatClock,
-  formatDate,
-  MINUTE,
-  parseClock,
-  parseDate,
-} from "./lib/civil.js";
+import { addDays, atMinutes, dayNumber, DAY, formatDate, MINUTE, parseDate } from "./lib/civil.js";
 import type { PlainDate } from "./lib/civil.js";
 import { clockTime, formatMinutes, shortDate, utcOffset } from "./lib/format.js";
 import {
@@ -55,7 +48,6 @@ import {
 } from "./lib/plan.js";
 import type { Plan } from "./lib/plan.js";
 import { canonicalZone, instantOf, localZone, offsetAt, wallAt } from "./lib/zone.js";
-import { readable } from "./prefs.js";
 import { text } from "./app.js";
 import type { App, View } from "./app.js";
 import { h } from "./dom.js";
@@ -73,14 +65,15 @@ const LEVEL_NAMES: Record<Level, string> = {
 };
 export const SHARE_PREFIX = "#plan=";
 
-/** First visit: three people in three zones, so every part of the view has something to show. */
+/**
+ * First visit: two people in two zones, one window each, overlapping for three hours (19:00 to
+ * 22:00 in Paris is 13:00 to 16:00 in New York): enough for every part of the view to show.
+ */
 function examplePlan(): Plan {
-  const here = localZone();
   return {
     people: [
-      newPerson("You", here),
-      newPerson("Sam", here === "America/New_York" ? "America/Los_Angeles" : "America/New_York"),
-      newPerson("Kai", here === "Asia/Tokyo" ? "Australia/Sydney" : "Asia/Tokyo"),
+      newPerson("Alex", "Europe/Paris", 18, 22),
+      newPerson("Sam", "America/New_York", 13, 17),
     ],
     duration: DEFAULT_DURATION,
   };
@@ -124,10 +117,7 @@ export function meetView(app: App): View {
   const folded = new Set<string>(
     Array.isArray(saved.folded)
       ? saved.folded.filter((x): x is string => typeof x === "string")
-      : // The example opens on its first person; the others are folded to their name and zone.
-        stored
-        ? []
-        : plan.people.slice(1).map((p) => p.id)
+      : []
   );
   let shownCount = PAGE;
   let suggestions: Suggestion[] = [];
@@ -204,9 +194,7 @@ export function meetView(app: App): View {
         : undefined;
     const clock = (field: "start" | "end", label: string) =>
       h("input", {
-        class: "ui-input",
-        type: "time",
-        step: "60",
+        ...CLOCK_FIELD,
         "data-field": field,
         "aria-label": label,
         value: formatClock(window[field]),
@@ -226,17 +214,18 @@ export function meetView(app: App): View {
         clock("start", "From"),
         h("span", { "aria-hidden": "true" }, "–"),
         clock("end", "Until"),
-        levelSelect(window.level),
-        h(
-          "button",
-          {
-            type: "button",
-            class: "ui-btn ui-icon-btn",
-            "data-action": "remove-window",
-            "aria-label": "Remove window",
-          },
-          iconSvg("close")
-        )
+        levelSelect(window.level)
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "ui-btn ui-icon-btn time-window-remove",
+          "data-action": "remove-window",
+          "aria-label": "Remove window",
+          title: "Remove window",
+        },
+        iconSvg("close")
       )
     );
   }
@@ -266,7 +255,8 @@ export function meetView(app: App): View {
         {},
         h("span", { class: "time-person-name" }, person.name || "Unnamed"),
         h("span", { class: "time-person-meta" }, meta),
-        person.relaxed && h("span", { class: "time-badge" }, "Relaxed")
+        person.relaxed && h("span", { class: "time-badge" }, "Relaxed"),
+        h("span", { class: "time-person-chevron", "aria-hidden": "true" }, iconSvg("chevron-down"))
       ),
       h(
         "div",
@@ -417,8 +407,8 @@ export function meetView(app: App): View {
         break;
       case "start":
       case "end": {
-        const minutes = parseClock(target.value);
-        if (window && minutes !== undefined) window[target.dataset.field] = minutes;
+        const clock = parseClock(target.value);
+        if (window && clock) window[target.dataset.field] = clock.minutes;
         break;
       }
       case "level":
@@ -556,14 +546,13 @@ export function meetView(app: App): View {
 
   function renderSuggestions(): void {
     const list = byId("suggestions");
-    const options = readable(app.prefs);
     const people = usable();
     list.replaceChildren(
       ...suggestions.slice(0, shownCount).map((s) => {
         const end = s.start + plan.duration * MINUTE;
         const startDay = shortDate(s.start, zone());
         const endDay = shortDate(end, zone());
-        const when = `${startDay}, ${clockTime(s.start, zone(), options)}–${clockTime(end, zone(), options)}${endDay === startDay ? "" : ` (${endDay})`}`;
+        const when = `${startDay}, ${clockTime(s.start, zone())}–${clockTime(end, zone())}${endDay === startDay ? "" : ` (${endDay})`}`;
         const button = h(
           "button",
           {
@@ -579,7 +568,7 @@ export function meetView(app: App): View {
             h(
               "span",
               { class: "time-suggestion-range" },
-              `or start any time until ${clockTime(s.last, zone(), options)}`
+              `or start any time until ${clockTime(s.last, zone())}`
             ),
           // Everyone's own clock at the start, and their date where it is not the one above.
           h(
@@ -589,7 +578,7 @@ export function meetView(app: App): View {
               .map((p) => {
                 const theirDay = shortDate(s.start, p.zone);
                 return (
-                  `${p.name || "Unnamed"} ${clockTime(s.start, p.zone, options)}` +
+                  `${p.name || "Unnamed"} ${clockTime(s.start, p.zone)}` +
                   (theirDay === startDay ? "" : ` (${theirDay})`)
                 );
               })
@@ -704,10 +693,6 @@ export function meetView(app: App): View {
 
   function hourLabel(ms: number, zoneName: string): string {
     const wall = wallAt(ms, zoneName);
-    if (app.prefs.clock === "12") {
-      const hour = wall.hour % 12 || 12;
-      return `${hour}${wall.minute ? ":" + String(wall.minute).padStart(2, "0") : ""}${wall.hour < 12 ? "a" : "p"}`;
-    }
     return wall.minute ? formatClock(wall.hour * 60 + wall.minute) : String(wall.hour);
   }
 
@@ -764,12 +749,11 @@ export function meetView(app: App): View {
 
   /** Words for a row's levels, for those who cannot see the colours. */
   function describeRow(name: string, segments: Segment[], zoneName: string): string {
-    const options = readable(app.prefs);
     const parts = segments
       .filter((s) => s.level !== "unavailable")
       .map(
         (s) =>
-          `${LEVEL_NAMES[s.level].toLowerCase()} ${clockTime(s.start, zoneName, options)}–${clockTime(s.end, zoneName, options)}`
+          `${LEVEL_NAMES[s.level].toLowerCase()} ${clockTime(s.start, zoneName)}–${clockTime(s.end, zoneName)}`
       );
     return `${name}: ${parts.length ? parts.join(", ") : "unavailable all day"}`;
   }
@@ -855,12 +839,7 @@ export function meetView(app: App): View {
         : "") + explain(people, costs),
       blocked.length > 0
     );
-    byId("picked-summary").textContent = summary(
-      people,
-      selected,
-      plan.duration,
-      readable(app.prefs)
-    );
+    byId("picked-summary").textContent = summary(people, selected, plan.duration);
     copy.disabled = false;
   }
 
@@ -882,9 +861,9 @@ export function meetView(app: App): View {
     pick(from + Math.max(0, Math.floor((t - from) / (STEP * MINUTE))) * STEP * MINUTE);
   });
   byId("picked-time").addEventListener("change", () => {
-    const minutes = parseClock(byId<HTMLInputElement>("picked-time").value);
-    if (minutes === undefined) return;
-    pick(instantOf(atMinutes(day ?? wallAt(Date.now(), zone()), minutes), zone()));
+    const clock = parseClock(byId<HTMLInputElement>("picked-time").value);
+    if (!clock) return;
+    pick(instantOf(atMinutes(day ?? wallAt(Date.now(), zone()), clock.minutes), zone()));
   });
   byId("picked-copy").addEventListener("click", async () => {
     if (!(await copyText(byId("picked-summary").textContent ?? "", byId("picked-copy"))))
@@ -971,11 +950,6 @@ export function meetView(app: App): View {
   }
   readShared();
   window.addEventListener("hashchange", readShared);
-
-  app.onPrefs(() => {
-    renderSuggestions();
-    renderTimeline();
-  });
 
   renderPeople();
   research();

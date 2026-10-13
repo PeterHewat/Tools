@@ -14,8 +14,6 @@ export interface App {
   clipboardFailed(where: HTMLElement): void;
   /** Opens a view, as its header button does. */
   show(view: "convert" | "meet" | "duration"): void;
-  /** Called when the clock setting changes, to draw times again. */
-  onPrefs(listener: () => void): void;
 }
 
 /** A view: its draft fields, and what to do as it is shown and hidden. */

@@ -129,16 +129,3 @@ export function parseDate(value: string): PlainDate | undefined {
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
   return isValidDate(year, month, day) ? { year, month, day } : undefined;
 }
-
-/** `HH:MM` from minutes after midnight. */
-export function formatClock(minutes: number): string {
-  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
-}
-
-/** Minutes after midnight from `HH:MM` (or `HH:MM:SS`, seconds dropped); undefined otherwise. */
-export function parseClock(value: string): number | undefined {
-  const match = /^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value.trim());
-  if (!match) return undefined;
-  const [hour, minute] = [Number(match[1]), Number(match[2])];
-  return hour < 24 && minute < 60 ? hour * 60 + minute : undefined;
-}

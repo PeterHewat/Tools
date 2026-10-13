@@ -186,7 +186,9 @@ test("Time finds a call time, explains compromises, relaxes on request and share
 test("Time measures ages and spans on the calendar and in elapsed units", async ({ page }) => {
   await page.goto("/Tools/time/");
   await page.locator('[data-view="duration"]').click();
-  await page.locator('[data-preset="between"]').click();
+  // To starts on now; between two dates, it is switched off.
+  await expect(page.locator("#end-now")).toHaveAttribute("aria-checked", "true");
+  await page.locator("#end-now").click();
   await page.locator("#start-date").fill("2000-02-29");
   await page.locator("#end-date").fill("2001-02-28");
   await expect(page.locator("#span")).toHaveText("1 year");
@@ -211,13 +213,58 @@ test("Time measures ages and spans on the calendar and in elapsed units", async 
     "1"
   );
 
-  await page.locator('[data-preset="age"]').click();
+  // An age: a birth date to now, and when it next comes round.
+  await page.locator("#end-now").click();
   await page.locator("#start-date").fill("1990-05-20");
   await page.locator("#start-time").fill("");
   await expect(page.locator("#span")).toHaveText(/^\d+ years, /);
   await expect(page.locator("#span")).not.toContainText("hour");
-  await expect(page.locator("#span-extra")).toContainText(/Turns \d+/);
+  await expect(page.locator("#span-extra")).toContainText(
+    /^\d+ years on \d+ May \d{4}, in \d+ days/
+  );
   await expect(page.locator("#end-date")).toBeDisabled();
+  await expect(page.locator(".time-total").filter({ hasText: "Weeks" })).toHaveCount(0);
+  // A time that cannot be read says so, rather than counting from midnight.
+  await page.locator("#start-time").fill("25:00");
+  await page.locator("#start-time").blur();
+  await expect(page.locator("#start-time")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#dur-assume")).toContainText("type the time as HH:MM");
+  await expect(page.locator("#span")).toHaveText("—");
+});
+
+test.describe("in American English", () => {
+  test.use({ locale: "en-US" });
+  test("times are on the 24-hour clock, shown and typed", async ({ page }) => {
+    await open(page, PEOPLE, {
+      view: "meet",
+      rangeFrom: "2026-10-12",
+      rangeTo: "2026-10-12",
+      meetZone: "Europe/Paris",
+    });
+    const first = page.locator(".time-suggestion").first();
+    await expect(first).toContainText("18:00–19:00");
+    await expect(first).toContainText("Ana 18:00 · Ben 12:00");
+    await expect(page.locator("#view-meet")).not.toContainText(/\d (AM|PM)\b/);
+    // A window's hours are typed fields, read however they are typed and written as HH:MM.
+    const from = page.locator('[data-person="a"] [data-field="start"]').first();
+    await expect(from).toHaveValue("08:00");
+    await from.fill("930");
+    await from.blur();
+    await expect(from).toHaveValue("09:30");
+
+    await page.locator('[data-view="convert"]').click();
+    await page.locator("#input").fill("1760264100");
+    await expect(row(page, "This device")).toContainText("12:15:00");
+    await expect(page.locator("#view-convert")).not.toContainText(/\d (AM|PM)\b/);
+    // Now writes the unit chosen: milliseconds once Milliseconds is pressed.
+    await page.locator('[data-unit="ms"]').click();
+    await page.locator("#now").click();
+    await expect(page.locator("#input")).toHaveValue(/^\d{13}$/);
+    // The time field writes the input as it is typed.
+    await page.locator("#pick-date").fill("2026-12-25");
+    await page.locator("#pick-time").fill("9:05");
+    await expect(page.locator("#input")).toHaveValue("2026-12-25T09:05:00");
+  });
 });
 
 test("JWT opens Time on the token's time claims", async ({ page }) => {

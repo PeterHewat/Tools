@@ -519,7 +519,11 @@ test("Codes makes each kind of content, keeps the preview in place and exports s
   await fill("sms", { "#sms-number": "+1 555 0100", "#sms-message": "Hi" }, "SMSTO:+15550100:Hi");
   await fill("whatsapp", { "#wa-number": "+44 7700 900000" }, "https://wa.me/447700900000");
   await fill("vcard", { "#vc-first": "Ada", "#vc-last": "Lovelace" }, /^BEGIN:VCARD/);
-  await fill("event", { "#ev-title": "Launch", "#ev-start": "2026-10-02T09:00" }, /^BEGIN:VEVENT/);
+  await fill(
+    "event",
+    { "#ev-title": "Launch", "#ev-start-date": "2026-10-02", "#ev-start-time": "9:00" },
+    /^BEGIN:VEVENT/
+  );
   await fill("text", { "#text-content": "Hello, 🌍!" }, "Hello, 🌍!");
 
   await page.locator('[data-type="wifi"]').click();

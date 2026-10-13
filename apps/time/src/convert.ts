@@ -1,7 +1,7 @@
 /** Convert: a timestamp or date to every form and zone; several lines to a table. */
 
-import { byId, copyText, iconSvg, showMessage } from "@tools/ui";
-import { formatClock, formatDate, parseClock, parseDate } from "./lib/civil.js";
+import { byId, copyText, formatClock, iconSvg, parseClock, showMessage } from "@tools/ui";
+import { formatDate, parseDate } from "./lib/civil.js";
 import type { WallTime } from "./lib/civil.js";
 import {
   httpDate,
@@ -14,7 +14,7 @@ import {
 import { parseTime } from "./lib/parse.js";
 import type { Parsed, Unit } from "./lib/parse.js";
 import { localZone, offsetAt, resolveWall, UTC, wallAt } from "./lib/zone.js";
-import { MAX_PINNED, readable } from "./prefs.js";
+import { MAX_PINNED } from "./prefs.js";
 import { text } from "./app.js";
 import type { App, View } from "./app.js";
 import { copyButton, h, press } from "./dom.js";
@@ -39,9 +39,6 @@ function unixSeconds(ms: number): string {
   const fraction = abs % 1000;
   return sign + whole + (fraction ? "." + String(fraction).padStart(3, "0") : "");
 }
-
-const wallInput = (wall: WallTime) =>
-  `${formatDate(wall)}T${formatClock(wall.hour * 60 + wall.minute)}:${String(wall.second).padStart(2, "0")}`;
 
 export function convertView(app: App): View {
   const input = byId<HTMLTextAreaElement>("input");
@@ -117,7 +114,7 @@ export function convertView(app: App): View {
         )
       ),
       h("code", { class: "time-result-value" }, iso),
-      h("span", { class: "time-result-readable" }, readableDate(ms, zone, readable(app.prefs))),
+      h("span", { class: "time-result-readable" }, readableDate(ms, zone)),
       actions
     );
   }
@@ -203,17 +200,10 @@ export function convertView(app: App): View {
         };
       case "wall": {
         const zone = parsed.zone ?? zoneField.zone;
-        const resolved = resolveShown(
-          parsed.wall,
-          zone,
-          readable(app.prefs),
-          choiceUi,
-          choice,
-          (next) => {
-            choice = next;
-            update();
-          }
-        );
+        const resolved = resolveShown(parsed.wall, zone, choiceUi, choice, (next) => {
+          choice = next;
+          update();
+        });
         const assumed = parsed.dateOnly ? `00:00 in ${zone} assumed.` : `Read in ${zone}.`;
         return {
           ms: resolved.ms,
@@ -243,11 +233,13 @@ export function convertView(app: App): View {
     showMessage(note, (label ? label + ": " : "") + found.note, parsed.kind === "error");
     if (found.ms === undefined) return clearResults();
     showResults(found.ms, found.readIn);
-    // The pickers follow what was typed, in the zone things are read in.
+    // The pickers follow what was typed, in the zone things are read in; not the one being
+    // typed in, which would move the caret.
     const wall = found.wall ?? wallAt(found.ms, zoneField.zone);
     if (wall.year >= 1 && wall.year <= 9999) {
-      pickDate.value = formatDate(wall);
-      pickTime.value = wallInput(wall).slice(11);
+      if (document.activeElement !== pickDate) pickDate.value = formatDate(wall);
+      if (document.activeElement !== pickTime)
+        pickTime.value = formatClock(wall.hour * 60 + wall.minute, wall.second || undefined);
     }
   }
 
@@ -333,17 +325,18 @@ export function convertView(app: App): View {
   const fromPicker = () => {
     const date = parseDate(pickDate.value);
     if (!date) return;
-    const clock = pickTime.value ? parseClock(pickTime.value) : 0;
-    if (clock === undefined) return;
-    const seconds = /:(\d{2}):(\d{2})/.exec(pickTime.value)?.[2] ?? "00";
-    input.value = `${formatDate(date)}T${formatClock(clock)}:${seconds}`;
+    const clock = pickTime.value.trim() ? parseClock(pickTime.value) : { minutes: 0, second: 0 };
+    if (!clock) return;
+    input.value = `${formatDate(date)}T${formatClock(clock.minutes, clock.second)}`;
     choice = undefined;
     update();
   };
-  pickDate.addEventListener("change", fromPicker);
-  pickTime.addEventListener("change", fromPicker);
+  // As the picker or the typing changes it, not only once the picker closes.
+  pickDate.addEventListener("input", fromPicker);
+  pickTime.addEventListener("input", fromPicker);
   byId("now").addEventListener("click", () => {
-    input.value = String(Math.floor(Date.now() / 1000));
+    // In the unit chosen: Unix seconds unless milliseconds were asked for.
+    input.value = String(unit === "ms" ? Date.now() : Math.floor(Date.now() / 1000));
     choice = undefined;
     update();
   });
@@ -376,7 +369,6 @@ export function convertView(app: App): View {
       pin();
     }
   });
-  app.onPrefs(update);
   setInterval(() => {
     if (visible) tick();
   }, 15_000);

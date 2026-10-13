@@ -116,20 +116,14 @@ export function sharePlan(plan: Plan): Record<string, unknown> {
   };
 }
 
-export const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
-export const WEEKDAYS = [1, 2, 3, 4, 5];
-export const WEEKEND = [6, 7];
-
-/** A new person: acceptable from 08:00 to 22:00 every day, preferred on weekday evenings. */
-export function newPerson(name: string, zone: string): Person {
+/** A new person: one window, preferred every day, from 09:00 to 17:00 unless other hours are given. */
+export function newPerson(name: string, zone: string, from = 9, until = 17): Person {
   return {
     id: newId(),
     name,
     zone,
     windows: [
-      { days: ALL_DAYS, start: 8 * 60, end: 22 * 60, level: "acceptable" },
-      { days: WEEKDAYS, start: 18 * 60, end: 21 * 60, level: "preferred" },
-      { days: WEEKEND, start: 10 * 60, end: 18 * 60, level: "preferred" },
+      { days: [1, 2, 3, 4, 5, 6, 7], start: from * 60, end: until * 60, level: "preferred" },
     ],
     exceptions: [],
     relaxed: false,

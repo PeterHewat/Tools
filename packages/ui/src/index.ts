@@ -12,6 +12,7 @@ export * from "./color.js";
 export * from "./color-picker.js";
 export * from "./png.js";
 export * from "./debounce.js";
+export * from "./clock.js";
 
 declare global {
   interface ImportMetaEnv {
