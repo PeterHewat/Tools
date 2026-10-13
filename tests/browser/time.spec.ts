@@ -141,18 +141,15 @@ test("Time finds a call time, explains compromises, relaxes on request and share
   };
   await open(page, PEOPLE, day);
   const first = page.locator(".time-suggestion").first();
-  await expect(first).toContainText("Mon 12 Oct, 18:00–19:00");
+  // The short date is the browser's: "Mon 12 Oct" in some, "Mon, 12 Oct" in WebKit on Linux.
+  await expect(first).toContainText(/Mon,? 12 Oct, 18:00–19:00/);
   await expect(first).toContainText("or start any time until 20:00");
   await expect(first).toContainText("Everyone: preferred hours.");
   await expect(first).toHaveAttribute("data-tier", "preferred");
   // The call is on the best suggestion before anyone chooses.
   await expect(first).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#picked-summary")).toHaveText(
-    [
-      "Call, 1 h",
-      "Ana (Europe/Paris): Mon 12 Oct, 18:00–19:00",
-      "Ben (America/New_York): Mon 12 Oct, 12:00–13:00",
-    ].join("\n")
+    /^Call, 1 h\nAna \(Europe\/Paris\): Mon,? 12 Oct, 18:00–19:00\nBen \(America\/New_York\): Mon,? 12 Oct, 12:00–13:00$/
   );
   await expect(page.locator(".tl-row")).toHaveCount(3);
   await expect(page.locator(".tl-call")).toHaveCount(3);
@@ -311,7 +308,7 @@ test("times already past are never suggested", async ({ page }) => {
   // 18:20 in Paris: the overlap from 18:00 has begun, so the soonest start is 18:30.
   await open(page, PEOPLE, day, "2026-10-12T16:20:00Z");
   const first = page.locator(".time-suggestion").first();
-  await expect(first).toContainText("Mon 12 Oct, 18:30–19:30");
+  await expect(first).toContainText(/Mon,? 12 Oct, 18:30–19:30/);
   await expect(first).toContainText("or start any time until 20:00");
   await expect(page.locator("#picked-time")).toHaveValue("18:30");
   // A call placed in the past by hand says so.

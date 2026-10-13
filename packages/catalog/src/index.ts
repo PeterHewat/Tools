@@ -142,7 +142,7 @@ export const APPS: readonly ToolsApp[] = [
     icon: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2",
     tags: ["time", "timestamp", "timezone", "iso-8601", "meeting", "duration", "age"],
     art: true,
-    compactHeader: 450,
+    compactHeader: 482,
     jsBudget: { entryGzip: 24, totalGzip: 24 },
     status: "stable",
     listed: true,

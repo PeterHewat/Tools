@@ -709,9 +709,10 @@
 
 /* ---------- Header ---------- */
 
-/* When the three views no longer fit beside "‹" and the theme and Help buttons (measured: 363px),
-   they become a dropdown. */
-@media (width < 363px) {
+/* When the three views no longer fit beside "‹" and the theme and Help buttons, they become a
+   dropdown. Measured at 363px on Windows; Linux's fonts take about 30px more (the full header is
+   482px in CI against 450px here), so 400px, which the header test checks at 390px and 420px. */
+@media (width < 400px) {
   .time-header .time-views {
     display: none;
   }
