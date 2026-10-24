@@ -10,19 +10,20 @@ this table is the release or the proposed place in line, not a promise that a La
 may not appear on the public index. **Next** is the next proposed new app, not work already
 under way; **Planned** is a later proposal. Future rows are ordered by build priority.
 
-| App                        | Status  | Purpose                                                                                                                                                   |
-| -------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [SVG](apps/svg.md)         | Stable  | Trace images with a Bézier pen and shapes; combine, align, group and fill with gradients. A searchable library of drawings, exported as clean SVG or PNG. |
-| [JSON](apps/json.md)       | Stable  | Format, minify, fold and validate JSON, and fix almost-JSON. Convert it to YAML, CSV, TypeScript types or a JSON Schema.                                  |
-| [JWT](apps/jwt.md)         | Stable  | Decode, encode and verify JSON Web Tokens with HMAC, RSA, ECDSA and Ed25519.                                                                              |
-| [Codes](apps/codes.md)     | Stable  | QR codes for links, Wi-Fi, contacts, events and more, with your colours, shapes, logo and frame; plus Code 128, EAN-13 and UPC-A barcodes.                |
-| [Codec](apps/codec.md)     | Stable  | Convert UTF-8 text, Base64, Base64url, URL components and hex, with every byte visible.                                                                   |
-| [Digests](apps/digests.md) | Stable  | Hash text and files with every SHA at once, check an expected digest, and compute HMAC.                                                                   |
-| [Time](apps/time.md)       | Stable  | Convert Unix timestamps and ISO dates across time zones, find a call time for people in several zones, and measure durations and ages.                    |
-| [Diff](apps/diff.md)       | Next    | Compare two texts or JSON documents, with clear changes and navigation.                                                                                   |
-| [Certs](apps/certs.md)     | Planned | Inspect X.509 certificates, chains and related data.                                                                                                      |
-| [Notes](apps/notes.md)     | Planned | Write Markdown and organise a small local collection of notes.                                                                                            |
-| [Magnet](apps/magnet.md)   | Planned | Inspect torrent metadata and convert infohashes and magnet links.                                                                                         |
+| App                          | Status  | Purpose                                                                                                                                                   |
+| ---------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [SVG](apps/svg.md)           | Stable  | Trace images with a Bézier pen and shapes; combine, align, group and fill with gradients. A searchable library of drawings, exported as clean SVG or PNG. |
+| [JSON](apps/json.md)         | Stable  | Format, minify, fold and validate JSON, and fix almost-JSON. Convert it to YAML, CSV, TypeScript types or a JSON Schema.                                  |
+| [JWT](apps/jwt.md)           | Stable  | Decode, encode and verify JSON Web Tokens with HMAC, RSA, ECDSA and Ed25519.                                                                              |
+| [Codes](apps/codes.md)       | Stable  | QR codes for links, Wi-Fi, contacts, events and more, with your colours, shapes, logo and frame; plus Code 128, EAN-13 and UPC-A barcodes.                |
+| [Codec](apps/codec.md)       | Stable  | Convert UTF-8 text, Base64, Base64url, URL components and hex, with every byte visible.                                                                   |
+| [Digests](apps/digests.md)   | Stable  | Hash text and files with every SHA at once, check an expected digest, and compute HMAC.                                                                   |
+| [Time](apps/time.md)         | Stable  | Convert Unix timestamps and ISO dates across time zones, find a call time for people in several zones, and measure durations and ages.                    |
+| [Diff](apps/diff.md)         | Next    | Compare two texts or JSON documents, with clear changes and navigation.                                                                                   |
+| [Certs](apps/certs.md)       | Planned | Inspect X.509 certificates, chains and related data.                                                                                                      |
+| [Notes](apps/notes.md)       | Planned | Write Markdown and organise a small local collection of notes.                                                                                            |
+| [Magnet](apps/magnet.md)     | Planned | Inspect torrent metadata and convert infohashes and magnet links.                                                                                         |
+| [Password](apps/password.md) | Planned | Generate strong passwords and passphrases with your choice of length, characters and words.                                                               |
 
 ## Shared groundwork and boundaries
 
