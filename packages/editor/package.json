@@ -12,15 +12,15 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@codemirror/autocomplete": "6.20.3",
+    "@codemirror/autocomplete": "6.20.4",
     "@codemirror/commands": "6.11.1",
     "@codemirror/lang-json": "6.0.2",
     "@codemirror/lang-xml": "6.1.0",
     "@codemirror/language": "6.13.1",
     "@codemirror/search": "6.7.2",
     "@codemirror/state": "6.7.6",
-    "@codemirror/view": "6.43.14",
-    "@lezer/common": "1.5.3",
+    "@codemirror/view": "6.43.15",
+    "@lezer/common": "1.5.4",
     "@lezer/highlight": "1.2.5",
     "@tools/ui": "workspace:*"
   }
