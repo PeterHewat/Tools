@@ -232,8 +232,11 @@ for (const edit of ["key", "algorithm"] as const) {
     });
     await page.locator("#generate-key").click();
     await expect(page.locator("html")).toHaveAttribute("data-generating", "true");
-    if (edit === "key") await page.locator("#private-key").fill("newly pasted key");
-    else {
+    if (edit === "key") {
+      await page.locator("#private-key").fill("newly pasted key");
+      // The edit is checked after a debounce; snapshot the token only once it has been.
+      await expect(page.locator("#private-check")).toHaveText(/^Invalid private key/);
+    } else {
       await page.locator("#algorithm").selectOption("ES256");
       await expect(
         page.getByRole("textbox", { name: "JSON Web Token", exact: true })
