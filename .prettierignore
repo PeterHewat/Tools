@@ -1,8 +1,0 @@
-dist/
-build/
-coverage/
-test-results/
-playwright-report/
-node_modules/
-bun.lock
-apps/*/public/

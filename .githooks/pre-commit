@@ -1,0 +1,7 @@
+#!/bin/sh
+# Formats and re-stages the staged files, then lints the staged scripts.
+# Enabled by `bun install` (the `prepare` script sets core.hooksPath).
+set -e
+bun fmt --staged
+files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.ts' '*.tsx' '*.js' '*.mjs' '*.cjs')
+[ -z "$files" ] || bunx oxlint $files
