@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "typescript/no-explicit-any": "error",
+    "no-console": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**/*.ts", "**/*.config.ts", "**/*.config.js"],
+      "rules": { "no-console": "off" }
+    },
+    {
+      "files": ["**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              { "group": ["@codemirror/*", "@lezer/*"], "message": "Import from @tools/editor." }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/editor/**"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ]
+}

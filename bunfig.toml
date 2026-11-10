@@ -1,0 +1,5 @@
+# Formatting for `bun fmt` (Prettier-compatible options). .gitignore is also honoured.
+[fmt]
+printWidth = 100
+trailingComma = "es5"
+ignorePatterns = ["bun.lock", "apps/*/public/**"]

@@ -6,7 +6,7 @@
 - Prefer editing existing files; no secrets in code or logs
 - No `git add` / `commit` / `push` unless the user asks
 - Branch or PR work follows [Git](#git)
-- Run the [format gate](#format-gate) after editing, and the [verify gate](#verify-gate) before finishing
+- Run the [verify gate](#verify-gate) before finishing; [formatting](#formatting-and-lint) is automatic
 - **Saved formats:** the SVG, JSON and Time apps are released. JSON keeps only settings (`tools.json.prefs` in localStorage, read field by field with a default for anything missing or unknown) and a per-tab draft; a change to its settings must still read the old ones. A change to the SVG app's IndexedDB documents (`ProjectFile`) or exported SVG keeps existing files opening: bump `PROJECT_VERSION` (`types.ts`) and add the step up from the previous version in `readProject` (`project-file.ts`); the database's own `DB_VERSION` (`storage.ts`) is for its stores. Exported SVG carries no marker, so an SVG change must still import files written before it. Time keeps its settings (`tools.time.prefs`) and saved people (`tools.time.plan`, the same format as its share links) in localStorage, both read field by field with defaults; a change that cannot be read that way bumps `PLAN_VERSION` (`plan.ts`) and reads the previous version. An app that is not released yet has no migration — when its stored format changes, fail closed and tell the person to clear that app's storage.
 
 ## Clean changes
@@ -53,16 +53,11 @@ Before changing code — on any branch, not only `main` — and whenever the use
 
 Default integration branch is `main`; use another base only when the user names one.
 
-## Format gate
+## Formatting and lint
 
-After editing any file Prettier or ESLint cares about, format **before** finishing the task — do not rely on `verify` alone.
+Don't format by hand. `bun run check` formats the tree with `bun fmt` before it lints, the pre-commit hook in `.githooks/` formats and lints staged files, and CI fails on anything unformatted. `bunx oxlint --fix <paths>` applies the safe lint fixes.
 
-| Touched paths                      | Command                                                          |
-| ---------------------------------- | ---------------------------------------------------------------- |
-| `.ts` / `.js`                      | `bunx eslint --fix <paths>` then `bunx prettier --write <paths>` |
-| `.json` / `.md` / `.css` / `.html` | `bunx prettier --write <paths>`                                  |
-
-Pass explicit paths for the files you changed, not a blind repo-wide format.
+Tooling is Bun-native: `bun fmt` reads the `[fmt]` section of `bunfig.toml`, `.gitignore` and `.editorconfig`; oxlint reads `.oxlintrc.json`; `typecheck` is Bun's built-in type checker (`bun check`), so there is no `typescript`, ESLint or Prettier package.
 
 ## Verify gate
 
@@ -72,7 +67,7 @@ Pass explicit paths for the files you changed, not a blind repo-wide format.
 | Logic in a shared module | `bun run test`   |
 | Task complete            | `bun run verify` |
 
-`check` is lint + typecheck + format; `verify` adds tests and a full site build.
+`check` formats, lints and type-checks; `verify` adds tests and a full site build.
 
 ## Tests
 
