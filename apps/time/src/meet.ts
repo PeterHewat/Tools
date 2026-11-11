@@ -184,7 +184,6 @@ export function meetView(app: App): View {
                   class: "ui-btn ui-btn--small",
                   "data-day": String(i + 1),
                   "aria-pressed": String(window.days.includes(i + 1)),
-                  "aria-label": name,
                   title: name,
                 },
                 name.slice(0, 2)
